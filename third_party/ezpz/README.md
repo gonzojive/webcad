@@ -15,13 +15,21 @@ Rather than vendoring the entire `ezpz` codebase, we fetch it dynamically from G
 
 ---
 
+## Build Configuration & Crate Features
+
+Under Cargo, the CLI crate `ezpz-cli` depends on the `ezpz` library crate with the `unstable-exhaustive` feature enabled. 
+Bazel target dependencies do not automatically propagate features downstream. To align compilation features with Cargo:
+*   We explicitly set `crate_features = ["unstable-exhaustive"]` on the `ezpz` target inside the patched `ezpz/BUILD.bazel`.
+*   This configures `FailureOutcome` as exhaustive, resolving the CLI's struct destructuring compiler errors without requiring any source-code patches.
+
+---
+
 ## Patch Details
 
-A patch file [`ezpz.patch`](file:///home/red/ws/webcad-solver/third_party/ezpz/ezpz.patch) is applied at fetch time to resolve compile and path resolution issues:
+A patch file [`ezpz.patch`](file:///home/red/ws/webcad-solver/third_party/ezpz/ezpz.patch) is applied at fetch time to resolve remaining compilation and path resolution issues:
 
 ### 1. CLI Compilation Fixes (`ezpz-cli/src/main.rs`)
-*   **Non-exhaustive Struct Destructuring**: The `FailureOutcome` struct is marked as `#[non_exhaustive]` upstream. Destructuring it in `main.rs` requires using `..` to ignore other potential fields.
-*   **PathBuf Comparison**: Fixed a type error where a `PathBuf` was compared directly to a string literal `&str` `"-"`. This was changed to compare via `.to_str()`.
+*   **PathBuf Comparison**: Fixed a genuine compiler bug where a `PathBuf` was compared directly to a string literal `&str` `"-"`. This was changed to compare via `.to_str()`.
 
 ### 2. Sandboxed Path Resolution (`ezpz/src/tests.rs`)
 *   Upstream unit tests resolve problem files using a hardcoded relative path `../test_cases/`.
@@ -34,5 +42,5 @@ A patch file [`ezpz.patch`](file:///home/red/ws/webcad-solver/third_party/ezpz/e
 
 To eliminate the need for the local patch file, the following changes can be submitted upstream to the `KittyCAD/ezpz` repository:
 
-1.  **CLI Fixes**: Submit a Pull Request containing the compiler fixes in `ezpz-cli/src/main.rs`. These are standard Rust bug fixes that will allow the CLI crate to compile out of the box.
+1.  **CLI Fixes**: Submit a Pull Request containing the compiler fix in `ezpz-cli/src/main.rs` (changing `&cli.filepath != "-"` to `cli.filepath.to_str() != Some("-")` or `cli.filepath.as_path() != std::path::Path::new("-")`). This is a genuine bug that prevents the CLI crate from compiling under standard workspace builds (`cargo build -p ezpz-cli`).
 2.  **Test path helper**: Submit a PR to update `tests.rs` to use `CARGO_MANIFEST_DIR` for test case path lookup. Resolving test files relative to the manifest directory (rather than using raw relative paths) is a standard Cargo best practice and makes the crate friendly to other build systems.
