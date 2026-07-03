@@ -22,7 +22,7 @@ This example constrains two circles to share the same center point at `(0, 0)` w
 ### How to Run Yourself
 Solve the problem and print the resolved coordinates:
 ```bash
-bazel run @ezpz//ezpz-cli:ezpz-cli -- --filepath third_party/ezpz/examples/concentric.md --show-points
+bazel run @ezpz//ezpz-cli:ezpz-cli -- --filepath third_party/ezpz/examples/concentric.ezpz --show-points
 ```
 
 ---
@@ -51,5 +51,5 @@ This example models a 2D stair stringer cut from a standard **2x12 board** (actu
 ### How to Run Yourself
 Solve the problem and print the resolved coordinates:
 ```bash
-bazel run @ezpz//ezpz-cli:ezpz-cli -- --filepath third_party/ezpz/examples/stair_stringer.md --show-points
+bazel run @ezpz//ezpz-cli:ezpz-cli -- --filepath third_party/ezpz/examples/stair_stringer.ezpz --show-points
 ```
