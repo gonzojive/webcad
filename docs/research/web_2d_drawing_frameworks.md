@@ -1,14 +1,14 @@
 # Web-based 2D drawing and geometric constraint solving frameworks
 
-This report evaluates technical options for implementing a parametric 2D sketcher in a web browser. The target workflow is inspired by the sketching mechanics found in industry desktop CAD software (like SolidWorks or FreeCAD), where users draw shapes (lines, circles, arcs, curves) and apply geometric constraints that the engine solves dynamically in real-time. Additionally, we consider the future path toward 3D modeling and the generation of technical drawings (blueprints) from those models.
+This report evaluates technical options for implementing a [parametric](file:///home/red/ws/webcad/docs/glossary.md#parametric-design) 2D sketcher in a web browser. The target workflow is inspired by the sketching mechanics found in industry desktop CAD software (like SolidWorks or FreeCAD), where users draw shapes (lines, circles, arcs, curves) and apply [geometric constraints](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs) that the engine solves dynamically in real-time. Additionally, we consider the future path toward 3D modeling and the generation of [technical drawings](file:///home/red/ws/webcad/docs/glossary.md#technical-drawing) (blueprints) from those models.
 
 ---
 
 ## 1. Core architectural components of a web CAD sketcher
 
-A web-based parametric sketcher requires three main subsystems working in harmony:
+A web-based [parametric](file:///home/red/ws/webcad/docs/glossary.md#parametric-design) sketcher requires three main subsystems working in harmony:
 1. **Interactive Viewport (Rendering & Interaction)**: Captures mouse/touch inputs, handles pan/zoom, draws grid systems, rendering shapes, and managing selection states.
-2. **Geometric Constraint Solver (Mathematics Engine)**: Stores the state of the sketch (coordinates, constraints) and computes the valid positions of all geometry whenever an edit occurs.
+2. **[Geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs) (Mathematics Engine)**: Stores the state of the sketch (coordinates, constraints) and computes the valid positions of all geometry whenever an edit occurs.
 3. **Data Model & Command Manager**: Maintains the document history tree, handles Undo/Redo, and manages the serializable representation of the sketch.
 
 ```mermaid
@@ -23,10 +23,10 @@ graph TD
 
 ## 2. Web-compatible geometric constraint solvers
 
-Solving non-linear geometric constraints is mathematically intensive. The choice of solver backend directly impacts performance and stability.
+Solving non-linear [geometric constraints](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs) is mathematically intensive. The choice of solver backend directly impacts performance and stability.
 
 ### 2.1. Planegcs (WebAssembly port of FreeCAD solver)
-*   **Overview**: [planegcs](https://github.com/Salusoft89/planegcs) is a C++ to WebAssembly (WASM) compilation of FreeCAD's native geometric constraint solver, complete with TypeScript bindings.
+*   **Overview**: [planegcs](https://github.com/Salusoft89/planegcs) is a C++ to WebAssembly (WASM) compilation of FreeCAD's native [geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs), complete with TypeScript bindings.
 *   **Pros**:
     *   **Battle-tested**: Inherits years of development and optimization from the FreeCAD community.
     *   **High Performance**: Compiled C++ runs near native speeds in the browser.
@@ -36,7 +36,7 @@ Solving non-linear geometric constraints is mathematically intensive. The choice
     *   Interfacing between JavaScript memory and WASM requires a serialization/deserialization boundary.
 
 ### 2.2. JSketcher solver (native JavaScript/TypeScript)
-*   **Overview**: The solver module of [JSketcher](https://github.com/xibyte/jsketcher), a native browser parametric CAD application.
+*   **Overview**: The solver module of [JSketcher](https://github.com/xibyte/jsketcher), a native browser [parametric](file:///home/red/ws/webcad/docs/glossary.md#parametric-design) CAD application.
 *   **Pros**:
     *   Written in pure JavaScript, allowing for direct debugger access and zero assembly build steps.
     *   Specifically optimized for web usage, matching the user interaction loop of standard browser applications.
@@ -44,7 +44,7 @@ Solving non-linear geometric constraints is mathematically intensive. The choice
     *   May exhibit lower performance than WebAssembly-based compiled C++ for highly complex sketches containing hundreds of interrelated constraints.
 
 ### 2.3. Protractr GCS (native TypeScript)
-*   **Overview**: A modular geometric constraint solver module (`gcs`) developed for [Protractr](https://github.com/n-wach/protractr), a 2D sketch editor designed to mimic SolidWorks.
+*   **Overview**: A modular [geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs) module (`gcs`) developed for [Protractr](https://github.com/n-wach/protractr), a 2D sketch editor designed to mimic SolidWorks.
 *   **Pros**:
     *   Clean, object-oriented TypeScript API.
     *   Very easy to customize, inspect, and extend with new geometric primitives.
@@ -52,7 +52,7 @@ Solving non-linear geometric constraints is mathematically intensive. The choice
     *   Mainly suitable for 2D sketches and may require significant re-engineering if we attempt to solve complex 3D constraints directly in the solver module later.
 
 ### 2.4. ezpz (Rust compiled to WebAssembly)
-*   **Overview**: Developed by KittyCAD (`ezpz`), this is a modern geometric constraint solver written in Rust and compiled to WASM.
+*   **Overview**: Developed by KittyCAD (`ezpz`), this is a modern [geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs) written in Rust and compiled to WASM.
 *   **Pros**:
     *   Strong memory safety guarantees and excellent performance.
     *   Modern design, accommodating Web-first CAD requirements.
@@ -95,12 +95,12 @@ A critical requirement is that our 2D sketches can serve as the foundation for 3
 ### 4.1. Transitioning to 3D (extrusion & revolve)
 To go from a 2D sketch to 3D:
 1. **Renderer**: Transition the viewport to a 3D context using **Three.js** (WebGL/WebGPU). Three.js can take a 2D shape path (constructed from solved sketch points) and extrude it into a 3D mesh (`Three.ExtrudeGeometry`).
-2. **Modeling Kernel**: To perform true 3D CAD operations (fillets, boolean cuts, drafts), a Boundary Representation (B-Rep) kernel is required.
+2. **Modeling Kernel**: To perform true 3D CAD operations (fillets, boolean cuts, drafts), a [boundary representation (B-Rep)](file:///home/red/ws/webcad/docs/glossary.md#boundary-representation-b-rep) kernel is required.
    - **OpenCASCADE WebAssembly** (e.g., via `cascade-studio` or `occt-import-js`): The industry standard open-source CAD kernel compiled to WASM. It enables high-fidelity 3D CAD modeling directly in the browser.
-   - **JSCAD**: A simpler, code-driven solid modeler that performs Constructive Solid Geometry (CSG) operations.
+   - **JSCAD**: A simpler, code-driven solid modeler that performs [constructive solid geometry (CSG)](file:///home/red/ws/webcad/docs/glossary.md#constructive-solid-geometry-csg) operations.
 
-### 4.2. Creating 2D technical drawings (drafting)
-Once a 3D part is created (or from the 2D sketch itself), engineers require a **Technical Drawing** or Blueprint view (including orthographic projections, cross-sections, dimensions, text annotations, and borders).
+### 4.2. Creating 2D [technical drawings](file:///home/red/ws/webcad/docs/glossary.md#technical-drawing) (drafting)
+Once a 3D part is created (or from the 2D sketch itself), engineers require a **[Technical drawing](file:///home/red/ws/webcad/docs/glossary.md#technical-drawing)** or Blueprint view (including orthographic projections, cross-sections, dimensions, text annotations, and borders).
 *   **Vector Engine**: **SVG** is the ideal technology for technical drawing sheets. It ensures that text, lines, and dimensions remain perfectly crisp when zoomed or printed.
 *   **Dimension Lines and Labels**: We can use libraries like **Maker.js** (developed by Microsoft) to generate standard CAD dimension lines (arrows, extension lines, text centering) programmatically and export them directly to DXF or SVG.
 *   **Rich Text Annotations**: Standard HTML/CSS overlays or SVG `<text>` elements permit adding tolerances, welding symbols, and drawing titles with full font support.
@@ -130,7 +130,7 @@ This stack prioritizes performance, mathematical correctness, and industrial CAD
 *   **Language**: TypeScript (100% Type-Safe development).
 *   **2D Viewport Rendering**: **Konva.js** (Native TS) for high-performance interactive canvas sketching, switching to **SVG** for technical drafting sheets.
 *   **Geometric Solver**: **Planegcs (WASM with TS Bindings)**. Highly mature C++ code running at native speed with type-safe interfaces.
-*   **3D Viewport**: **Three.js** (via `@types/three`) for rendering, integrated with **OpenCASCADE WASM** for 3D B-Rep modeling (extruding, chamfering, cutting).
+*   **3D Viewport**: **Three.js** (via `@types/three`) for rendering, integrated with **OpenCASCADE WASM** for 3D [B-Rep](file:///home/red/ws/webcad/docs/glossary.md#boundary-representation-b-rep) modeling (extruding, chamfering, cutting).
 *   **Export Formats**: DXF (via Maker.js with TS typings), SVG, and STEP (via OpenCASCADE).
 
 ### Option B: The pure TypeScript stack

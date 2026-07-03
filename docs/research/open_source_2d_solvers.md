@@ -1,19 +1,19 @@
 # Open-source 2D drawing programs with geometric constraint solvers
 
-This report outlines the landscape of existing open-source 2D drawing and sketching programs that employ geometric constraint solvers (GCS). It analyzes their architectures, capabilities, and the design paradigms they share with professional industry-standard parametric CAD software (such as SolidWorks or FreeCAD), without focusing on specific commercial web-based offerings.
+This report outlines the landscape of existing open-source 2D drawing and sketching programs that employ [geometric constraint solvers (GCS)](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs). It analyzes their architectures, capabilities, and the design paradigms they share with professional industry-standard parametric CAD software (such as SolidWorks or FreeCAD), without focusing on specific commercial web-based offerings.
 
 ---
 
 ## 1. Understanding geometric constraint solvers (GCS)
 
-In parametric design, a 2D sketch is not just a collection of static vector elements. Instead, it is a dynamic system of geometric primitives (points, lines, arcs, circles, ellipses) governed by a set of mathematical relations called **constraints** (coincidence, parallelism, perpendicularity, tangency, distance, angle, equality, etc.).
+In [parametric design](file:///home/red/ws/webcad/docs/glossary.md#parametric-design), a 2D sketch is not just a collection of static vector elements. Instead, it is a dynamic system of geometric primitives (points, lines, arcs, circles, ellipses) governed by a set of mathematical relations called **constraints** (coincidence, parallelism, perpendicularity, tangency, distance, angle, equality, etc.).
 
-A **geometric constraint solver** is the mathematical engine that takes the current state of these primitives and constraints, translates them into a system of equations (often non-linear), and solves them to find the new positions of all entities. 
+A **[geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs)** is the mathematical engine that takes the current state of these primitives and constraints, translates them into a system of equations (often non-linear), and solves them to find the new positions of all entities. 
 
 Solvers generally fall into three categories:
-1. **Numerical solvers (iterative)**: Translate constraints into non-linear equations and solve them using methods like Newton-Raphson or Levenberg-Marquardt. They are highly flexible and handle complex constraints well, but require good initial guesses to converge to the desired solution.
-2. **Constructive and graph-based solvers**: Analyze the constraint network first to find a sequence of ruler-and-compass constructions. They are extremely fast and predictable, but writing them is highly complex, and they cannot solve all systems of equations.
-3. **Degrees of freedom (DoF) analysis**: Used to determine if a sketch is under-constrained (has remaining degrees of freedom), fully-constrained (zero degrees of freedom), or over-constrained (redundant or conflicting constraints).
+1. **[Numerical solvers](file:///home/red/ws/webcad/docs/glossary.md#numerical-solver) (iterative)**: Translate constraints into non-linear equations and solve them using methods like Newton-Raphson or Levenberg-Marquardt. They are highly flexible and handle complex constraints well, but require good initial guesses to converge to the desired solution.
+2. **[Constructive solvers](file:///home/red/ws/webcad/docs/glossary.md#constructive-solver) (graph-based)**: Analyze the constraint network first to find a sequence of ruler-and-compass constructions. They are extremely fast and predictable, but writing them is highly complex, and they cannot solve all systems of equations.
+3. **[Degrees of freedom (DoF) analysis](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof)**: Used to determine if a sketch is under-constrained (has remaining degrees of freedom), fully-constrained (zero degrees of freedom), or over-constrained (redundant or conflicting constraints).
 
 ---
 
@@ -37,7 +37,7 @@ Solvers generally fall into three categories:
 - **Architecture**: Built in C++ with Python bindings. The Sketcher workbench integrates the **Planegcs** solver.
 - **Mathematical approach**: Planegcs is an iterative numerical solver that supports dog-leg, Levenberg-Marquardt, and conjugate gradient optimization algorithms to minimize constraint error.
 - **Key features**:
-  - Full degree of freedom (DoF) visual feedback (elements change color when fully constrained).
+  - Full [degree of freedom (DoF)](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof) visual feedback (elements change color when fully constrained).
   - Support for complex curves (B-splines) and advanced constraints (e.g., equal length, tangent, symmetric, block/rigid groups).
   - Robust handling of redundant and conflicting constraints (auto-identifies and highlights conflicting dimensions).
 - **Paradigm**: Closely mirrors the sketching paradigm of industry-grade desktop CAD suites like SolidWorks. Sketches are drawn on a plane, fully constrained to ensure mathematical predictability, and then referenced by features (pad, pocket, revolve) in the modeling tree.
@@ -75,5 +75,5 @@ To implement a modern web-based sketching tool, we can extract several design le
 
 1. **Decouple the math from the rendering**: Like SolveSpace (`libsolvespace`) and FreeCAD (`Planegcs`), our web-based architecture should separate the constraint solver logic (which operates on raw point coordinates, lengths, and angles) from the canvas viewport (which handles mouse events, pan/zoom, and pixel rendering).
 2. **Provide real-time solver feedback**: Users expect immediate feedback. When they drag a point, the solver must run on every mouse movement (typically targeting <16ms frame times) to dynamically update the sketch.
-3. **Visual degree of freedom (DoF) status**: Following the FreeCAD Sketcher pattern, we should visually indicate to the user whether the sketch is under-constrained (often colored white/blue) or fully-constrained (often colored green). This is critical for creating predictable, robust designs.
+3. **Visual [degree of freedom (DoF)](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof) status**: Following the FreeCAD Sketcher pattern, we should visually indicate to the user whether the sketch is under-constrained (often colored white/blue) or fully-constrained (often colored green). This is critical for creating predictable, robust designs.
 4. **Graceful handling of over-constraining**: If a user adds a constraint that conflicts with an existing one, the solver must not crash. It should detect the contradiction, prevent the new constraint from breaking the system, and highlight the offending relations so the user can resolve them.
