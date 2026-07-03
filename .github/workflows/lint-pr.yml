@@ -35,3 +35,11 @@ jobs:
             revert
             release
             productivity
+          # When updating this list of allowed scopes, please also update the scopes in .agents/AGENTS.md
+          scopes: |
+            solver
+            ui
+            research
+            ci
+            rules
+            repo
