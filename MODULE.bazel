@@ -43,6 +43,10 @@ crate.spec(
     package = "serde_json",
     version = "1.0.100",
 )
+crate.spec(
+    package = "wasm-bindgen",
+    version = "=0.2.121",
+)
 crate.from_cargo(
     name = "crates",
     cargo_lockfile = "@ezpz//:Cargo.lock",

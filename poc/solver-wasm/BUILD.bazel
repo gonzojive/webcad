@@ -10,18 +10,18 @@ rust_shared_library(
     edition = "2021",
     visibility = ["//visibility:public"],
     deps = [
-        "@ezpz//ezpz:ezpz",
-        "@crates//:wasm-bindgen",
         "@crates//:serde",
         "@crates//:serde_json",
+        "@crates//:wasm-bindgen",
+        "@ezpz//ezpz",
     ],
 )
 
 rust_wasm_bindgen(
     name = "solver_wasm_bindgen",
-    wasm_file = ":solver_wasm_lib",
     target = "web",
     visibility = ["//visibility:public"],
+    wasm_file = ":solver_wasm_lib",
 )
 
 rust_test(
