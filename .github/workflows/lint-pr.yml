@@ -21,6 +21,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          # When updating this list of allowed types, please also update the prefixes in .agents/AGENTS.md
           types: |
             feat
             fix
@@ -33,3 +34,10 @@ jobs:
             ci
             revert
             release
+            productivity
+          # When updating this list of allowed scopes, please also update the scopes in .agents/AGENTS.md
+          scopes: |
+            solver
+            ui
+            research
+            ci
