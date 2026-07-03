@@ -28,7 +28,7 @@ All agentic AI coding assistants working in this repository must adhere to the f
 ## Git conventions
 - **Semantic commits and pull requests**: Use semantic prefix naming for all commits and pull request titles. Titles must be in lowercase (except for proper nouns) and follow the format `<type>:` or `<type>(<scope>):`.
   - **Allowed types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `productivity`, `perf`, `build`, `ci`, `revert`, `release`
-  - **Allowed scopes**: `solver` (GCS engine), `ui` (viewport, canvas, frontend), `research` (research documents), `ci` (workflows), `rules` (agent rules), `repo` (repository config)
+  - **Allowed scopes**: `solver` (GCS engine), `ui` (viewport, canvas, frontend), `research` (research documents), `ci` (workflows)
 - **No force pushes**: Do not force push to active pull request branches, as this dislocates reviewer comments. Instead, merge updates or append new commits. The squash merge at pull request submission will clean up the commit history.
 
 
