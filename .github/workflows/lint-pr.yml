@@ -21,6 +21,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          # When updating this list of allowed types, please also update the prefixes in .agents/AGENTS.md
           types: |
             feat
             fix
