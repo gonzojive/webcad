@@ -26,7 +26,9 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **Footnotes**: Markdown (`.md`) documents should use footnotes (`[^1]`) to explain reasoning, relationships, and context for decisions rather than just providing academic references.
 
 ## Git conventions
-- **Semantic commits and pull requests**: Use semantic prefix naming for all commits and pull request titles. The allowed prefixes are docs:, style:, refactor:, test:, productivity:, feat:, fix:, perf:, build:, ci:, revert:, release:, feat(solver):, fix(solver):, docs(solver):, test(solver):, feat(web):, fix(web):, docs(web):, test(web):, feat(viewport):, fix(viewport):, docs(viewport):, test(viewport):, productivity(ci):, productivity(repo):, productivity(rules):, build(deps):, ci(workflow):. Keep titles descriptive and in lowercase except for proper nouns.
+- **Semantic commits and pull requests**: Use semantic prefix naming for all commits and pull request titles. Titles must be in lowercase (except for proper nouns) and follow the format `<type>:` or `<type>(<scope>):`.
+  - **Allowed types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `productivity`, `perf`, `build`, `ci`, `revert`, `release`
+  - **Allowed scopes**: `solver` (GCS engine), `ui` (viewport, canvas, frontend), `research` (research documents), `ci` (workflows), `rules` (agent rules), `repo` (repository config)
 - **No force pushes**: Do not force push to active pull request branches, as this dislocates reviewer comments. Instead, merge updates or append new commits. The squash merge at pull request submission will clean up the commit history.
 
 
