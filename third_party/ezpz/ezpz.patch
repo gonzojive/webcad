@@ -1,7 +1,7 @@
-diff --git a/tmp/ezpz-upstream/ezpz/src/tests.rs b/third_party/ezpz/ezpz/src/tests.rs
+diff --git a/tmp/ezpz-upstream/ezpz/src/tests.rs b/tmp/ezpz-patched/ezpz/src/tests.rs
 index e33caf9..5af8c54 100644
 --- a/tmp/ezpz-upstream/ezpz/src/tests.rs
-+++ b/third_party/ezpz/ezpz/src/tests.rs
++++ b/tmp/ezpz-patched/ezpz/src/tests.rs
 @@ -18,8 +18,26 @@ fn run(test_case: &str) -> OutcomeAnalysis {
      run_with_config(test_case, Default::default())
  }
@@ -45,19 +45,11 @@ index e33caf9..5af8c54 100644
      let problem_without = parse_problem(&txt_without);
      let system_without = problem_without.to_constraint_system().unwrap();
      let solved_without = system_without
-diff --git a/tmp/ezpz-upstream/ezpz-cli/src/main.rs b/third_party/ezpz/ezpz-cli/src/main.rs
-index 995b9a5..f5d3afe 100644
+diff --git a/tmp/ezpz-upstream/ezpz-cli/src/main.rs b/tmp/ezpz-patched/ezpz-cli/src/main.rs
+index 995b9a5..242eb75 100644
 --- a/tmp/ezpz-upstream/ezpz-cli/src/main.rs
-+++ b/third_party/ezpz/ezpz-cli/src/main.rs
-@@ -209,6 +209,7 @@ fn print_failure_output(outcome: FailureOutcome) {
-         warnings,
-         num_vars,
-         num_eqs,
-+        ..
-     } = outcome;
-     print_warnings(&warnings);
-     print_problem_size(num_vars, num_eqs);
-@@ -224,7 +225,7 @@ fn print_failure_output(outcome: FailureOutcome) {
++++ b/tmp/ezpz-patched/ezpz-cli/src/main.rs
+@@ -224,7 +224,7 @@ fn print_failure_output(outcome: FailureOutcome) {
  /// They pass a filename, or '-' for stdin, as the first CLI arg.
  fn read_problem(cli: &Cli) -> Result<String, String> {
      // Read from file
@@ -66,12 +58,12 @@ index 995b9a5..f5d3afe 100644
          return std::fs::read_to_string(&cli.filepath).map_err(|e| e.to_string());
      }
  
-diff --git a/third_party/ezpz/ezpz/BUILD.bazel b/third_party/ezpz/ezpz/BUILD.bazel
+diff --git a/tmp/ezpz-patched/ezpz/BUILD.bazel b/tmp/ezpz-patched/ezpz/BUILD.bazel
 new file mode 100644
-index 0000000..81bc002
+index 0000000..f77ce31
 --- /dev/null
-+++ b/third_party/ezpz/ezpz/BUILD.bazel
-@@ -0,0 +1,32 @@
++++ b/tmp/ezpz-patched/ezpz/BUILD.bazel
+@@ -0,0 +1,34 @@
 +load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 +load("@crates//:defs.bzl", "all_crate_deps")
 +
@@ -79,6 +71,7 @@ index 0000000..81bc002
 +    name = "ezpz",
 +    srcs = glob(["src/**/*.rs"]),
 +    compile_data = ["README.md"],
++    crate_features = ["unstable-exhaustive"],
 +    edition = "2024",
 +    visibility = ["//visibility:public"],
 +    deps = all_crate_deps(
@@ -94,6 +87,7 @@ index 0000000..81bc002
 +rust_test(
 +    name = "ezpz_test",
 +    crate = ":ezpz",
++    crate_features = ["unstable-exhaustive"],
 +    data = ["@ezpz//:test_cases"],
 +    deps = all_crate_deps(
 +        normal_dev = True,
@@ -104,11 +98,11 @@ index 0000000..81bc002
 +        package_name = "ezpz",
 +    ),
 +)
-diff --git a/third_party/ezpz/ezpz-cli/BUILD.bazel b/third_party/ezpz/ezpz-cli/BUILD.bazel
+diff --git a/tmp/ezpz-patched/ezpz-cli/BUILD.bazel b/tmp/ezpz-patched/ezpz-cli/BUILD.bazel
 new file mode 100644
 index 0000000..21fb2f0
 --- /dev/null
-+++ b/third_party/ezpz/ezpz-cli/BUILD.bazel
++++ b/tmp/ezpz-patched/ezpz-cli/BUILD.bazel
 @@ -0,0 +1,19 @@
 +load("@rules_rust//rust:defs.bzl", "rust_binary")
 +load("@crates//:defs.bzl", "all_crate_deps")

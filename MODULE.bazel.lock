@@ -220,7 +220,7 @@
   "moduleExtensions": {
     "//:third_party_deps.bzl%third_party_deps": {
       "general": {
-        "bzlTransitiveDigest": "mQ2xhqeuTYWC9bu0e4td6B11OtMXtXDvUU+JAWl3bCw=",
+        "bzlTransitiveDigest": "BBBXqtwS25bri1rHCPgdtFa5vf/EQa4oXnd6WyitdVs=",
         "usagesDigest": "q7IMt1pd4F4fzXQ+GulVaaPaNtrp34c5MGYkz7l2bbE=",
         "recordedInputs": [
           "REPO_MAPPING:,bazel_tools bazel_tools"
