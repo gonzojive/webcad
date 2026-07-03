@@ -16,6 +16,10 @@ let tempCirclePreview = null;
 // Snap State
 let activeSnapPointId = null;
 let snapIndicator = null;
+// Stage Panning State
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let stageStart = { x: 0, y: 0 };
 // GCS API Client
 const gcs = new GCSapi();
 // IndexedDB Persistence Setup
@@ -136,8 +140,70 @@ function setupCanvas() {
     });
     mainLayer.add(snapIndicator);
     // Event Listeners
-    stage.on('mousedown', handleStageMouseDown);
-    stage.on('mousemove', handleStageMouseMove);
+    stage.on('mousedown', (e) => {
+        if (e.evt.button === 1) { // Middle click
+            isPanning = true;
+            const pos = stage.getPointerPosition();
+            if (pos) {
+                panStart = { x: pos.x, y: pos.y };
+                stageStart = { x: stage.x(), y: stage.y() };
+            }
+            stage.container().style.cursor = 'grabbing';
+            e.cancelBubble = true;
+            return;
+        }
+        handleStageMouseDown(e);
+    });
+    stage.on('mousemove', (e) => {
+        if (isPanning) {
+            const pos = stage.getPointerPosition();
+            if (pos) {
+                const dx = pos.x - panStart.x;
+                const dy = pos.y - panStart.y;
+                stage.position({
+                    x: stageStart.x + dx,
+                    y: stageStart.y + dy
+                });
+                redrawAll();
+            }
+            return;
+        }
+        handleStageMouseMove();
+    });
+    stage.on('mouseup', (e) => {
+        if (isPanning) {
+            isPanning = false;
+            stage.container().style.cursor = currentTool === 'select' ? 'default' : 'crosshair';
+        }
+    });
+    stage.on('mouseleave', () => {
+        if (isPanning) {
+            isPanning = false;
+            stage.container().style.cursor = currentTool === 'select' ? 'default' : 'crosshair';
+        }
+    });
+    // Zoom on scroll (wheel)
+    stage.on('wheel', (e) => {
+        e.evt.preventDefault();
+        const scaleBy = 1.08;
+        const oldScale = stage.scaleX();
+        const pointer = stage.getPointerPosition();
+        if (!pointer)
+            return;
+        const mousePointTo = {
+            x: (pointer.x - stage.x()) / oldScale,
+            y: (pointer.y - stage.y()) / oldScale,
+        };
+        const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+        const boundedScale = Math.max(0.1, Math.min(newScale, 15.0));
+        stage.scale({ x: boundedScale, y: boundedScale });
+        const newPos = {
+            x: pointer.x - mousePointTo.x * boundedScale,
+            y: pointer.y - mousePointTo.y * boundedScale,
+        };
+        stage.position(newPos);
+        redrawAll();
+    });
     stage.on('dblclick', () => {
         zoomToFit();
     });
