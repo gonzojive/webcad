@@ -229,12 +229,15 @@ The proprietary solvers have several distinct technical advantages over current 
 
 ## 5. Key takeaways for WebCAD development
 
-To implement a modern web-based sketching tool, we can extract several design lessons from these established desktop implementations:
+To implement a modern web-based sketching tool, we can extract several design and architectural lessons from these established desktop and commercial implementations:
 
 1. **Decouple the math from the rendering**: Like SolveSpace (`libsolvespace`) and FreeCAD (`Planegcs`), our web-based architecture should separate the constraint solver logic (which operates on raw point coordinates, lengths, and angles) from the canvas viewport (which handles mouse events, pan/zoom, and pixel rendering).
 2. **Provide real-time solver feedback**: Users expect immediate feedback. When they drag a point, the solver must run on every mouse movement (typically targeting <16ms frame times) to dynamically update the sketch.
 3. **Visual [degree of freedom (DoF)](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof) status**: Following the FreeCAD Sketcher pattern, we should visually indicate to the user whether the sketch is under-constrained (often colored white/blue) or fully-constrained (often colored green). This is critical for creating predictable, robust designs.
 4. **Graceful handling of over-constraining**: If a user adds a constraint that conflicts with an existing one, the solver must not crash. It should detect the contradiction, prevent the new constraint from breaking the system, and highlight the offending relations so the user can resolve them.
+5. **Aim for a hybrid solver pipeline**: To achieve both the 60 FPS viewport dragging fluidness of constructive solvers and the mathematical completeness (supporting B-splines, ellipses, conics) of numerical solvers, WebCAD should aim to integrate both methodologies. Pre-solving simple relations constructively prevents geometry from flipping inside out during dragging, while passing coupled loops to a numerical fallback handles complex cyclic sketches.
+6. **Strategically partition client/server workloads**: Following the modern web-native CAD paradigm, 2D constraint solving is cheap enough to execute on the client side via WebAssembly (WASM). However, 3D B-Rep boundary calculations, heavy feature-tree regeneration, and massive assembly mating should be offloaded to high-performance cloud servers, streaming geometric primitives back to the browser for WebGL/WebGPU viewport rendering.
+7. **Solve under-constrained dragging predictably**: Sketch dragging is an under-determined system with infinite mathematical solutions. To provide a high-fidelity user experience, the numerical solver must compute the pseudo-inverse of the Jacobian matrix to find the least-squares path of movement (i.e., the "least surprising" geometric update for the user).
 
 ---
 
