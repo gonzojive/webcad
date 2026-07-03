@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Run Gazelle to generate / update Bazel targets for Go packages.
+
+set -euo pipefail
+
+# Locate the root of the workspace
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Execute from the workspace root
+cd "$WORKSPACE_ROOT"
+exec bazel run //:gazelle "$@"

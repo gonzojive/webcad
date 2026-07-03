@@ -1,0 +1,2 @@
+# Enable precompiled protoc binaries from official releases to avoid building protoc from source
+common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc=true
