@@ -66,26 +66,26 @@ Solvers generally fall into three categories:
 | **ezpz** (by KittyCAD) | Apache-2.0 / MIT | Rust | Numerical (Optimized optimization solvers) | High-performance WASM and systems integration | Excellent; native Rust compiles cleanly to WASM with auto-generated bindings. |
 
 ### 3.2. Feature table
-This table provides a canonical list of geometric constraint solver features, categorizing capabilities and assigning semantic shortcodes for reference during development.
+This table provides a canonical list of geometric constraint solver features, categorizing capabilities, assigning semantic shortcodes, and mapping feature support across the evaluated solvers.
 
-| Category | Shortcode | Feature Name | Description |
-| :--- | :--- | :--- | :--- |
-| **Solver constraint** | `feat-solver-constraint-coincident` | Coincidence | Forces two points to occupy the exact same coordinate, or a point to lie on a line, circle, or curve. |
-| **Solver constraint** | `feat-solver-constraint-parallel` | Parallelism | Constrains two lines or directional entities to share the same vector slope. |
-| **Solver constraint** | `feat-solver-constraint-perpendicular` | Perpendicularity | Forces two lines to intersect at a 90-degree angle. |
-| **Solver constraint** | `feat-solver-constraint-tangent` | Tangency | Constrains a line to be tangent to a circle or curve, or two curves to share a tangent vector at a point. |
-| **Solver constraint** | `feat-solver-constraint-concentric` | Concentricity | Forces two or more circular/arc curves to share the same center point. |
-| **Solver constraint** | `feat-solver-constraint-distance` | Distance | Fixes the exact linear distance between two points, or the perpendicular distance from a point to a line. |
-| **Solver constraint** | `feat-solver-constraint-angle` | Angle | Constrains the angular delta between two lines to a specific value. |
-| **Solver constraint** | `feat-solver-constraint-symmetric` | Symmetry | Forces two geometric entities to be mirror images of each other across a specified line of symmetry. |
-| **Solver constraint** | `feat-solver-constraint-equal` | Equality | Requires two entities (e.g., two circles' radii, or two lines' lengths) to have equal values. |
-| **Solver geometry** | `feat-solver-geom-point` | Point Primitive | Basic 2D coordinate pair `(x, y)` serving as the foundation for other primitives. |
-| **Solver geometry** | `feat-solver-geom-line` | Line Segment | Defined by a start point and end point, representing a straight line boundary. |
-| **Solver geometry** | `feat-solver-geom-circle` | Circle Primitive | Defined by a center point and a radius parameter. |
-| **Solver geometry** | `feat-solver-geom-arc` | Arc Primitive | A portion of a circle defined by a center, radius, start angle, and end angle. |
-| **Solver geometry** | `feat-solver-geom-ellipse` | Ellipse Primitive | Defined by a center point, major axis radius, minor axis radius, and angle. |
-| **Solver state** | `feat-solver-state-dof` | Degree of Freedom Tracking | The ability of the solver to dynamically calculate and report the remaining degrees of freedom in the sketch. |
-| **Solver state** | `feat-solver-state-conflict` | Redundant / Conflicting Constraint Detection | The capability to isolate and report conflicting equations to prevent solver divergence. |
+| Category | Feature (Shortcode) | Description | SolveSpace | FreeCAD | CAD Sketcher | ezpz |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **Solver constraint** | Coincidence<br>`feat-solver-constraint-coincident` | Forces two points to occupy the exact same coordinate, or a point to lie on a line, circle, or curve. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Parallelism<br>`feat-solver-constraint-parallel` | Constrains two lines or directional entities to share the same vector slope. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Perpendicularity<br>`feat-solver-constraint-perpendicular` | Forces two lines to intersect at a 90-degree angle. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Tangency<br>`feat-solver-constraint-tangent` | Constrains a line to be tangent to a circle or curve, or two curves to share a tangent vector at a point. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Concentricity<br>`feat-solver-constraint-concentric` | Forces two or more circular/arc curves to share the same center point. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Distance<br>`feat-solver-constraint-distance` | Fixes the exact linear distance between two points, or the perpendicular distance from a point to a line. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Angle<br>`feat-solver-constraint-angle` | Constrains the angular delta between two lines to a specific value. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Symmetry<br>`feat-solver-constraint-symmetric` | Forces two geometric entities to be mirror images of each other across a specified line of symmetry. | ✓ | ✓ | ✓ | ✓ |
+| **Solver constraint** | Equality<br>`feat-solver-constraint-equal` | Requires two entities (e.g., two circles' radii, or two lines' lengths) to have equal values. | ✓ | ✓ | ✓ | ✓ |
+| **Solver geometry** | Point Primitive<br>`feat-solver-geom-point` | Basic 2D coordinate pair `(x, y)` serving as the foundation for other primitives. | ✓ | ✓ | ✓ | ✓ |
+| **Solver geometry** | Line Segment<br>`feat-solver-geom-line` | Defined by a start point and end point, representing a straight line boundary. | ✓ | ✓ | ✓ | ✓ |
+| **Solver geometry** | Circle Primitive<br>`feat-solver-geom-circle` | Defined by a center point and a radius parameter. | ✓ | ✓ | ✓ | ✓ |
+| **Solver geometry** | Arc Primitive<br>`feat-solver-geom-arc` | A portion of a circle defined by a center, radius, start angle, and end angle. | ✓ | ✓ | ✓ | ✓ |
+| **Solver geometry** | Ellipse Primitive<br>`feat-solver-geom-ellipse` | Defined by a center point, major axis radius, minor axis radius, and angle. | ✓ | ✓ | ✓ | ✗ |
+| **Solver state** | Degree of Freedom Tracking<br>`feat-solver-state-dof` | The ability of the solver to dynamically calculate and report the remaining degrees of freedom in the sketch. | ✓ | ✓ | ✓ | ✓ |
+| **Solver state** | Conflict Detection<br>`feat-solver-state-conflict` | The capability to isolate and report conflicting equations to prevent solver divergence. | ✓ | ✓ | ✓ | ✓ |
 
 ### 3.3. Formats
 This section discusses the standard and proprietary file formats used by GCS tools for importing, exporting, and persisting sketches and constraints.
