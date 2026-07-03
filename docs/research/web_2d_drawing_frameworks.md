@@ -80,7 +80,7 @@ A professional 2D sketching environment relies on a suite of micro-interactions 
 
 To implement the viewport, we must evaluate the low-level graphics APIs available in modern web browsers, the mathematical primitives they operate on, and their performance characteristics.
 
-### 3.1. API comparison and primitives
+### 4.1. API comparison and primitives
 
 | Graphics API | Primitives | Render Mode | Performance | Characteristics |
 | :--- | :--- | :--- | :--- | :--- |
@@ -89,7 +89,7 @@ To implement the viewport, we must evaluate the low-level graphics APIs availabl
 | **SVG (Scalable Vector Graphics)** | `<line>`, `<circle>`, `<path>` (lines, arcs, Beziers), `<text>`. | **Vector (Retained)**: Graphic elements are represented as nodes in the HTML DOM. | **Low (Interactive)**: High DOM counts (>1000 nodes) cause layout reflow and paint bottlenecks. | Resolution-independent (crisp at any zoom). Highly styleable via CSS. Excellent for exporting drawings, but **unsuitable** for active CAD viewport rendering. |
 | **HTML DOM Overlay** | `<div>`, `<span>`, input fields, text elements. | **DOM Document Layout**: Structured HTML elements positioned in the document flow. | **N/A (UI-Only)**: Handled by the browser layout engine. | Ideal for text inputs, menus, tooltips, and **collaborative commenting** systems. Can be easily layered on top of a Canvas viewport. |
 
-### 3.2. Rendering primitives in GCS CAD
+### 4.2. Rendering primitives in GCS CAD
 
 *   **Tessellation**: In low-level APIs like WebGL/WebGPU, curved primitives (arcs, circles, splines) do not exist natively. The app must break curves down into a series of short, straight line segments (tessellation) before rendering, or write custom fragment shaders (such as Signed Distance Fields) to render them mathematically.
 *   **Resolution Independence**: While SVG handles resolution scaling automatically, Canvas and WebGL/WebGPU viewports must capture zoom events and re-clear/re-render vectors at the new pixel ratio to keep lines from appearing blurry or pixelated.
@@ -121,6 +121,17 @@ The rendering layer displays the shapes and handles click/drag gestures. We must
 *   **How it works**: Renders vector paths directly in the HTML DOM.
 *   **Why choose it**: Text rendering, CSS styling, and interactivity are built-in. It is ideal for the **Technical Drawing (Drafting)** stage where we place dimensions, text, labels, and drawing templates (title blocks).
 *   **Why not**: High DOM count can slow down interactive dragging during active 2D sketching.
+
+### 5.5. Viewport framework capabilities table
+
+The following table maps each high-level viewport framework to its underlying graphics APIs, primitives, and suitability for CAD operations:
+
+| Framework / Library | Low-level Graphics API | Primary Primitives Supported | Interactivity & Snapping Suitability | Collaborative Overlay Suitability | Viewport Rendering Performance |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Konva.js** | HTML5 2D Canvas (Canvas2D) | Points, lines, circles, arcs, custom paths, text. | **High**: Excellent scene-graph drag/drop listeners and screen-space coordinate mapping. | **Medium**: Can render text and basic shapes, but rich text comments require a DOM overlay. | **Excellent**: Low-overhead raster rendering. Smooth 60 FPS dragging. |
+| **Paper.js** | HTML5 2D Canvas (Canvas2D) | Advanced vector paths, Beziers, circles. | **High**: Extremely strong math engine for geometry snapping, intersections, and path slicing. | **Medium**: Rasterizes text, less suitable for interactive DOM UI. | **High**: Standard canvas performance, slightly higher overhead for math evaluations. |
+| **Fabric.js** | HTML5 2D Canvas (Canvas2D) | Standard shapes, selection boxes, custom paths, text. | **Medium**: Geared toward general graphic design; custom snapping and guides require extensions. | **Medium**: High-level selection handles, but rich comments need a DOM overlay. | **High**: Standard raster canvas rendering. |
+| **SVG & D3.js** | SVG (retained DOM) | `<line>`, `<circle>`, `<path>`, `<text>`. | **High**: Browser-native event listeners on individual nodes, but laggy under complex layouts. | **Excellent**: Direct integration with HTML DOM structure; easy CSS styling and text layout. | **Low**: High DOM node count (>1000) causes heavy reflow/repaint latency during active dragging. |
 
 ---
 
