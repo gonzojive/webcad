@@ -6,4 +6,4 @@
 .vscode/
 
 # Go build artifacts
-/webcad
+hello_world
