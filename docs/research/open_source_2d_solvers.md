@@ -109,7 +109,35 @@ It is important to contrast the GCS tools with other highly popular open-source 
 
 ---
 
-## 4. Key takeaways for WebCAD development
+## 4. Comparison with established proprietary solvers
+
+While open-source constraint solvers have matured significantly, professional desktop CAD packages rely on highly optimized proprietary solver SDKs. The two most dominant commercial engines are:
+
+1. **D-Cubed 2D DCM (Dimensional Constraint Manager)**: Developed by Siemens. It is the industry-standard geometric solver, licensing its technology to Autodesk (for Inventor and AutoCAD), Dassault Systèmes (for SolidWorks), PTC (for Creo), and Siemens itself (for NX and Solid Edge).
+2. **Spatial CDS (Constraint Design Solver)**: Developed by Spatial (a subsidiary of Dassault Systèmes). It is used primarily in CATIA and other applications within the Dassault ecosystem.
+
+### 4.1. Key differences and commercial advantages
+
+The proprietary solvers have several distinct technical advantages over current open-source implementations:
+
+- **Algebraic and graph-reduction preprocessing**: Commercial solvers do not just run numerical methods (like Newton-Raphson) on the entire equation set. Instead, they first analyze the constraint graph to decompose the system into smaller, independent sub-problems that can be solved analytically (e.g., using constructive geometry steps). Numerical solvers are only used as a fallback for coupled or cyclic constraint loops. This results in far greater solving speed, scalability (thousands of constraints), and stability.
+- **Advanced degree of freedom (DoF) analysis**: They can identify exactly which parts of a sketch are under-constrained, and in which directions they can move, providing detailed interactive feedback to the user (e.g., displaying drag handles that restrict movement to the remaining degrees of freedom).
+- **Auto-dimensioning and constraint recommendation**: They can automatically generate a set of dimensions and constraints to fully constrain a sketch without creating conflicts.
+- **Predictable topology/drag behaviors**: When a user drags a point, commercial solvers use sophisticated path-following algorithms (homotopy continuation) to find the most "natural" or expected configuration, avoiding erratic snapping or inversion of geometry (such as circles flipping inside-out).
+
+### 4.2. High-level comparison table
+
+| Capability | Open-Source Solvers (Planegcs, SolveSpace, ezpz) | Proprietary Solvers (D-Cubed 2D DCM, Spatial CDS) |
+| :--- | :--- | :--- |
+| **Solving Approach** | Primarily numerical optimization (Newton-Raphson, Levenberg-Marquardt). | Hybrid (Decomposition analysis + constructive solving + numerical fallback). |
+| **Scalability** | Typically starts to degrade or lag when exceeding 100-200 coupled constraints. | Scales smoothly to thousands of geometric entities and constraints. |
+| **Snapping & Dragging** | Uses closest numerical convergence; can snap to unexpected geometric configurations. | Employs homotopy path continuation to maintain predictable dragging states. |
+| **Redundancy Isolation** | Basic conflict detection (usually reports the final equation that broke the system). | Pinpoints exact minimal over-constrained loops and highlights conflicting entities. |
+| **Commercial Licensing** | Open-source (LGPL, GPL, Apache-2.0). Free to use. | High-cost commercial licensing fees per seat/developer. |
+
+---
+
+## 5. Key takeaways for WebCAD development
 
 To implement a modern web-based sketching tool, we can extract several design lessons from these established desktop implementations:
 
@@ -117,3 +145,4 @@ To implement a modern web-based sketching tool, we can extract several design le
 2. **Provide real-time solver feedback**: Users expect immediate feedback. When they drag a point, the solver must run on every mouse movement (typically targeting <16ms frame times) to dynamically update the sketch.
 3. **Visual [degree of freedom (DoF)](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof) status**: Following the FreeCAD Sketcher pattern, we should visually indicate to the user whether the sketch is under-constrained (often colored white/blue) or fully-constrained (often colored green). This is critical for creating predictable, robust designs.
 4. **Graceful handling of over-constraining**: If a user adds a constraint that conflicts with an existing one, the solver must not crash. It should detect the contradiction, prevent the new constraint from breaking the system, and highlight the offending relations so the user can resolve them.
+
