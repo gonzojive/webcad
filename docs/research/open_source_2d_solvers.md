@@ -65,29 +65,42 @@ Solvers generally fall into three categories:
 | **CAD Sketcher** | GPL-3.0 | Python / C++ | Numerical (via SolveSpace) | Parametric sketching inside Blender | Highly specific to Blender, but showcases solver integration. |
 | **ezpz** (by KittyCAD) | Apache-2.0 / MIT | Rust | Numerical (Optimized optimization solvers) | High-performance WASM and systems integration | Excellent; native Rust compiles cleanly to WASM with auto-generated bindings. |
 
-### 3.2. Feature table
-This table provides a canonical list of geometric constraint solver features, categorizing capabilities, assigning semantic shortcodes, and mapping feature support across the evaluated solvers.
+### 3.2. Solver feature table
+This table provides a canonical list of geometric constraint solver capabilities, mapping support across the underlying mathematical engines.
 
-| Category | Feature (Shortcode) | Description | SolveSpace | FreeCAD | CAD Sketcher | ezpz |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Solver constraint** | Coincidence<br>`feat-solver-constraint-coincident` | Forces two points to occupy the exact same coordinate, or a point to lie on a line, circle, or curve. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Parallelism<br>`feat-solver-constraint-parallel` | Constrains two lines or directional entities to share the same vector slope. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Perpendicularity<br>`feat-solver-constraint-perpendicular` | Forces two lines to intersect at a 90-degree angle. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Tangency<br>`feat-solver-constraint-tangent` | Constrains a line to be tangent to a circle or curve, or two curves to share a tangent vector at a point. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Concentricity<br>`feat-solver-constraint-concentric` | Forces two or more circular/arc curves to share the same center point. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Distance<br>`feat-solver-constraint-distance` | Fixes the exact linear distance between two points, or the perpendicular distance from a point to a line. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Angle<br>`feat-solver-constraint-angle` | Constrains the angular delta between two lines to a specific value. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Symmetry<br>`feat-solver-constraint-symmetric` | Forces two geometric entities to be mirror images of each other across a specified line of symmetry. | ✓ | ✓ | ✓ | ✓ |
-| **Solver constraint** | Equality<br>`feat-solver-constraint-equal` | Requires two entities (e.g., two circles' radii, or two lines' lengths) to have equal values. | ✓ | ✓ | ✓ | ✓ |
-| **Solver geometry** | Point Primitive<br>`feat-solver-geom-point` | Basic 2D coordinate pair `(x, y)` serving as the foundation for other primitives. | ✓ | ✓ | ✓ | ✓ |
-| **Solver geometry** | Line Segment<br>`feat-solver-geom-line` | Defined by a start point and end point, representing a straight line boundary. | ✓ | ✓ | ✓ | ✓ |
-| **Solver geometry** | Circle Primitive<br>`feat-solver-geom-circle` | Defined by a center point and a radius parameter. | ✓ | ✓ | ✓ | ✓ |
-| **Solver geometry** | Arc Primitive<br>`feat-solver-geom-arc` | A portion of a circle defined by a center, radius, start angle, and end angle. | ✓ | ✓ | ✓ | ✓ |
-| **Solver geometry** | Ellipse Primitive<br>`feat-solver-geom-ellipse` | Defined by a center point, major axis radius, minor axis radius, and angle. | ✓ | ✓ | ✓ | ✗ |
-| **Solver state** | Degree of Freedom Tracking<br>`feat-solver-state-dof` | The ability of the solver to dynamically calculate and report the remaining degrees of freedom in the sketch. | ✓ | ✓ | ✓ | ✓ |
-| **Solver state** | Conflict Detection<br>`feat-solver-state-conflict` | The capability to isolate and report conflicting equations to prevent solver divergence. | ✓ | ✓ | ✓ | ✓ |
+| Category | Feature (Shortcode) | Description | SolveSpace (`libsolvespace`) | FreeCAD (`Planegcs`) | ezpz |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Solver constraint** | Coincidence<br>`feat-solver-constraint-coincident` | Forces two points to occupy the exact same coordinate, or a point to lie on a line, circle, or curve. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Parallelism<br>`feat-solver-constraint-parallel` | Constrains two lines or directional entities to share the same vector slope. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Perpendicularity<br>`feat-solver-constraint-perpendicular` | Forces two lines to intersect at a 90-degree angle. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Tangency<br>`feat-solver-constraint-tangent` | Constrains a line to be tangent to a circle or curve, or two curves to share a tangent vector at a point. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Concentricity<br>`feat-solver-constraint-concentric` | Forces two or more circular/arc curves to share the same center point. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Distance<br>`feat-solver-constraint-distance` | Fixes the exact linear distance between two points, or the perpendicular distance from a point to a line. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Angle<br>`feat-solver-constraint-angle` | Constrains the angular delta between two lines to a specific value. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Symmetry<br>`feat-solver-constraint-symmetric` | Forces two geometric entities to be mirror images of each other across a specified line of symmetry. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Equality<br>`feat-solver-constraint-equal` | Requires two entities (e.g., two circles' radii, or two lines' lengths) to have equal values. | ✓ | ✓ | ✓ |
+| **Solver geometry** | Point Primitive<br>`feat-solver-geom-point` | Basic 2D coordinate pair `(x, y)` serving as the foundation for other primitives. | ✓ | ✓ | ✓ |
+| **Solver geometry** | Line Segment<br>`feat-solver-geom-line` | Defined by a start point and end point, representing a straight line boundary. | ✓ | ✓ | ✓ |
+| **Solver geometry** | Circle Primitive<br>`feat-solver-geom-circle` | Defined by a center point and a radius parameter. | ✓ | ✓ | ✓ |
+| **Solver geometry** | Arc Primitive<br>`feat-solver-geom-arc` | A portion of a circle defined by a center, radius, start angle, and end angle. | ✓ | ✓ | ✓ |
+| **Solver geometry** | Ellipse Primitive<br>`feat-solver-geom-ellipse` | Defined by a center point, major axis radius, minor axis radius, and angle. | ✓ | ✓ | ✗ |
+| **Solver state** | Degree of Freedom Tracking<br>`feat-solver-state-dof` | The ability of the solver to dynamically calculate and report the remaining degrees of freedom in the sketch. | ✓ | ✓ | ✓ |
+| **Solver state** | Conflict Detection<br>`feat-solver-state-conflict` | The capability to isolate and report conflicting equations to prevent solver divergence. | ✓ | ✓ | ✓ |
 
-### 3.3. Formats
+### 3.3. Drawing tool feature table
+This table compares the end-user drawing applications and design suites (excluding the raw solver engines) to highlight how various CAD tools handle parametric 2D and 3D modeling.
+
+| Feature (Shortcode) | Description | SolidWorks | FreeCAD | AutoCAD | Revit | SolveSpace |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Parametric 2D sketching**<br>`feat-tool-sketching-parametric` | Creation of 2D profiles defined by geometric constraints and dimensions. | ✓ | ✓ | ✗ (Basic) | ✓ | ✓ |
+| **3D feature history tree**<br>`feat-tool-3d-history` | Sequential order of operations (extrusions, cuts, sweeps) that can be re-evaluated. | ✓ | ✓ | ✗ | ✓ | ✓ (Basic groups) |
+| **Technical drawing sheets**<br>`feat-tool-drafting-sheets` | Generation of 2D sheets/blueprints with dimensions, labels, and borders. | ✓ | ✓ | ✓ | ✓ | ✓ (Export only) |
+| **Assembly modeling**<br>`feat-tool-assembly` | Combining multiple parts into assemblies with joint/mate constraints. | ✓ | ✓ | ✗ | ✓ | ✓ |
+| **BIM (Building Information Modeling)**<br>`feat-tool-bim` | Architecture-specific modeling of walls, doors, windows, and schedules. | ✗ | ✓ (Arch) | ✗ | ✓ | ✗ |
+| **2D vector drafting**<br>`feat-tool-2d-drafting` | Non-parametric drafting focusing on layers, line weights, and raw geometry. | ✗ | ✗ | ✓ | ✗ | ✗ |
+| **Collaborative / cloud modeling**<br>`feat-tool-collaboration` | Simultaneous multi-user editing, version control, and storage in a web browser. | ✗ | ✗ | ✗ (Basic viewer) | ✓ (BIM 360) | ✗ |
+
+### 3.4. Formats
 This section discusses the standard and proprietary file formats used by GCS tools for importing, exporting, and persisting sketches and constraints.
 
 #### Proprietary/tool-specific formats
