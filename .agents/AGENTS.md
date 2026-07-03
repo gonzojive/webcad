@@ -25,3 +25,7 @@ All agentic AI coding assistants working in this repository must adhere to the f
 ## Markdown document formatting
 - **Footnotes**: Markdown (`.md`) documents should use footnotes (`[^1]`) to explain reasoning, relationships, and context for decisions rather than just providing academic references.
 
+## Git conventions
+- **Semantic commits and pull requests**: Use semantic prefix naming for all commits and pull request titles (e.g., `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`). Keep titles descriptive and in lowercase except for proper nouns.
+
+
