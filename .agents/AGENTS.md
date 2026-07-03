@@ -21,6 +21,8 @@ All agentic AI coding assistants working in this repository must adhere to the f
 ## Iteration loop
 - **Fast feedback loop**: Favor small, incremental changes.
 - **Unit testing**: Get into a fast iteration loop quickly using tools like unit tests. Avoid running long-running processes or broad execution commands when localized tests can verify correctness.
+- **Bazel tooling**: Always use Bazel to build, test, and run code in this repository. Avoid using native toolchains directly (e.g., `go run`, `go build`, `go test`). Use commands like `bazel build //...` and `bazel test //...` to compile and verify changes.
+- **Gazelle build generator**: Use Gazelle to manage and generate `BUILD.bazel` files for Go packages. Run `./devtools/gaz` to automatically update or regenerate targets whenever Go source files, imports, or dependencies in `go.mod` change.
 
 ## Markdown document formatting
 - **Footnotes**: Markdown (`.md`) documents should use footnotes (`[^1]`) to explain reasoning, relationships, and context for decisions rather than just providing academic references.

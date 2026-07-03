@@ -1,0 +1,10 @@
+# Bazel output symlinks
+/bazel-*
+
+# IDEs
+.idea/
+.vscode/
+
+# Bazel local user configurations
+*.user.bazelrc
+user.bazelrc
