@@ -151,15 +151,15 @@ This table provides a canonical list of geometric constraint solver capabilities
 ### 3.3. Drawing tool feature table
 This table compares the end-user drawing applications and design suites (excluding the raw solver engines) to highlight how various CAD tools handle parametric 2D and 3D modeling.
 
-| Feature (Shortcode) | Description | SolidWorks | FreeCAD | AutoCAD | Revit | SolveSpace |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Parametric 2D sketching**<br>`feat-tool-sketching-parametric` | Creation of 2D profiles defined by geometric constraints and dimensions. | ✓ | ✓ | ✗ (Basic) | ✓ | ✓ |
-| **3D feature history tree**<br>`feat-tool-3d-history` | Sequential order of operations (extrusions, cuts, sweeps) that can be re-evaluated. | ✓ | ✓ | ✗ | ✓ | ✓ (Basic groups) |
-| **Technical drawing sheets**<br>`feat-tool-drafting-sheets` | Generation of 2D sheets/blueprints with dimensions, labels, and borders. | ✓ | ✓ | ✓ | ✓ | ✓ (Export only) |
-| **Assembly modeling**<br>`feat-tool-assembly` | Combining multiple parts into assemblies with joint/mate constraints. | ✓ | ✓ | ✗ | ✓ | ✓ |
-| **BIM (Building Information Modeling)**<br>`feat-tool-bim` | Architecture-specific modeling of walls, doors, windows, and schedules. | ✗ | ✓ (Arch) | ✗ | ✓ | ✗ |
-| **2D vector drafting**<br>`feat-tool-2d-drafting` | Non-parametric drafting focusing on layers, line weights, and raw geometry. | ✗ | ✗ | ✓ | ✗ | ✗ |
-| **Collaborative / cloud modeling**<br>`feat-tool-collaboration` | Simultaneous multi-user editing, version control, and storage in a web browser. | ✗ | ✗ | ✗ (Basic viewer) | ✓ (BIM 360) | ✗ |
+| Feature (Shortcode) | Description | SolidWorks | FreeCAD | AutoCAD | Revit | SolveSpace | Web-native CAD |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Parametric 2D sketching**<br>`feat-tool-sketching-parametric` | Creation of 2D profiles defined by geometric constraints and dimensions. | ✓ | ✓ | ✗ (Basic) | ✓ | ✓ | ✓ |
+| **3D feature history tree**<br>`feat-tool-3d-history` | Sequential order of operations (extrusions, cuts, sweeps) that can be re-evaluated. | ✓ | ✓ | ✗ | ✓ | ✓ (Basic groups) | ✓ |
+| **Technical drawing sheets**<br>`feat-tool-drafting-sheets` | Generation of 2D sheets/blueprints with dimensions, labels, and borders. | ✓ | ✓ | ✓ | ✓ | ✓ (Export only) | ✓ |
+| **Assembly modeling**<br>`feat-tool-assembly` | Combining multiple parts into assemblies with joint/mate constraints. | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| **BIM (Building Information Modeling)**<br>`feat-tool-bim` | Architecture-specific modeling of walls, doors, windows, and schedules. | ✗ | ✓ (Arch) | ✗ | ✓ | ✗ | ✗ |
+| **2D vector drafting**<br>`feat-tool-2d-drafting` | Non-parametric drafting focusing on layers, line weights, and raw geometry. | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
+| **Collaborative / cloud modeling**<br>`feat-tool-collaboration` | Simultaneous multi-user editing, version control, and storage in a web browser. | ✗ | ✗ | ✗ (Basic viewer) | ✓ (BIM 360) | ✗ | ✓ |
 
 ### 3.4. Formats
 This section discusses the standard and proprietary file formats used by GCS tools for importing, exporting, and persisting sketches and constraints.
