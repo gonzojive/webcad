@@ -40,9 +40,9 @@ DoF analysis is not an alternative to numerical or constructive solving; rather,
 
 ---
 
-## 2. Key open-source desktop applications using GCS
+## 2. Key desktop applications using GCS
 
-### 2.1. SolveSpace
+### 2.1. SolveSpace (Open source)
 **SolveSpace** is a legendary, lightweight, open-source 2D/3D parametric CAD program. It features an exceptionally fast and robust custom 2D/3D constraint solver.
 
 - **Architecture**: Written in C++. The constraint solver is decoupled from the GUI and exists as a library (`libsolvespace`).
@@ -54,7 +54,7 @@ DoF analysis is not an alternative to numerical or constructive solving; rather,
   - Clean, minimalist, and retro user interface.
 - **Paradigm**: Draws directly on the "Sketch → Dimension → Extrude" workflow. The user creates a sketch, applies geometric constraints, and the solver immediately snaps the drawing into shape.
 
-### 2.2. FreeCAD (Sketcher workbench)
+### 2.2. FreeCAD (Sketcher workbench - Open source)
 **FreeCAD** is a feature-rich, modular, open-source parametric 3D modeler. Its **Sketcher workbench** is the core tool for creating 2D geometries that serve as the foundation for 3D operations.
 
 - **Architecture**: Built in C++ with Python bindings. The Sketcher workbench integrates the **Planegcs** solver.
@@ -65,7 +65,7 @@ DoF analysis is not an alternative to numerical or constructive solving; rather,
   - Robust handling of redundant and conflicting constraints (auto-identifies and highlights conflicting dimensions).
 - **Paradigm**: Closely mirrors the sketching paradigm of industry-grade desktop CAD suites like SolidWorks. Sketches are drawn on a plane, fully constrained to ensure mathematical predictability, and then referenced by features (pad, pocket, revolve) in the modeling tree.
 
-### 2.3. CAD Sketcher (Blender addon)
+### 2.3. CAD Sketcher (Blender addon - Open source)
 **CAD Sketcher** is a relatively new, highly popular open-source addon for Blender that brings CAD-style parametric 2D sketching to the polygon-modeling world.
 
 - **Architecture**: Written in Python. It packages and utilizes the **SolveSpace solver engine** (`libsolvespace` or its Python binding `pygcs`) as the core mathematical backend.
@@ -74,6 +74,44 @@ DoF analysis is not an alternative to numerical or constructive solving; rather,
   - Real-time constraint solving within the Blender 3D viewport.
   - Fully non-destructive parametric editing.
 - **Paradigm**: Illustrates the adaptability of decoupled constraint solver libraries. It shows that GCS engines like SolveSpace's can be transplanted into completely foreign runtime environments (like Blender's mesh system) while maintaining their core interactive behavior.
+
+### 2.4. SolidWorks (Sketcher - Commercial)
+**SolidWorks** is the industry-standard 3D mechanical computer-aided design (MCAD) software. Its 2D sketching environment serves as the foundational sketch geometry for constructing 3D parametric solids.
+
+- **Architecture**: Built in C++. Its sketching environment is powered by the commercial Siemens D-Cubed 2D DCM engine.
+- **Key features**:
+  - Extremely robust degree of freedom (DoF) visual feedback (active entities are blue, fully constrained entities are black, and over-constrained conflicts are red/yellow).
+  - Homotopy continuation path-following to ensure that geometry updates in a predictable, non-inverting manner during mouse drags.
+  - Support for custom design equations and global variables that link to constraints.
+- **Paradigm**: Establishes the "fully-constrained sketch" industry standard. Sketches must be mathematically locked down before features are applied, preventing topological errors downstream in the assembly tree.
+
+### 2.5. Autodesk Inventor (Sketcher - Commercial)
+**Autodesk Inventor** is Autodesk's professional mechanical design and simulation tool. Its sketching features align closely with the workflows of SolidWorks.
+
+- **Architecture**: Powered by the Siemens D-Cubed 2D DCM constraint solver.
+- **Key features**:
+  - Automatic constraint inference (recognizes and applies horizontal, vertical, tangent, and coincident relations dynamically as the user draws).
+  - Automatic sketch dimensioning capabilities (locks down remaining degrees of freedom instantly).
+  - Advanced diagnostic tools that help locate constraint loops causing mathematical redundancy.
+- **Paradigm**: Uses constraint solving to enforce precise mechanical tolerances in sketches, which are subsequently swept, extruded, or lofted into 3D shapes.
+
+### 2.6. AutoCAD (Parametric drafting - Commercial)
+**AutoCAD** is the premier vector-based technical drafting tool, historically focusing on static, manual coordinate drafting.
+
+- **Architecture**: Includes a **Parametric** tab containing 2D geometric and dimensional constraints powered by the Siemens D-Cubed DCM engine.
+- **Key features**:
+  - Applies constraints directly to standard 2D vector polylines, circles, and curves to maintain design intent during revisions.
+  - Auto-constrain feature that infers constraint trees from legacy DWG files.
+- **Paradigm**: An optional layer on top of a traditional drafting engine. Instead of a history tree, constraints are maintained directly on the drawing database, offering a hybrid parametric-drafting workflow.
+
+### 2.7. Revit (Architectural constraints - Commercial)
+**Autodesk Revit** is the industry-standard Building Information Modeling (BIM) software for building design and construction.
+
+- **Architecture**: Uses an internal relational database and constraint solver engine.
+- **Key features**:
+  - Allows locking dimensional constraints (alignments, offsets) between architectural elements (such as doors, walls, columns, and reference planes).
+  - Drives parametric behaviors inside Revit Families (reusable building components like windows that scale based on defined height/width parameters).
+- **Paradigm**: System-wide relation constraint solving. Rather than working purely on a 2D canvas, Revit solves constraints in 3D across walls, grid lines, and levels, ensuring that editing one wall's position propagates to all attached rooms and structures.
 
 ---
 
