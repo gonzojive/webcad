@@ -11,9 +11,18 @@ In [parametric design](file:///home/red/ws/webcad/docs/glossary.md#parametric-de
 A **[geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#geometric-constraint-solver-gcs)** is the mathematical engine that takes the current state of these primitives and constraints, translates them into a system of equations (often non-linear), and solves them to find the new positions of all entities.[^1] 
 
 Solvers generally fall into three categories:
-1. **[Numerical solvers](file:///home/red/ws/webcad/docs/glossary.md#numerical-solver) (iterative)**: Translate constraints into non-linear equations and solve them using methods like Newton-Raphson or Levenberg-Marquardt.[^2] They are highly flexible and handle complex constraints well, but require good initial guesses to converge to the desired solution.
+
+1. **[Numerical solvers](file:///home/red/ws/webcad/docs/glossary.md#numerical-solver) (iterative)**: Translate constraints into non-linear equations and solve them using methods like Newton-Raphson or Levenberg-Marquardt.[^2]
+   - *History*: Numerical constraint solving dates back to Ivan Sutherland's pioneering **Sketchpad** in 1963, which used relaxation techniques to satisfy geometric constraints. As digital computing advanced, numerical solvers were standardized around multi-variable optimization and root-finding mathematical libraries.
+   - *Product integration*: Used by **SolveSpace**, **FreeCAD** (Sketcher workbench via the Planegcs solver), and modern web-based CAD modeling platforms (e.g., Zoo Design Studio using the `ezpz` Rust solver). Snapping and inference systems in non-parametric tools (like **SketchUp**) also employ basic numerical relaxation to align geometries.
+
 2. **[Constructive solvers](file:///home/red/ws/webcad/docs/glossary.md#constructive-solver) (graph-based)**: Analyze the constraint network first to find a sequence of step-by-step, analytical geometric operations (such as calculating the intersection points of lines and circles).[^3] They are extremely fast and predictable, but writing them is highly complex, and they cannot solve all systems of equations.
+   - *History*: Developed in the late 1980s and 1990s as a high-performance alternative to numerical solvers, pioneered by researchers like Christoph Hoffmann. The commercial success of constructive solvers led to the founding of D-Cubed in Cambridge, UK, which created the first commercial geometric constraint solver component (D-Cubed DCM).
+   - *Product integration*: Relied upon by major commercial CAD applications like **SolidWorks**, **Autodesk Inventor**, **CATIA**, **Siemens NX**, **AutoCAD** (for its parametric constraints), and **Revit** (for aligning walls, levels, and architectural grids). These commercial packages license proprietary engines (Siemens D-Cubed DCM or Spatial CDS) that prioritize constructive graph reduction before falling back to numerical iteration.
+
 3. **[Degrees of freedom (DoF) analysis](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof)**: Used to determine if a sketch is under-constrained (has remaining degrees of freedom), fully-constrained (zero degrees of freedom), or over-constrained (redundant or conflicting constraints).[^4]
+   - *History*: Originating in classical mechanics and kinematic linkage analysis, DoF tracking was integrated into CAD engines in the 1990s to improve user interaction. By tracking variables and equations dynamically, CAD systems could guide users in completing sketches.
+   - *Product integration*: Standard in all major parametric modeling software, including **SolidWorks**, **Autodesk Inventor**, **FreeCAD**, **SolveSpace**, and **Revit**. This analysis drives the UI feedback loops that dynamically change entity colors (e.g., from blue to green) once a sketch becomes fully constrained.
 
 ---
 
