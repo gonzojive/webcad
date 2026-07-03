@@ -24,6 +24,14 @@ Solvers generally fall into three categories:
    - *History*: Originating in classical mechanics and kinematic linkage analysis, DoF tracking was integrated into CAD engines in the 1990s to improve user interaction. By tracking variables and equations dynamically, CAD systems could guide users in completing sketches.
    - *Product integration*: Standard in all major parametric modeling software, including **SolidWorks**, **Autodesk Inventor**, **FreeCAD**, **SolveSpace**, and **Revit**. This analysis drives the UI feedback loops that dynamically change entity colors (e.g., from blue to green) once a sketch becomes fully constrained.
 
+### 1.1. How degrees of freedom analysis interacts with solvers
+
+DoF analysis is not an alternative to numerical or constructive solving; rather, it is a **complementary analysis phase** that runs before, during, and after the solving process.
+
+*   **Preprocessing (Decomposition)**: In constructive/graph-based solvers (such as D-Cubed DCM), DoF analysis is the first step. The solver represents the sketch as a graph of geometric entities and constraints, analyzing it to identify independent sub-graphs that are fully constrained (DoF = 0 relative to each other). The solver then collapses these solved clusters into rigid bodies, simplifying the global system step-by-step.
+*   **Execution (Jacobian Rank)**: In numerical solvers, DoF analysis is computed dynamically via linear algebra. The solver builds a derivative Jacobian matrix ($J$) of the constraint equations. By calculating the rank ($R$) of this matrix, the solver computes the remaining degrees of freedom ($DoF = N - R$, where $N$ is the number of coordinate variables). This rank calculation identifies redundant equations (preventing mathematical singular states) and determines the path of least-squares motion during user dragging.
+*   **Postprocessing (UI Feedback)**: After the solver executes, the resulting DoF status of each primitive is passed to the user interface. This drives color coding (e.g., under-constrained lines colored blue, fully-locked lines colored green) and limits cursor dragging behaviors to only allow movements along the remaining unconstrained directions.
+
 ---
 
 ## 2. Key open-source desktop applications using GCS
