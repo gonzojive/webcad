@@ -11,6 +11,7 @@ Rather than vendoring the entire `ezpz` codebase, we fetch it dynamically from G
 *   [`BUILD.bazel`](file:///home/red/ws/webcad-solver/third_party/ezpz/BUILD.bazel): Package marker file.
 *   [`ezpz.BUILD`](file:///home/red/ws/webcad-solver/third_party/ezpz/ezpz.BUILD): The root Bazel BUILD file overlaid on the fetched `@ezpz` repository.
 *   [`ezpz.patch`](file:///home/red/ws/webcad-solver/third_party/ezpz/ezpz.patch): Patches applied to the fetched source code to resolve compilation and testing issues.
+*   [`examples/`](file:///home/red/ws/webcad-solver/third_party/ezpz/examples/): Directory containing step-by-step constraint examples (concentric circles, stair stringer) and their visualizations.
 *   [`README.md`](file:///home/red/ws/webcad-solver/third_party/ezpz/README.md): This documentation file.
 
 ---
