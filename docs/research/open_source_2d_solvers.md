@@ -40,7 +40,7 @@ DoF analysis is not an alternative to numerical or constructive solving; rather,
 
 ---
 
-## 2. Key desktop applications using GCS
+## 2. Key applications using GCS
 
 ### 2.1. SolveSpace (Open source)
 **SolveSpace** is a legendary, lightweight, open-source 2D/3D parametric CAD program. It features an exceptionally fast and robust custom 2D/3D constraint solver.
@@ -112,6 +112,16 @@ DoF analysis is not an alternative to numerical or constructive solving; rather,
   - Allows locking dimensional constraints (alignments, offsets) between architectural elements (such as doors, walls, columns, and reference planes).
   - Drives parametric behaviors inside Revit Families (reusable building components like windows that scale based on defined height/width parameters).
 - **Paradigm**: System-wide relation constraint solving. Rather than working purely on a 2D canvas, Revit solves constraints in 3D across walls, grid lines, and levels, ensuring that editing one wall's position propagates to all attached rooms and structures.
+
+### 2.8. Web-native parametric CAD (Cloud-based - Commercial)
+A modern, browser-based 3D mechanical computer-aided design system. It represents the state of the art in cloud-native parametric modeling.
+
+- **Architecture**: Powered by the commercial Siemens D-Cubed 2D DCM engine running on remote cloud servers, which streams computed geometric states back to the client viewport.
+- **Key features**:
+  - Real-time collaborative multi-user editing and modeling in the same document.
+  - Built-in Git-like version control, history branching, merging, and revision tracking.
+  - Complete cross-platform access via standard HTML5/WebGL browsers with no local installation.
+- **Paradigm**: Integrates constraint-based sketching and 3D modeling into a cloud-managed history database. Because the GCS solving and boundary representation modeling are executed on server instances, client viewports only need to render basic graphics, enabling professional CAD modeling on low-spec hardware.
 
 ---
 
