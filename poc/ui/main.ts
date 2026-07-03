@@ -1020,4 +1020,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Setup Canvas viewport and load WASM solver
     setupCanvas();
     await initSolver();
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+        // Ignore key shortcuts when typing inside form inputs
+        if (document.activeElement?.tagName === 'INPUT') {
+            return;
+        }
+
+        if (e.key === 'd' || e.key === 'D') {
+            applyDistance();
+        }
+    });
 });
