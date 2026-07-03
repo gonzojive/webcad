@@ -53,3 +53,14 @@ Solve the problem and print the resolved coordinates:
 ```bash
 bazel run @ezpz//ezpz-cli:ezpz-cli -- --filepath third_party/ezpz/examples/stair_stringer.ezpz --show-points
 ```
+
+---
+
+## Regenerating Visualizations
+
+If you modify the `.ezpz` files and want to update the visualization PNGs, run the Python regeneration script:
+```bash
+./third_party/ezpz/examples/regenerate.py
+```
+This script dynamically invokes the Bazel solver, parses the initial guesses and resolved coordinates, and redraws the sketches.
+*Note: This script requires Python 3 and the `Pillow` library (`pip install Pillow`).*
