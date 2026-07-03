@@ -19,7 +19,7 @@ A method for representing 3D solid shapes in computer-aided design by defining t
 A solid modeling technique where complex 3D shapes are constructed from simpler primitives (such as blocks, cylinders, spheres, cones) using boolean operations (union, intersection, subtraction). (See [Constructive solid geometry on Wikipedia](https://en.wikipedia.org/wiki/Constructive_solid_geometry).)
 
 ### Constructive solver
-A geometric constraint solver that analyzes the dependency graph of constraints to solve the system using a sequence of analytical, ruler-and-compass geometric constructions.
+A geometric constraint solver that analyzes the dependency graph of constraints to solve the system using a sequence of step-by-step, analytical geometric operations (such as calculating the intersection points of lines and circles).
 
 ### Degrees of freedom (DoF)
 The number of independent parameters or coordinates that define the configuration of a geometric sketch or system. In parametric sketching:

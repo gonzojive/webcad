@@ -12,7 +12,7 @@ A **[geometric constraint solver](file:///home/red/ws/webcad/docs/glossary.md#ge
 
 Solvers generally fall into three categories:
 1. **[Numerical solvers](file:///home/red/ws/webcad/docs/glossary.md#numerical-solver) (iterative)**: Translate constraints into non-linear equations and solve them using methods like Newton-Raphson or Levenberg-Marquardt.[^2] They are highly flexible and handle complex constraints well, but require good initial guesses to converge to the desired solution.
-2. **[Constructive solvers](file:///home/red/ws/webcad/docs/glossary.md#constructive-solver) (graph-based)**: Analyze the constraint network first to find a sequence of ruler-and-compass constructions.[^3] They are extremely fast and predictable, but writing them is highly complex, and they cannot solve all systems of equations.
+2. **[Constructive solvers](file:///home/red/ws/webcad/docs/glossary.md#constructive-solver) (graph-based)**: Analyze the constraint network first to find a sequence of step-by-step, analytical geometric operations (such as calculating the intersection points of lines and circles).[^3] They are extremely fast and predictable, but writing them is highly complex, and they cannot solve all systems of equations.
 3. **[Degrees of freedom (DoF) analysis](file:///home/red/ws/webcad/docs/glossary.md#degrees-of-freedom-dof)**: Used to determine if a sketch is under-constrained (has remaining degrees of freedom), fully-constrained (zero degrees of freedom), or over-constrained (redundant or conflicting constraints).[^4]
 
 ---
