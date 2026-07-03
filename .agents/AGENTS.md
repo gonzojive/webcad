@@ -12,9 +12,11 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **Modular design**: Ensure components are highly modularized, decoupled, and cleanly separated.
 - **Function size**: Keep functions concise. Functions exceeding 50 lines should be extremely rare; decompose complex logic into smaller, dedicated helper functions.
 - **Documentation**: Document all public/exported symbols (classes, functions, interfaces, structs, packages) with rich, informative docstrings. Detail non-obvious design choices and edge cases.
+- **Specification citations**: When implementing an algorithm that relies on a specification (e.g., an RFC document or standard paper), always cite the external sources clearly in the source code documentation.
 - **Go style guide**: If writing Go code, strictly adhere to the [Uber Go Style Guide](https://github.com/uber-go/guide). In addition, apply the following design patterns:
   - **Domain-specific types**: Strongly prefer dedicated types over raw primitive types to improve type safety and readability (e.g., use `type EntityID string` instead of raw `string`, and write methods directly on `EntityID`).
   - **Type conversion helpers**: Provide explicit conversion functions for domain-specific primitives (e.g., `type Angle float64; func AngleFromRadians(rad float64) Angle`).
+  - **Modern godoc comments**: Use modern Go doc comment syntax, including links to other symbols and external URLs.
 
 ## Iteration loop
 - **Fast feedback loop**: Favor small, incremental changes.
