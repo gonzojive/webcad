@@ -10,8 +10,11 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **Professional standard**: Always assume you are writing code for professional, production-grade use by other engineers. 
 - **Readability over cleverness**: Optimize code for readability, maintainability, and clean architecture, not just bare functionality.
 - **Modular design**: Ensure components are highly modularized, decoupled, and cleanly separated.
-- **Documentation**: Write clear, precise comments and docstrings. Document non-obvious design choices.
-- **Go style guide**: If writing Go code, strictly adhere to the [Uber Go Style Guide](https://github.com/uber-go/guide).
+- **Function size**: Keep functions concise. Functions exceeding 50 lines should be extremely rare; decompose complex logic into smaller, dedicated helper functions.
+- **Documentation**: Document all public/exported symbols (classes, functions, interfaces, structs, packages) with rich, informative docstrings. Detail non-obvious design choices and edge cases.
+- **Go style guide**: If writing Go code, strictly adhere to the [Uber Go Style Guide](https://github.com/uber-go/guide). In addition, apply the following design patterns:
+  - **Domain-specific types**: Strongly prefer dedicated types over raw primitive types to improve type safety and readability (e.g., use `type EntityID string` instead of raw `string`, and write methods directly on `EntityID`).
+  - **Type conversion helpers**: Provide explicit conversion functions for domain-specific primitives (e.g., `type Angle float64; func AngleFromRadians(rad float64) Angle`).
 
 ## Iteration loop
 - **Fast feedback loop**: Favor small, incremental changes.
