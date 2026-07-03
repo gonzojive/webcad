@@ -667,8 +667,9 @@ function redrawAll() {
             draggable: currentTool === 'select' && !p.fixed,
             id: p.id
         });
-        // Visible Circle dot
+        // Visible circle dot
         const dot = new Konva.Circle({
+            name: 'dot',
             radius: isHovered || isSelected ? 6 : 4.5,
             fill: pointColor,
             stroke: p.fixed ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0,0,0,0.5)',
@@ -676,6 +677,7 @@ function redrawAll() {
         });
         // Invisible larger hit area for easier grabbing (using rgba for hit detection)
         const hitArea = new Konva.Circle({
+            name: 'hitArea',
             radius: 16,
             fill: 'rgba(0, 0, 0, 0)'
         });
@@ -809,8 +811,11 @@ function updateEntityVisuals() {
         circleShape.stroke(isSelected ? '#3b82f6' : (isHovered ? '#1a73e8' : '#64748b'));
         circleShape.strokeWidth(isSelected || isHovered ? 3.5 : 2);
     });
-    // Update point visuals
+    // Update point visuals (skip the currently dragged point to prevent
+    // fill/stroke separation artifacts during active drag gestures)
     points.forEach(p => {
+        if (p.id === draggedPointId)
+            return;
         const pointGroup = mainLayer.findOne('#' + p.id);
         if (!pointGroup)
             return;
@@ -827,8 +832,8 @@ function updateEntityVisuals() {
         else if (isHovered) {
             pointColor = '#1a73e8'; // var(--accent-color) fallback
         }
-        // The dot is the second child (index 1) of the point group
-        const dot = pointGroup.children?.[1];
+        // Find the visible dot by name instead of child index
+        const dot = pointGroup.findOne('.dot');
         if (dot) {
             dot.radius(isHovered || isSelected ? 6 : 4.5);
             dot.fill(pointColor);
