@@ -150,11 +150,17 @@ This table provides a canonical list of geometric constraint solver capabilities
 | **Solver constraint** | Angle<br>`feat-solver-constraint-angle` | Constrains the angular delta between two lines to a specific value. | ✓ | ✓ | ✓ |
 | **Solver constraint** | Symmetry<br>`feat-solver-constraint-symmetric` | Forces two geometric entities to be mirror images of each other across a specified line of symmetry. | ✓ | ✓ | ✓ |
 | **Solver constraint** | Equality<br>`feat-solver-constraint-equal` | Requires two entities (e.g., two circles' radii, or two lines' lengths) to have equal values. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Midpoint<br>`feat-solver-constraint-midpoint` | Forces a point to lie exactly at the midpoint of a line segment. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Collinearity<br>`feat-solver-constraint-collinear` | Constrains two lines or directional entities to lie along the same infinite line path. | ✓ | ✓ | ✓ |
+| **Solver constraint** | Tangent to Spline<br>`feat-solver-constraint-tangent-spline` | Constrains a line or curve to be tangent to a Bezier or B-spline curve. | ✓ | ✓ | ✗ |
+| **Solver constraint** | Offset Curve<br>`feat-solver-constraint-offset` | Constrains a curve to lie at a constant perpendicular distance from a parent curve. | ✗ | ✓ | ✗ |
 | **Solver geometry** | Point Primitive<br>`feat-solver-geom-point` | Basic 2D coordinate pair `(x, y)` serving as the foundation for other primitives. | ✓ | ✓ | ✓ |
 | **Solver geometry** | Line Segment<br>`feat-solver-geom-line` | Defined by a start point and end point, representing a straight line boundary. | ✓ | ✓ | ✓ |
 | **Solver geometry** | Circle Primitive<br>`feat-solver-geom-circle` | Defined by a center point and a radius parameter. | ✓ | ✓ | ✓ |
 | **Solver geometry** | Arc Primitive<br>`feat-solver-geom-arc` | A portion of a circle defined by a center, radius, start angle, and end angle. | ✓ | ✓ | ✓ |
 | **Solver geometry** | Ellipse Primitive<br>`feat-solver-geom-ellipse` | Defined by a center point, major axis radius, minor axis radius, and angle. | ✓ | ✓ | ✗ |
+| **Solver geometry** | Bezier / B-Spline Curve<br>`feat-solver-geom-spline` | Parametric curves defined by a series of control points. | ✓ | ✓ | ✗ |
+| **Solver geometry** | Construction Geometry<br>`feat-solver-geom-construction` | Reference lines, points, and curves that assist in constraint layout but do not form the physical boundary. | ✓ | ✓ | ✓ |
 | **Solver state** | Degree of Freedom Tracking<br>`feat-solver-state-dof` | The ability of the solver to dynamically calculate and report the remaining degrees of freedom in the sketch. | ✓ | ✓ | ✓ |
 | **Solver state** | Conflict Detection<br>`feat-solver-state-conflict` | The capability to isolate and report conflicting equations to prevent solver divergence. | ✓ | ✓ | ✓ |
 
