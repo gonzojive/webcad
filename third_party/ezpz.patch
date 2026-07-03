@@ -1,0 +1,131 @@
+diff --git a/tmp/ezpz-upstream/ezpz/src/tests.rs b/third_party/ezpz/ezpz/src/tests.rs
+index e33caf9..5af8c54 100644
+--- a/tmp/ezpz-upstream/ezpz/src/tests.rs
++++ b/third_party/ezpz/ezpz/src/tests.rs
+@@ -18,8 +18,26 @@ fn run(test_case: &str) -> OutcomeAnalysis {
+     run_with_config(test_case, Default::default())
+ }
+ 
++fn get_test_case_path(test_case: &str, file_name: &str) -> std::path::PathBuf {
++    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
++    let relative_path = if let Some(stripped) = manifest_dir.strip_prefix("external/") {
++        stripped.to_string()
++    } else {
++        manifest_dir
++    };
++    let base_path = if let Ok(test_srcdir) = std::env::var("TEST_SRCDIR") {
++        std::path::PathBuf::from(test_srcdir).join(relative_path)
++    } else {
++        std::path::PathBuf::from(relative_path)
++    };
++    base_path.join("..").join("test_cases").join(test_case).join(file_name)
++}
++
+ fn run_with_config(test_case: &str, config: Config) -> OutcomeAnalysis {
+-    let txt = std::fs::read_to_string(format!("../test_cases/{test_case}/problem.md")).unwrap();
++    let path = get_test_case_path(test_case, "problem.md");
++    let txt = std::fs::read_to_string(&path).unwrap_or_else(|e| {
++        panic!("Failed to read test case at {:?}: {}", path, e);
++    });
+     let problem = parse_problem(&txt);
+     let system = problem.to_constraint_system().unwrap();
+     system.solve_with_config_analysis(config).unwrap()
+@@ -1293,10 +1311,10 @@ fn point_arc_coincident_old_incorrect_convergence_2() {
+ #[test]
+ fn point_basically_already_on_arc_should_not_cause_much_change_in_sketch() {
+     // First, solve without the point_arc_coincident constraint to get a baseline
+-    let txt_without = std::fs::read_to_string(
+-        "../test_cases/arc_line_coincident_bug/problem_without_arc_constraint.md",
+-    )
+-    .unwrap();
++    let path = get_test_case_path("arc_line_coincident_bug", "problem_without_arc_constraint.md");
++    let txt_without = std::fs::read_to_string(&path).unwrap_or_else(|e| {
++        panic!("Failed to read test case at {:?}: {}", path, e);
++    });
+     let problem_without = parse_problem(&txt_without);
+     let system_without = problem_without.to_constraint_system().unwrap();
+     let solved_without = system_without
+diff --git a/tmp/ezpz-upstream/ezpz-cli/src/main.rs b/third_party/ezpz/ezpz-cli/src/main.rs
+index 995b9a5..f5d3afe 100644
+--- a/tmp/ezpz-upstream/ezpz-cli/src/main.rs
++++ b/third_party/ezpz/ezpz-cli/src/main.rs
+@@ -209,6 +209,7 @@ fn print_failure_output(outcome: FailureOutcome) {
+         warnings,
+         num_vars,
+         num_eqs,
++        ..
+     } = outcome;
+     print_warnings(&warnings);
+     print_problem_size(num_vars, num_eqs);
+@@ -224,7 +225,7 @@ fn print_failure_output(outcome: FailureOutcome) {
+ /// They pass a filename, or '-' for stdin, as the first CLI arg.
+ fn read_problem(cli: &Cli) -> Result<String, String> {
+     // Read from file
+-    if &cli.filepath != "-" {
++    if cli.filepath.to_str() != Some("-") {
+         return std::fs::read_to_string(&cli.filepath).map_err(|e| e.to_string());
+     }
+ 
+diff --git a/third_party/ezpz/ezpz/BUILD.bazel b/third_party/ezpz/ezpz/BUILD.bazel
+new file mode 100644
+index 0000000..81bc002
+--- /dev/null
++++ b/third_party/ezpz/ezpz/BUILD.bazel
+@@ -0,0 +1,32 @@
++load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
++load("@crates//:defs.bzl", "all_crate_deps")
++
++rust_library(
++    name = "ezpz",
++    srcs = glob(["src/**/*.rs"]),
++    compile_data = ["README.md"],
++    edition = "2024",
++    visibility = ["//visibility:public"],
++    deps = all_crate_deps(
++        normal = True,
++        package_name = "ezpz",
++    ),
++    proc_macro_deps = all_crate_deps(
++        proc_macro = True,
++        package_name = "ezpz",
++    ),
++)
++
++rust_test(
++    name = "ezpz_test",
++    crate = ":ezpz",
++    data = ["@ezpz//:test_cases"],
++    deps = all_crate_deps(
++        normal_dev = True,
++        package_name = "ezpz",
++    ),
++    proc_macro_deps = all_crate_deps(
++        proc_macro_dev = True,
++        package_name = "ezpz",
++    ),
++)
+diff --git a/third_party/ezpz/ezpz-cli/BUILD.bazel b/third_party/ezpz/ezpz-cli/BUILD.bazel
+new file mode 100644
+index 0000000..21fb2f0
+--- /dev/null
++++ b/third_party/ezpz/ezpz-cli/BUILD.bazel
+@@ -0,0 +1,19 @@
++load("@rules_rust//rust:defs.bzl", "rust_binary")
++load("@crates//:defs.bzl", "all_crate_deps")
++
++rust_binary(
++    name = "ezpz-cli",
++    srcs = glob(["src/**/*.rs"]),
++    edition = "2024",
++    visibility = ["//visibility:public"],
++    deps = [
++        "//ezpz",
++    ] + all_crate_deps(
++        normal = True,
++        package_name = "ezpz-cli",
++    ),
++    proc_macro_deps = all_crate_deps(
++        proc_macro = True,
++        package_name = "ezpz-cli",
++    ),
++)

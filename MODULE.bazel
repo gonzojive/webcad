@@ -26,12 +26,20 @@ rust.toolchain(
 )
 use_repo(rust, "rust_toolchains")
 
-# Configure external crates from the third_party/ezpz Cargo workspace
+# Fetch external repositories
+third_party_deps = use_extension("//:third_party_deps.bzl", "third_party_deps")
+use_repo(third_party_deps, "ezpz")
+
+# Configure external crates from the ezpz Cargo workspace
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 crate.from_cargo(
     name = "crates",
-    cargo_lockfile = "//third_party/ezpz:Cargo.lock",
-    manifests = ["//third_party/ezpz:Cargo.toml"],
+    cargo_lockfile = "@ezpz//:Cargo.lock",
+    manifests = [
+        "@ezpz//:Cargo.toml",
+        "@ezpz//ezpz:Cargo.toml",
+        "@ezpz//ezpz-cli:Cargo.toml",
+    ],
 )
 crate.annotation(
     crate = "yeslogic-fontconfig-sys",
