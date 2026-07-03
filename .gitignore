@@ -5,5 +5,6 @@
 .idea/
 .vscode/
 
-# Go build artifacts
-hello_world
+# Bazel local user configurations
+*.user.bazelrc
+user.bazelrc
