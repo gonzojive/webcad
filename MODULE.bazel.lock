@@ -220,7 +220,7 @@
   "moduleExtensions": {
     "//:third_party_deps.bzl%third_party_deps": {
       "general": {
-        "bzlTransitiveDigest": "cm6w07+/BkuOWApSQlfC78A92B+rVPyE9YAmAFPOKgM=",
+        "bzlTransitiveDigest": "mQ2xhqeuTYWC9bu0e4td6B11OtMXtXDvUU+JAWl3bCw=",
         "usagesDigest": "q7IMt1pd4F4fzXQ+GulVaaPaNtrp34c5MGYkz7l2bbE=",
         "recordedInputs": [
           "REPO_MAPPING:,bazel_tools bazel_tools"
@@ -231,9 +231,9 @@
             "attributes": {
               "remote": "https://github.com/KittyCAD/ezpz.git",
               "commit": "9ef9a4fc69f4258cf52eac0913ec513dd96384e3",
-              "build_file": "@@//third_party:ezpz.BUILD",
+              "build_file": "@@//third_party/ezpz:ezpz.BUILD",
               "patches": [
-                "@@//third_party:ezpz.patch"
+                "@@//third_party/ezpz:ezpz.patch"
               ],
               "patch_args": [
                 "-p3"
