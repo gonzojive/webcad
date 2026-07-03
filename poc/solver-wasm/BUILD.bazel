@@ -1,0 +1,30 @@
+load("@rules_rust//rust:defs.bzl", "rust_shared_library", "rust_test")
+load("@rules_rust_wasm_bindgen//:defs.bzl", "rust_wasm_bindgen")
+
+rust_shared_library(
+    name = "solver_wasm_lib",
+    srcs = [
+        "src/lib.rs",
+        "src/tests.rs",
+    ],
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@ezpz//ezpz:ezpz",
+        "@crates//:wasm-bindgen",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_wasm_bindgen(
+    name = "solver_wasm_bindgen",
+    wasm_file = ":solver_wasm_lib",
+    target = "web",
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "solver_wasm_test",
+    crate = ":solver_wasm_lib",
+)
