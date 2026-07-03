@@ -759,6 +759,13 @@ function redrawAll() {
         pointGroup.add(hitArea);
         pointGroup.add(dot);
 
+        // Prevent event bubbling to stage on mousedown
+        pointGroup.on('mousedown', (e: any) => {
+            if (currentTool === 'select') {
+                e.cancelBubble = true;
+            }
+        });
+
         // Drag handlers
         pointGroup.on('dragstart', () => {
             draggedPointId = p.id;
