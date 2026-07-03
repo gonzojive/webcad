@@ -674,10 +674,10 @@ function redrawAll() {
             stroke: p.fixed ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0,0,0,0.5)',
             strokeWidth: 1.5
         });
-        // Invisible larger hit area for easier grabbing
+        // Invisible larger hit area for easier grabbing (using rgba for hit detection)
         const hitArea = new Konva.Circle({
-            radius: 12,
-            fill: 'transparent'
+            radius: 16,
+            fill: 'rgba(0, 0, 0, 0)'
         });
         pointGroup.add(hitArea);
         pointGroup.add(dot);
