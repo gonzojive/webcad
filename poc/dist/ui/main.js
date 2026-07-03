@@ -18,6 +18,63 @@ let activeSnapPointId = null;
 let snapIndicator = null;
 // GCS API Client
 const gcs = new GCSapi();
+// IndexedDB Persistence Setup
+const DB_NAME = 'WebCADSketcherDB';
+const STORE_NAME = 'SketchStateStore';
+const SKETCH_KEY = 'currentSketch';
+function getDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+async function saveSketchToDB() {
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const state = { points, lines, circles, constraints };
+        store.put(state, SKETCH_KEY);
+    }
+    catch (e) {
+        console.error('Failed to save sketch to IndexedDB:', e);
+    }
+}
+async function loadSketchFromDB() {
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(SKETCH_KEY);
+        return new Promise((resolve) => {
+            request.onsuccess = () => {
+                const state = request.result;
+                if (state) {
+                    points = state.points || [];
+                    lines = state.lines || [];
+                    circles = state.circles || [];
+                    constraints = state.constraints || [];
+                    console.log('Sketch state loaded from IndexedDB.');
+                }
+                resolve();
+            };
+            request.onerror = () => {
+                console.error('Failed to load sketch from IndexedDB:', request.error);
+                resolve();
+            };
+        });
+    }
+    catch (e) {
+        console.error('Failed to initialize IndexedDB for loading:', e);
+    }
+}
 // Initialize GCS solver
 async function initSolver() {
     try {
@@ -265,6 +322,7 @@ function runGCSSolver() {
             }
             console.warn('GCS solver warning:', result.error);
         }
+        saveSketchToDB();
     }
     catch (e) {
         console.error('Solver crash:', e);
@@ -1035,6 +1093,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             constraints = [];
             selectedEntityIds = [];
             resetDrawingState();
+            saveSketchToDB();
             redrawAll();
         }
     });
@@ -1053,6 +1112,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Setup Canvas viewport and load WASM solver
     setupCanvas();
     await initSolver();
+    // Load persisted state from IndexedDB
+    await loadSketchFromDB();
+    runGCSSolver();
+    redrawAll();
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
         // Ignore key shortcuts when typing inside form inputs
