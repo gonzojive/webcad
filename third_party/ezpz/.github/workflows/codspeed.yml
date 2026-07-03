@@ -1,0 +1,36 @@
+name: CodSpeed
+
+on:
+  push:
+    branches:
+      - main # Run on pushes to the main branch
+  pull_request: # Run on all pull requests, required to have reports on PRs
+permissions:
+  contents: read
+
+
+jobs:
+  codspeed:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+      - name: Install dependencies
+        run: |
+          cargo binstall cargo-criterion
+          cargo binstall cargo-codspeed
+          cargo add --dev codspeed-criterion-compat --rename criterion -p ezpz
+      - name: Build the benchmark target(s)
+        run: cargo codspeed build -p ezpz
+      - name: Run the benchmarks
+        uses: CodSpeedHQ/action@v3
+        with:
+          run: |
+            cp -r test_cases ezpz
+            cp justfile ezpz
+            cargo codspeed run -p ezpz
+          token: ${{ secrets.CODSPEED_TOKEN }}

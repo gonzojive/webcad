@@ -1,0 +1,6 @@
+# Expose test cases to Bazel packages in the workspace.
+filegroup(
+    name = "test_cases",
+    srcs = glob(["test_cases/**"]),
+    visibility = ["//visibility:public"],
+)

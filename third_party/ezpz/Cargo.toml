@@ -1,0 +1,13 @@
+[workspace]
+members = ['ezpz', "ezpz-cli", 'ezpz-wasm', 'fuzz']
+resolver = "3"
+
+[profile.dev.package]
+faer = { opt-level = 3 }
+
+[profile.bench]
+debug = "full"
+
+[profile.mutants]
+inherits = "test"
+debug = "none"

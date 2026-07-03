@@ -15,3 +15,32 @@ go_sdk.download(version = "1.25.0")
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
 use_repo(go_deps)
+
+bazel_dep(name = "rules_rust", version = "0.71.3")
+
+# Configure the Rust toolchain
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2021",
+    versions = ["1.88.0"],
+)
+use_repo(rust, "rust_toolchains")
+
+# Configure external crates from the third_party/ezpz Cargo workspace
+crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+crate.from_cargo(
+    name = "crates",
+    cargo_lockfile = "//third_party/ezpz:Cargo.lock",
+    manifests = ["//third_party/ezpz:Cargo.toml"],
+)
+crate.annotation(
+    crate = "yeslogic-fontconfig-sys",
+    build_script_env = {
+        "RUST_FONTCONFIG_DLOPEN": "1",
+    },
+)
+crate.annotation(
+    crate = "font-kit",
+    crate_features = ["source-fontconfig-dlopen"],
+)
+use_repo(crate, "crates")
