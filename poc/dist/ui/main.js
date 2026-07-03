@@ -1,6 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const gcsapi_js_1 = require("../gcsapi/gcsapi.js");
+import { GCSapi } from '../gcsapi/gcsapi.js';
 // App State
 let points = [];
 let lines = [];
@@ -19,7 +17,7 @@ let tempCirclePreview = null;
 let activeSnapPointId = null;
 let snapIndicator = null;
 // GCS API Client
-const gcs = new gcsapi_js_1.GCSapi();
+const gcs = new GCSapi();
 // Initialize GCS solver
 async function initSolver() {
     try {
