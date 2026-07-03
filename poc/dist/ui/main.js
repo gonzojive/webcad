@@ -20,6 +20,7 @@ let snapIndicator = null;
 let isPanning = false;
 let panStart = { x: 0, y: 0 };
 let stageStart = { x: 0, y: 0 };
+let draggedPointId = null;
 // GCS API Client
 const gcs = new GCSapi();
 // IndexedDB Persistence Setup
@@ -283,6 +284,13 @@ function zoomToFit() {
 function getPoint(id) {
     return points.find(p => p.id === id);
 }
+function getStagePointerPosition() {
+    const pos = stage.getPointerPosition();
+    if (!pos)
+        return null;
+    const transform = stage.getAbsoluteTransform().copy().invert();
+    return transform.point(pos);
+}
 function generateId(prefix) {
     return prefix + '_' + Math.random().toString(36).substr(2, 9);
 }
@@ -353,8 +361,22 @@ function resetDrawingState() {
 // GCS SOLVING PIPELINE
 function runGCSSolver() {
     try {
+        // Temporarily fix the dragged point so the GCS solves around it
+        let originalFixedState = false;
+        let tempFixedPoint;
+        if (draggedPointId) {
+            tempFixedPoint = getPoint(draggedPointId);
+            if (tempFixedPoint) {
+                originalFixedState = !!tempFixedPoint.fixed;
+                tempFixedPoint.fixed = true;
+            }
+        }
         const state = { points, lines, circles, constraints };
         const result = gcs.solve(state);
+        // Restore original fixed state
+        if (tempFixedPoint) {
+            tempFixedPoint.fixed = originalFixedState;
+        }
         const statusText = document.getElementById('status-text');
         if (result.success) {
             // Update point positions
@@ -396,7 +418,7 @@ function runGCSSolver() {
 }
 // STAGE EVENTS
 function handleStageMouseDown(e) {
-    const pos = stage.getPointerPosition();
+    const pos = getStagePointerPosition();
     if (!pos)
         return;
     // Check snapping
@@ -504,7 +526,7 @@ function handleStageMouseDown(e) {
     }
 }
 function handleStageMouseMove() {
-    const pos = stage.getPointerPosition();
+    const pos = getStagePointerPosition();
     if (!pos)
         return;
     // Snap and Highlights checking
@@ -660,6 +682,9 @@ function redrawAll() {
         pointGroup.add(hitArea);
         pointGroup.add(dot);
         // Drag handlers
+        pointGroup.on('dragstart', () => {
+            draggedPointId = p.id;
+        });
         pointGroup.on('dragmove', (e) => {
             p.x = pointGroup.x();
             p.y = pointGroup.y();
@@ -700,6 +725,7 @@ function redrawAll() {
             mainLayer.batchDraw();
         });
         pointGroup.on('dragend', () => {
+            draggedPointId = null;
             runGCSSolver();
             redrawAll();
         });
