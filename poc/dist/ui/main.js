@@ -582,19 +582,19 @@ function redrawAll() {
             strokeWidth: strokeWidth,
             id: l.id
         });
-        // Hover events
+        // Hover events (in-place visual updates to preserve Konva node references)
         lineShape.on('mouseenter', () => {
             if (currentTool === 'select') {
                 hoveredEntityId = l.id;
                 stage.container().style.cursor = 'pointer';
-                redrawAll();
+                updateEntityVisuals();
             }
         });
         lineShape.on('mouseleave', () => {
             if (hoveredEntityId === l.id) {
                 hoveredEntityId = null;
                 stage.container().style.cursor = 'crosshair';
-                redrawAll();
+                updateEntityVisuals();
             }
         });
         // Select click
@@ -628,14 +628,14 @@ function redrawAll() {
             if (currentTool === 'select') {
                 hoveredEntityId = c.id;
                 stage.container().style.cursor = 'pointer';
-                redrawAll();
+                updateEntityVisuals();
             }
         });
         circleShape.on('mouseleave', () => {
             if (hoveredEntityId === c.id) {
                 hoveredEntityId = null;
                 stage.container().style.cursor = 'crosshair';
-                redrawAll();
+                updateEntityVisuals();
             }
         });
         circleShape.on('click', (e) => {
@@ -739,14 +739,14 @@ function redrawAll() {
             if (currentTool === 'select') {
                 hoveredEntityId = p.id;
                 stage.container().style.cursor = 'pointer';
-                redrawAll();
+                updateEntityVisuals();
             }
         });
         pointGroup.on('mouseleave', () => {
             if (hoveredEntityId === p.id) {
                 hoveredEntityId = null;
                 stage.container().style.cursor = 'crosshair';
-                redrawAll();
+                updateEntityVisuals();
             }
         });
         pointGroup.on('click', (e) => {
@@ -775,6 +775,66 @@ function redrawAll() {
     mainLayer.draw();
     // 5. Update Sidebar List Elements
     renderSidebar();
+}
+/**
+ * Updates visual properties (fill, stroke, radius) of existing Konva nodes
+ * in-place based on hover and selection state.
+ *
+ * Unlike redrawAll(), this function does NOT destroy or recreate any nodes.
+ * This is critical because Konva tracks drag state internally via node
+ * references. Calling mainLayer.destroyChildren() during a mouseenter event
+ * invalidates the node reference under the cursor, making subsequent
+ * mousedown/drag events silently fail.
+ */
+function updateEntityVisuals() {
+    // Update line visuals
+    lines.forEach(l => {
+        const lineShape = mainLayer.findOne('#' + l.id);
+        if (!lineShape)
+            return;
+        const isSelected = selectedEntityIds.includes(l.id);
+        const isHovered = hoveredEntityId === l.id ||
+            (hoveredConstraintId && isConstraintEntityHovered(l.id));
+        lineShape.stroke(isSelected ? '#3b82f6' : (isHovered ? '#1a73e8' : '#64748b'));
+        lineShape.strokeWidth(isSelected || isHovered ? 4 : 2.5);
+    });
+    // Update circle visuals
+    circles.forEach(c => {
+        const circleShape = mainLayer.findOne('#' + c.id);
+        if (!circleShape)
+            return;
+        const isSelected = selectedEntityIds.includes(c.id);
+        const isHovered = hoveredEntityId === c.id ||
+            (hoveredConstraintId && isConstraintEntityHovered(c.id));
+        circleShape.stroke(isSelected ? '#3b82f6' : (isHovered ? '#1a73e8' : '#64748b'));
+        circleShape.strokeWidth(isSelected || isHovered ? 3.5 : 2);
+    });
+    // Update point visuals
+    points.forEach(p => {
+        const pointGroup = mainLayer.findOne('#' + p.id);
+        if (!pointGroup)
+            return;
+        const isSelected = selectedEntityIds.includes(p.id);
+        const isHovered = hoveredEntityId === p.id ||
+            (hoveredConstraintId && isConstraintEntityHovered(p.id));
+        let pointColor = '#334155'; // var(--text-color) fallback
+        if (p.fixed) {
+            pointColor = '#ef4444'; // var(--danger-color) fallback
+        }
+        else if (isSelected) {
+            pointColor = '#3b82f6';
+        }
+        else if (isHovered) {
+            pointColor = '#1a73e8'; // var(--accent-color) fallback
+        }
+        // The dot is the second child (index 1) of the point group
+        const dot = pointGroup.children?.[1];
+        if (dot) {
+            dot.radius(isHovered || isSelected ? 6 : 4.5);
+            dot.fill(pointColor);
+        }
+    });
+    mainLayer.batchDraw();
 }
 function toggleSelect(id) {
     const idx = selectedEntityIds.indexOf(id);
@@ -1265,6 +1325,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 function runSelfTest() {
     console.log("--- Starting Viewport UI Diagnostics Self-Test ---");
+    const results = [];
+    function assert(name, condition, detail) {
+        results.push({ name, pass: condition, detail });
+        console.log(`  ${condition ? 'PASS' : 'FAIL'}: ${name} — ${detail}`);
+    }
     // Clear everything
     points = [];
     lines = [];
@@ -1272,50 +1337,67 @@ function runSelfTest() {
     constraints = [];
     selectedEntityIds = [];
     resetDrawingState();
+    setTool('select');
     redrawAll();
-    // 1. Place a point at (100, 100)
-    console.log("1. Simulating point placement at (100, 100)...");
+    // --- Test 1: Point creation ---
+    console.log("\n1. Point creation...");
     const pId = 'P_test';
     points.push({ id: pId, x: 100, y: 100 });
     runGCSSolver();
     redrawAll();
-    // Check if point group exists in Konva layer
     const ptGroup = mainLayer.findOne('#' + pId);
-    if (!ptGroup) {
-        console.error("FAIL: Point group not found in Konva layer!");
-        return;
-    }
-    console.log("PASS: Point group successfully created in Konva layer.");
-    console.log(`Initial coordinates: X=${ptGroup.x()}, Y=${ptGroup.y()}, draggable=${ptGroup.draggable()}`);
-    // 2. Simulate dragging Point from (100, 100) to (200, 150)
-    console.log("2. Simulating drag sequence...");
-    // Trigger dragstart
+    assert("Point group exists", !!ptGroup, `findOne('#${pId}') = ${ptGroup}`);
+    assert("Point is draggable", ptGroup?.draggable() === true, `draggable=${ptGroup?.draggable()}`);
+    assert("Point at correct position", ptGroup?.x() === 100 && ptGroup?.y() === 100, `pos=(${ptGroup?.x()}, ${ptGroup?.y()})`);
+    // --- Test 2: Hover preserves node identity ---
+    // This is the critical test. Previously, mouseenter called redrawAll() which
+    // destroyed all nodes. After the fix, mouseenter calls updateEntityVisuals()
+    // which modifies properties in-place. The node reference must survive hover.
+    console.log("\n2. Hover preserves node identity...");
+    const nodeBeforeHover = mainLayer.findOne('#' + pId);
+    // Simulate mouseenter
+    hoveredEntityId = pId;
+    updateEntityVisuals();
+    const nodeAfterHover = mainLayer.findOne('#' + pId);
+    assert("Node identity preserved after hover", nodeBeforeHover === nodeAfterHover, `same ref = ${nodeBeforeHover === nodeAfterHover}`);
+    assert("Node still draggable after hover", nodeAfterHover?.draggable() === true, `draggable=${nodeAfterHover?.draggable()}`);
+    // Simulate mouseleave
+    hoveredEntityId = null;
+    updateEntityVisuals();
+    const nodeAfterLeave = mainLayer.findOne('#' + pId);
+    assert("Node identity preserved after leave", nodeBeforeHover === nodeAfterLeave, `same ref = ${nodeBeforeHover === nodeAfterLeave}`);
+    // --- Test 3: Drag after hover (the real user scenario) ---
+    console.log("\n3. Drag after hover...");
+    // Simulate: hover → then drag
+    hoveredEntityId = pId;
+    updateEntityVisuals();
+    const dragNode = mainLayer.findOne('#' + pId);
+    assert("Drag node found after hover", !!dragNode, `node=${dragNode}`);
     draggedPointId = pId;
-    ptGroup.fire('dragstart');
-    // Move to (120, 110)
-    ptGroup.x(120);
-    ptGroup.y(110);
-    ptGroup.fire('dragmove');
-    // Move to (150, 120)
-    ptGroup.x(150);
-    ptGroup.y(120);
-    ptGroup.fire('dragmove');
-    // Move to (200, 150)
-    ptGroup.x(200);
-    ptGroup.y(150);
-    ptGroup.fire('dragmove');
-    // Trigger dragend
-    ptGroup.fire('dragend');
-    console.log("3. Verifying coordinates after drag...");
+    dragNode.fire('dragstart');
+    dragNode.x(200);
+    dragNode.y(150);
+    dragNode.fire('dragmove');
+    dragNode.fire('dragend');
     const pData = getPoint(pId);
-    console.log(`Point coordinate in data: X=${pData?.x}, Y=${pData?.y}`);
-    console.log(`Point coordinate in group: X=${ptGroup.x()}, Y=${ptGroup.y()}`);
-    if (pData && pData.x === 200 && pData.y === 150) {
-        console.log("SUCCESS: Point successfully dragged and resolved!");
-        alert("Self-test SUCCESS: Dragging and solving operates correctly!");
+    assert("Point data updated after drag", pData?.x === 200 && pData?.y === 150, `data=(${pData?.x}, ${pData?.y})`);
+    // --- Test 4: redrawAll destroys nodes (regression proof) ---
+    // This documents why we must NOT call redrawAll from mouseenter.
+    console.log("\n4. redrawAll() destroys node references (regression proof)...");
+    const nodeBefore = mainLayer.findOne('#' + pId);
+    redrawAll();
+    const nodeAfterRedraw = mainLayer.findOne('#' + pId);
+    assert("redrawAll creates different node", nodeBefore !== nodeAfterRedraw, `same ref = ${nodeBefore === nodeAfterRedraw} (expected false)`);
+    // --- Summary ---
+    const passed = results.filter(r => r.pass).length;
+    const failed = results.filter(r => !r.pass).length;
+    const summary = `Self-test complete: ${passed} passed, ${failed} failed out of ${results.length} assertions.`;
+    console.log(`\n--- ${summary} ---`);
+    if (failed === 0) {
+        alert(`SUCCESS: ${summary}`);
     }
     else {
-        console.error("FAIL: Point coordinate mismatch after drag!");
-        alert(`Self-test FAIL: Expected (200, 150) but got data (${pData?.x}, ${pData?.y}) and group (${ptGroup.x()}, ${ptGroup.y()})`);
+        const failDetails = results.filter(r => !r.pass).map(r => `• ${r.name}: ${r.detail}`).join('\n');
+        alert(`FAILED: ${summary}\n\nFailures:\n${failDetails}`);
     }
 }
