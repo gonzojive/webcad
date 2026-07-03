@@ -598,7 +598,40 @@ function redrawAll() {
             p.x = e.target.x();
             p.y = e.target.y();
             runGCSSolver();
-            redrawAll();
+            // Update lines in-place to follow drag without disrupting gesture
+            lines.forEach(l => {
+                const p1 = getPoint(l.p1Id);
+                const p2 = getPoint(l.p2Id);
+                if (!p1 || !p2)
+                    return;
+                const lineShape = mainLayer.findOne('#' + l.id);
+                if (lineShape) {
+                    lineShape.points([p1.x, p1.y, p2.x, p2.y]);
+                }
+            });
+            // Update circles in-place
+            circles.forEach(c => {
+                const center = getPoint(c.centerId);
+                if (!center)
+                    return;
+                const circleShape = mainLayer.findOne('#' + c.id);
+                if (circleShape) {
+                    circleShape.x(center.x);
+                    circleShape.y(center.y);
+                    circleShape.radius(c.radius);
+                }
+            });
+            // Update other points in case solver shifted them due to constraints
+            points.forEach(otherPoint => {
+                if (otherPoint.id !== p.id) {
+                    const ptGroup = mainLayer.findOne('#' + otherPoint.id);
+                    if (ptGroup) {
+                        ptGroup.x(otherPoint.x);
+                        ptGroup.y(otherPoint.y);
+                    }
+                }
+            });
+            mainLayer.batchDraw();
         });
         pointGroup.on('dragend', () => {
             runGCSSolver();
