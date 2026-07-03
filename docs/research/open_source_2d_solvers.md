@@ -56,6 +56,8 @@ Solvers generally fall into three categories:
 
 ## 3. Comparison of core open-source GCS tools
 
+### 3.1. Tool summary table
+
 | Program / library / solver | License | Language | Solver type | Best for | Extensibility / portability |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **SolveSpace** (`libsolvespace`) | GPL-3.0 | C++ | Numerical (Newton-Raphson) | Lightweight CAD, 2D linkages, precise vector export | Good; solver is decoupled and has Python/WASM ports. |
@@ -63,8 +65,46 @@ Solvers generally fall into three categories:
 | **CAD Sketcher** | GPL-3.0 | Python / C++ | Numerical (via SolveSpace) | Parametric sketching inside Blender | Highly specific to Blender, but showcases solver integration. |
 | **ezpz** (by KittyCAD) | Apache-2.0 / MIT | Rust | Numerical (Optimized optimization solvers) | High-performance WASM and systems integration | Excellent; native Rust compiles cleanly to WASM with auto-generated bindings. |
 
+### 3.2. Feature table
+This table provides a canonical list of geometric constraint solver features, categorizing capabilities and assigning semantic shortcodes for reference during development.
+
+| Category | Shortcode | Feature Name | Description |
+| :--- | :--- | :--- | :--- |
+| **Solver constraint** | `feat-solver-constraint-coincident` | Coincidence | Forces two points to occupy the exact same coordinate, or a point to lie on a line, circle, or curve. |
+| **Solver constraint** | `feat-solver-constraint-parallel` | Parallelism | Constrains two lines or directional entities to share the same vector slope. |
+| **Solver constraint** | `feat-solver-constraint-perpendicular` | Perpendicularity | Forces two lines to intersect at a 90-degree angle. |
+| **Solver constraint** | `feat-solver-constraint-tangent` | Tangency | Constrains a line to be tangent to a circle or curve, or two curves to share a tangent vector at a point. |
+| **Solver constraint** | `feat-solver-constraint-concentric` | Concentricity | Forces two or more circular/arc curves to share the same center point. |
+| **Solver constraint** | `feat-solver-constraint-distance` | Distance | Fixes the exact linear distance between two points, or the perpendicular distance from a point to a line. |
+| **Solver constraint** | `feat-solver-constraint-angle` | Angle | Constrains the angular delta between two lines to a specific value. |
+| **Solver constraint** | `feat-solver-constraint-symmetric` | Symmetry | Forces two geometric entities to be mirror images of each other across a specified line of symmetry. |
+| **Solver constraint** | `feat-solver-constraint-equal` | Equality | Requires two entities (e.g., two circles' radii, or two lines' lengths) to have equal values. |
+| **Solver geometry** | `feat-solver-geom-point` | Point Primitive | Basic 2D coordinate pair `(x, y)` serving as the foundation for other primitives. |
+| **Solver geometry** | `feat-solver-geom-line` | Line Segment | Defined by a start point and end point, representing a straight line boundary. |
+| **Solver geometry** | `feat-solver-geom-circle` | Circle Primitive | Defined by a center point and a radius parameter. |
+| **Solver geometry** | `feat-solver-geom-arc` | Arc Primitive | A portion of a circle defined by a center, radius, start angle, and end angle. |
+| **Solver geometry** | `feat-solver-geom-ellipse` | Ellipse Primitive | Defined by a center point, major axis radius, minor axis radius, and angle. |
+| **Solver state** | `feat-solver-state-dof` | Degree of Freedom Tracking | The ability of the solver to dynamically calculate and report the remaining degrees of freedom in the sketch. |
+| **Solver state** | `feat-solver-state-conflict` | Redundant / Conflicting Constraint Detection | The capability to isolate and report conflicting equations to prevent solver divergence. |
+
+### 3.3. Formats
+This section discusses the standard and proprietary file formats used by GCS tools for importing, exporting, and persisting sketches and constraints.
+
+#### Proprietary/tool-specific formats
+- **SolveSpace (`.slvs`)**: A custom text-based format that serializes the parametric history, geometric primitives, and constraints in a structured sequential block. Since it is plain text, it is highly readable and git-friendly.
+- **FreeCAD (`.FCStd`)**: A compressed ZIP file containing XML documents (defining the geometry and constraint tree), alongside binary representations of the 3D shapes.
+- **JSketcher (`.json` / custom)**: Usually serializes the sketch as a JSON object containing lists of primitives (id, type, parameters) and constraints (type, references, values), which is highly convenient for web applications.
+
+#### Standardized CAD exchange formats
+- **DXF (Drawing Exchange Format)**: A widely adopted 2D vector CAD format created by Autodesk. It stores lines, circles, and arcs, but it **does not** preserve geometric constraints or parameters. Importing a DXF yields static vector elements.
+- **SVG (Scalable Vector Graphics)**: A standard XML-based web vector format. Like DXF, SVG does not support constraints natively. It is used primarily for rendering output, not for editing parametric relationships.
+- **STEP (Standard for the Exchange of Product Model Data)**: A mature ISO-standard 3D CAD data exchange format. While it supports rich 3D B-Rep geometry and metadata, the raw STEP standard does not preserve the original 2D constraint equations from the sketcher workbench; it stores the finished 3D solids.
+- **IGES (Initial Graphics Exchange Specification)**: An older, widely-supported CAD exchange format. Like STEP, it is used for exchange of finalized 3D curves and surfaces, not editable parametric sketches.
+
+*Summary*: There is no universal, standardized open-source format for exchanging **2D geometric constraints**. Each tool has its own proprietary format to map equations, parameters, and constraints. When building WebCAD, a structured JSON format representing primitives and constraints will be the most suitable for serialization and web state persistence.
+
 ### Note on non-constraint open-source 2D CAD
-It is important to contrast the above tools with other highly popular open-source 2D CAD programs:
+It is important to contrast the GCS tools with other highly popular open-source 2D CAD programs:
 - **LibreCAD** and **QCAD**: These tools are built for traditional 2D technical drafting (akin to classic AutoCAD). They excel at drawing static lines, layers, and blocks, but they **do not** feature a geometric constraint solver. You cannot define a relationship like "Line A must remain tangent to Circle B as I drag it"; you must calculate and draw the tangency manually.
 
 ---
