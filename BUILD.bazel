@@ -1,0 +1,24 @@
+load("@gazelle//:def.bzl", "gazelle")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# gazelle:prefix github.com/gonzojive/webcad
+gazelle(name = "gazelle")
+
+go_library(
+    name = "webcad_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/gonzojive/webcad",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "webcad",
+    embed = [":webcad_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "webcad_test",
+    srcs = ["main_test.go"],
+    embed = [":webcad_lib"],
+)

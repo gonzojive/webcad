@@ -1,0 +1,9 @@
+# Bazel output symlinks
+/bazel-*
+
+# IDEs
+.idea/
+.vscode/
+
+# Go build artifacts
+/webcad

@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 'stable'
+
+    - name: Set up Bazel
+      uses: bazelbuild/setup-bazelisk@v3
+
+    # Mount Bazel cache directories to persist them across runs (inter-run caching).
+    # Modelled after the meta-programming/rules_runfiles_codegen pattern.
+    - name: Mount Bazel Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk
+          ~/.cache/bazel-repo
+        # Use a unique key per run to force saving the updated cache,
+        # but restore the most recent cache for this OS.
+        key: bazel-cache-${{ runner.os }}-${{ github.run_id }}
+        restore-keys: |
+          bazel-cache-${{ runner.os }}-
+
+    - name: Configure Shared Bazel Cache
+      run: |
+        mkdir -p ~/.cache/bazel-disk
+        mkdir -p ~/.cache/bazel-repo
+        echo "build --disk_cache=~/.cache/bazel-disk" >> ~/.bazelrc
+        echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
+
+    - name: Bazel Build and Test
+      run: |
+        bazel build //...
+        bazel test //...
