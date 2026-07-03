@@ -32,5 +32,7 @@ All agentic AI coding assistants working in this repository must adhere to the f
   - **Allowed types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `productivity`, `perf`, `build`, `ci`, `revert`, `release`
   - **Allowed scopes**: `solver` (GCS engine), `ui` (viewport, canvas, frontend), `research` (research documents), `ci` (workflows)
 - **No force pushes**: Do not force push to active pull request branches, as this dislocates reviewer comments. Instead, merge updates or append new commits. The squash merge at pull request submission will clean up the commit history.
+- **Meaningful PR descriptions**: Do not use generic headers like `# Description` at the beginning of a pull request description. The first line of the PR description should be a meaningful and concise summary of the change, because when squashed, this first line will be visible in the git commit log.
+
 
 
