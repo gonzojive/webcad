@@ -101,6 +101,9 @@ function setupCanvas() {
     // Event Listeners
     stage.on('mousedown', handleStageMouseDown);
     stage.on('mousemove', handleStageMouseMove);
+    stage.on('dblclick', () => {
+        zoomToFit();
+    });
 
     // Initial Render
     redrawAll();
@@ -110,23 +113,79 @@ function drawGrid() {
     gridLayer.destroyChildren();
     const width = stage.width();
     const height = stage.height();
+
+    const scale = stage.scaleX();
+    const posX = stage.x();
+    const posY = stage.y();
+
     const gridSpacing = 40;
 
-    // Subtle Dot Grid
-    for (let x = 0; x < width; x += gridSpacing) {
-        for (let y = 0; y < height; y += gridSpacing) {
-            const dot = new Konva.Circle({
-                x: x,
-                y: y,
-                radius: 1,
-                fill: 'var(--border-color)',
-                opacity: 0.3,
-                listening: false
-            });
-            gridLayer.add(dot);
+    // Calculate grid boundaries in screen coordinates
+    const startX = Math.floor(-posX / (gridSpacing * scale)) * gridSpacing;
+    const endX = startX + (width / scale) + gridSpacing;
+
+    const startY = Math.floor(-posY / (gridSpacing * scale)) * gridSpacing;
+    const endY = startY + (height / scale) + gridSpacing;
+
+    // Draw grid dots
+    for (let x = startX; x < endX; x += gridSpacing) {
+        for (let y = startY; y < endY; y += gridSpacing) {
+            // Transform grid coordinate to screen pixels
+            const screenX = posX + x * scale;
+            const screenY = posY + y * scale;
+
+            if (screenX >= 0 && screenX <= width && screenY >= 0 && screenY <= height) {
+                const dot = new Konva.Circle({
+                    x: screenX,
+                    y: screenY,
+                    radius: 1,
+                    fill: 'var(--border-color)',
+                    opacity: 0.3,
+                    listening: false
+                });
+                gridLayer.add(dot);
+            }
         }
     }
     gridLayer.draw();
+}
+
+function zoomToFit() {
+    const padding = 60;
+    const width = stage.width();
+    const height = stage.height();
+
+    if (points.length === 0) {
+        stage.scale({ x: 1, y: 1 });
+        stage.position({ x: 0, y: 0 });
+        redrawAll();
+        return;
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    points.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    });
+
+    const boxW = (maxX - minX) || 120;
+    const boxH = (maxY - minY) || 120;
+    const centerX = minX + boxW / 2;
+    const centerY = minY + boxH / 2;
+
+    const scaleX = (width - padding * 2) / boxW;
+    const scaleY = (height - padding * 2) / boxH;
+    const newScale = Math.max(0.2, Math.min(scaleX, scaleY, 2.5));
+
+    stage.scale({ x: newScale, y: newScale });
+    stage.position({
+        x: width / 2 - centerX * newScale,
+        y: height / 2 - centerY * newScale
+    });
+
+    redrawAll();
 }
 
 // Entity & Coordinate Helpers
@@ -569,7 +628,19 @@ function redrawAll() {
         });
 
         pointGroup.on('click', (e: any) => {
-            if (currentTool === 'select') {
+            if (isDistanceSelectionActive) {
+                e.cancelBubble = true;
+                if (!selectedEntityIds.includes(p.id)) {
+                    selectedEntityIds.push(p.id);
+                    const hud = document.getElementById('help-hud');
+                    if (selectedEntityIds.length === 1) {
+                        if (hud) hud.innerHTML = `Mode: <span>Distance Selection</span>. Select second point.`;
+                    } else if (selectedEntityIds.length === 2) {
+                        applyDistance();
+                    }
+                }
+                redrawAll();
+            } else if (currentTool === 'select') {
                 e.cancelBubble = true;
                 toggleSelect(p.id);
             }
@@ -811,31 +882,98 @@ function applyCoincident() {
     redrawAll();
 }
 
+let isDistanceSelectionActive = false;
+
+function showInlineDistanceInput(p1: GCSPoint, p2: GCSPoint) {
+    const input = document.getElementById('inline-distance-input') as HTMLInputElement;
+    if (!input) return;
+
+    // Calculate current Euclidean distance
+    const currentDist = distance(p1.x, p1.y, p2.x, p2.y);
+    
+    // Position input near the second point (taking zoom and pan into account)
+    const screenX = stage.x() + p2.x * stage.scaleX();
+    const screenY = stage.y() + p2.y * stage.scaleY();
+
+    input.value = currentDist.toFixed(1);
+    input.style.left = `${screenX + 15}px`;
+    input.style.top = `${screenY - 15}px`;
+    input.style.display = 'block';
+    
+    input.focus();
+    input.select();
+
+    // Input handlers
+    const applyInput = () => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val > 0) {
+            constraints.push({
+                id: generateId('CON'),
+                type: 'distance',
+                p1Id: p1.id,
+                p2Id: p2.id,
+                value: val
+            });
+            runGCSSolver();
+        }
+        hideInlineDistanceInput();
+    };
+
+    const keyHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            applyInput();
+        } else if (e.key === 'Escape') {
+            hideInlineDistanceInput();
+        }
+    };
+
+    const blurHandler = () => {
+        applyInput();
+    };
+
+    input.addEventListener('keydown', keyHandler);
+    input.addEventListener('blur', blurHandler);
+
+    // Store references to clean up listeners later
+    (input as any)._cleanup = () => {
+        input.removeEventListener('keydown', keyHandler);
+        input.removeEventListener('blur', blurHandler);
+    };
+}
+
+function hideInlineDistanceInput() {
+    const input = document.getElementById('inline-distance-input') as HTMLInputElement;
+    if (!input) return;
+    
+    input.style.display = 'none';
+    if ((input as any)._cleanup) {
+        (input as any)._cleanup();
+        (input as any)._cleanup = null;
+    }
+    selectedEntityIds = [];
+    isDistanceSelectionActive = false;
+    setTool('select');
+    redrawAll();
+}
+
 function applyDistance() {
     const selectedPoints = selectedEntityIds.filter(id => id.startsWith('P_'));
-    if (selectedPoints.length !== 2) {
-        alert("Select exactly 2 points to constrain distance.");
-        return;
-    }
-
-    const p1 = getPoint(selectedPoints[0]);
-    const p2 = getPoint(selectedPoints[1]);
-    if (!p1 || !p2) return;
-
-    const currentDist = distance(p1.x, p1.y, p2.x, p2.y);
-    showValDialog("Set Point Distance", currentDist, (val) => {
-        constraints.push({
-            id: generateId('CON'),
-            type: 'distance',
-            p1Id: selectedPoints[0],
-            p2Id: selectedPoints[1],
-            value: val
-        });
-
+    
+    if (selectedPoints.length === 2) {
+        const p1 = getPoint(selectedPoints[0]);
+        const p2 = getPoint(selectedPoints[1]);
+        if (p1 && p2) {
+            showInlineDistanceInput(p1, p2);
+        }
+    } else {
+        // Start sequential distance selection mode
+        isDistanceSelectionActive = true;
         selectedEntityIds = [];
-        runGCSSolver();
+        const hud = document.getElementById('help-hud');
+        if (hud) hud.innerHTML = `Mode: <span>Distance Selection</span>. Select first point for distance constraint.`;
+        setTool('select'); // Ensure we are in select tool
         redrawAll();
-    });
+    }
 }
 
 function applyHorizontal() {
