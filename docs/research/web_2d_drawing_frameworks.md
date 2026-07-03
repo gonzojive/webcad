@@ -21,7 +21,62 @@ graph TD
 
 ---
 
-## 2. Low-level browser rendering APIs and primitives
+---
+
+## 2. User journeys
+
+This section outlines the primary interactive workflows a user executes within the WebCAD 2D drawing viewport.
+
+*   **Journey 1: Creating a sketch profile from scratch**: 
+    *   *Goal*: Construct a closed 2D boundary (e.g., a bracket profile) to serve as a base model.
+    *   *Steps*: The user selects the line tool, clicks on the grid to establish a start point, drags and clicks to draw sequential segments, hovers near the initial start point to trigger endpoint snapping, and clicks to close the loop.
+*   **Journey 2: Parametric modification and adjustment**:
+    *   *Goal*: Adjust the drawing without breaking geometric topology.
+    *   *Steps*: The user selects an entity, clicks to edit its dimension text, types in a new length or formula in a popup dialog, and presses Enter. The viewport redraws immediately to reflect the updated geometric configuration.
+*   **Journey 3: Peer annotation and commenting**:
+    *   *Goal*: Provide design feedback on a shared sketch.
+    *   *Steps*: The user toggles the comment tool, hovers over a specific geometric line or point, clicks to place a comment anchor, and types a note in a rich text popup box.
+
+---
+
+## 3. UX interaction details
+
+A professional 2D sketching environment relies on a suite of micro-interactions that must feel fluid and responsive. The following detail these key viewport interaction patterns:
+
+### 3.1. Cursor snapping and alignment inference
+*   **Interaction Pattern**: As the user moves the mouse, the cursor snaps to nearby critical coordinates, such as endpoints, midpoints of lines, circle center points, intersections, and vertical/horizontal alignments. Visual indicator icons (e.g., green dots, dashed projection lines) highlight the active snap reference.
+*   **UI Considerations & Complexities**: 
+    *   *Snapping Priority*: When the cursor is close to both an endpoint and a midpoint, the UI must have a priority tree to determine which snap target to select.
+    *   *Avoid "Sticky" Cursors*: Snapping must feel magnetic but not trap the cursor, allowing the user to break away easily.
+    *   *Spatial Indexing*: On a complex drawing, querying every entity's coordinates on every `mousemove` frame will cause performance lag. The viewport needs a fast spatial index (e.g., an R-Tree) to perform queries in logarithmic time.
+
+### 3.2. Selection hit detection and hovering states
+*   **Interaction Pattern**: Hovering near a line or point highlights it (e.g., changing color or thickness) to indicate it can be selected. Clicking selects the entity, changing its visual state and displaying selection handles. Box-selection (dragging a rectangle) selects multiple items.
+*   **UI Considerations & Complexities**:
+    *   *Hit Tolerance*: Click target bounds for a 1px line are too narrow. The UI must calculate the perpendicular distance from the cursor coordinate to every nearby line segment, registering a "hit" if the distance is within a comfortable range (e.g., 5 to 10 pixels).
+    *   *Depth and Priority*: Points are easier to click than lines; the hit detection engine must prioritize smaller primitives (points) over larger ones (curves).
+
+### 3.3. Dimension lines, arrows, and labels
+*   **Interaction Pattern**: When the user adds a dimension, a dimension line is drawn parallel to the referenced geometry, capped with arrows, with a text label positioned in the center showing the current measurement.
+*   **UI Considerations & Complexities**:
+    *   *Placement Layout*: The user must be able to drag the dimension line to offset it from the drawing. The text label must rotate dynamically to match the angle of the line and remain right-side up.
+    *   *Zoom-independent Text*: When the user zooms out, the dimension text must remain legible (retaining constant screen-space sizing) rather than scaling down into unreadable pixels.
+
+### 3.4. Inline edit dialog boxes
+*   **Interaction Pattern**: Double-clicking a dimension label opens an inline dialog text box directly over the viewport, allowing the user to enter a new numerical value or formula.
+*   **UI Considerations & Complexities**:
+    *   *Coordinate Synchronization*: The popup input box must follow the canvas coordinate system. If the user pans or zooms the canvas while the edit box is open, the input box must move in absolute screen coordinates to stay locked to the dimension label.
+    *   *Keyboard Event Focus*: Opening the text input must capture all keyboard focus (blocking CAD shortcuts like pressing 'L' for line) and yield focus back to the viewport once submitted or dismissed.
+
+### 3.5. Constraint badges and layout collision
+*   **Interaction Pattern**: Geometric constraint statuses are shown as small icons (badges) next to the entities (e.g., a parallel bar icon next to two parallel lines). Hovering over a badge highlights the referenced geometries; clicking it selects the constraint for deletion.
+*   **UI Considerations & Complexities**:
+    *   *Badge Clutter*: If a single point has coincident, symmetric, and tangent constraints, the badges will overlap. The UI layout system must dynamically calculate non-overlapping offsets to stack badges cleanly.
+    *   *Scale Invariance*: Like dimension text, constraint badges must maintain a constant pixel size regardless of the canvas zoom level.
+
+---
+
+## 4. Low-level browser rendering APIs and primitives
 
 To implement the viewport, we must evaluate the low-level graphics APIs available in modern web browsers, the mathematical primitives they operate on, and their performance characteristics.
 
@@ -42,26 +97,26 @@ To implement the viewport, we must evaluate the low-level graphics APIs availabl
 
 ---
 
-## 4. Interactive 2D rendering and vector frameworks
+## 5. Interactive 2D rendering and vector frameworks
 
 The rendering layer displays the shapes and handles click/drag gestures. We must choose between HTML5 Canvas (raster rendering) and SVG (vector DOM elements).
 
-### 3.1. Konva.js (HTML5 Canvas framework)
+### 5.1. Konva.js (HTML5 Canvas framework)
 *   **Best for**: High-performance interactive viewports.
 *   **How it works**: Wraps the 2D Canvas context in an object-oriented scene graph. You can create shapes (`Konva.Line`, `Konva.Circle`), attach event listeners (`dragmove`, `click`), and handle zoom/pan smoothly.
 *   **Why choose it**: Canvas performs exceptionally well when drawing hundreds of constraints, dimension lines, and construction lines. It easily handles 60 FPS dragging.
 
-### 3.2. Paper.js (vector graphics scripting)
+### 5.2. Paper.js (vector graphics scripting)
 *   **Best for**: Advanced vector geometry.
 *   **How it works**: Uses HTML5 Canvas but provides a robust vector mathematics engine. It is renowned for path geometry calculations, such as boolean operations (union, intersection, subtraction) and finding path intersections.
 *   **Why choose it**: If our drawing app needs to do complex geometry operations locally (e.g., trimming lines, offsetting profiles, or hatching areas), Paper.js provides the math tools natively.
 
-### 3.3. Fabric.js (canvas object model)
+### 5.3. Fabric.js (canvas object model)
 *   **Best for**: General-purpose interactive vector editors.
 *   **Why choose it**: Highly mature with built-in selection boxes, controls, and SVG import/export.
 *   **Why not**: It is designed more for graphic design (like Canva or Illustrator) rather than CAD, so setting up precise snapping, grids, and CAD-style dimensioning lines requires custom extensions.
 
-### 3.4. SVG & D3.js (direct DOM vectors)
+### 5.4. SVG & D3.js (direct DOM vectors)
 *   **Best for**: High-fidelity technical drawings and annotations.
 *   **How it works**: Renders vector paths directly in the HTML DOM.
 *   **Why choose it**: Text rendering, CSS styling, and interactivity are built-in. It is ideal for the **Technical Drawing (Drafting)** stage where we place dimensions, text, labels, and drawing templates (title blocks).
@@ -69,16 +124,16 @@ The rendering layer displays the shapes and handles click/drag gestures. We must
 
 ---
 
-## 4. Path to 3D rendering and technical drawings
+## 6. Path to 3D rendering and technical drawings
 
 A critical requirement is that our 2D sketches can serve as the foundation for 3D display rendering and subsequent 2D blueprint layouts.
 
-### 4.1. Transitioning to 3D rendering
+### 6.1. Transitioning to 3D rendering
 To transition from a 2D sketch to a 3D view:
 *   **3D Viewport**: Transition the viewport to a 3D context using **Three.js** (WebGL/WebGPU). Three.js can take 2D shape paths and extrude them into a 3D mesh representation (`Three.ExtrudeGeometry`) for visual confirmation.
 *   **Rendering Pipeline**: By sharing coordinates from the 2D layout, the 3D viewport can dynamically reconstruct and display the 3D representation without needing to re-run the 2D interaction loops.
 
-### 4.2. Creating 2D [technical drawings](file:///home/red/ws/webcad/docs/glossary.md#technical-drawing) (drafting)
+### 6.2. Creating 2D [technical drawings](file:///home/red/ws/webcad/docs/glossary.md#technical-drawing) (drafting)
 Once a 3D part is created (or from the 2D sketch itself), engineers require a **[Technical drawing](file:///home/red/ws/webcad/docs/glossary.md#technical-drawing)** or Blueprint view (including orthographic projections, cross-sections, dimensions, text annotations, and borders).
 *   **Vector Engine**: **SVG** is the ideal technology for technical drawing sheets. It ensures that text, lines, and dimensions remain perfectly crisp when zoomed or printed.
 *   **Dimension Lines and Labels**: We can use libraries like **Maker.js** (developed by Microsoft) to generate standard CAD dimension lines (arrows, extension lines, text centering) programmatically and export them directly to DXF or SVG.
@@ -86,7 +141,7 @@ Once a 3D part is created (or from the 2D sketch itself), engineers require a **
 
 ---
 
-## 5. TypeScript integration and type safety
+## 7. TypeScript integration and type safety
 
 Since TypeScript is the required language for the frontend implementation, we must evaluate how well each library integrates with TypeScript's type system:
 
@@ -98,7 +153,7 @@ Using TypeScript will allow us to define rigid type interfaces for rendering ent
 
 ---
 
-## 6. Proposed technology stack options for WebCAD
+## 8. Proposed technology stack options for WebCAD
 
 Based on the research and the strict requirement for a TypeScript-first frontend, here are three viable paths forward for the viewport rendering and user interface architecture (decoupled from the GCS choice):
 
