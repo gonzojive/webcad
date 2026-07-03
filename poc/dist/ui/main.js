@@ -595,8 +595,8 @@ function redrawAll() {
         pointGroup.add(dot);
         // Drag handlers
         pointGroup.on('dragmove', (e) => {
-            p.x = e.target.x();
-            p.y = e.target.y();
+            p.x = pointGroup.x();
+            p.y = pointGroup.y();
             runGCSSolver();
             // Update lines in-place to follow drag without disrupting gesture
             lines.forEach(l => {
