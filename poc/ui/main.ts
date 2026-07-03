@@ -1376,4 +1376,77 @@ window.addEventListener('DOMContentLoaded', async () => {
             applyDistance();
         }
     });
+
+    // Run self-test if ?test=true query parameter is present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('test') === 'true') {
+        setTimeout(runSelfTest, 1000);
+    }
 });
+
+function runSelfTest() {
+    console.log("--- Starting Viewport UI Diagnostics Self-Test ---");
+
+    // Clear everything
+    points = [];
+    lines = [];
+    circles = [];
+    constraints = [];
+    selectedEntityIds = [];
+    resetDrawingState();
+    redrawAll();
+
+    // 1. Place a point at (100, 100)
+    console.log("1. Simulating point placement at (100, 100)...");
+    const pId = 'P_test';
+    points.push({ id: pId, x: 100, y: 100 });
+    runGCSSolver();
+    redrawAll();
+
+    // Check if point group exists in Konva layer
+    const ptGroup = mainLayer.findOne('#' + pId);
+    if (!ptGroup) {
+        console.error("FAIL: Point group not found in Konva layer!");
+        return;
+    }
+    console.log("PASS: Point group successfully created in Konva layer.");
+    console.log(`Initial coordinates: X=${ptGroup.x()}, Y=${ptGroup.y()}, draggable=${ptGroup.draggable()}`);
+
+    // 2. Simulate dragging Point from (100, 100) to (200, 150)
+    console.log("2. Simulating drag sequence...");
+
+    // Trigger dragstart
+    draggedPointId = pId;
+    ptGroup.fire('dragstart');
+
+    // Move to (120, 110)
+    ptGroup.x(120);
+    ptGroup.y(110);
+    ptGroup.fire('dragmove');
+
+    // Move to (150, 120)
+    ptGroup.x(150);
+    ptGroup.y(120);
+    ptGroup.fire('dragmove');
+
+    // Move to (200, 150)
+    ptGroup.x(200);
+    ptGroup.y(150);
+    ptGroup.fire('dragmove');
+
+    // Trigger dragend
+    ptGroup.fire('dragend');
+
+    console.log("3. Verifying coordinates after drag...");
+    const pData = getPoint(pId);
+    console.log(`Point coordinate in data: X=${pData?.x}, Y=${pData?.y}`);
+    console.log(`Point coordinate in group: X=${ptGroup.x()}, Y=${ptGroup.y()}`);
+
+    if (pData && pData.x === 200 && pData.y === 150) {
+        console.log("SUCCESS: Point successfully dragged and resolved!");
+        alert("Self-test SUCCESS: Dragging and solving operates correctly!");
+    } else {
+        console.error("FAIL: Point coordinate mismatch after drag!");
+        alert(`Self-test FAIL: Expected (200, 150) but got data (${pData?.x}, ${pData?.y}) and group (${ptGroup.x()}, ${ptGroup.y()})`);
+    }
+}
