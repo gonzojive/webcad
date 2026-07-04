@@ -41,6 +41,27 @@ export interface DistanceConstraint extends BaseConstraint {
     value: number;
 }
 
+export interface HorizontalDistanceConstraint extends BaseConstraint {
+    type: 'horizontal_distance';
+    p1Id: string;
+    p2Id: string;
+    value: number;
+}
+
+export interface VerticalDistanceConstraint extends BaseConstraint {
+    type: 'vertical_distance';
+    p1Id: string;
+    p2Id: string;
+    value: number;
+}
+
+export interface PointLineDistanceConstraint extends BaseConstraint {
+    type: 'point_line_distance';
+    pointId: string;
+    lineId: string;
+    value: number;
+}
+
 export interface VerticalConstraint extends BaseConstraint {
     type: 'vertical';
     lineId: string;
@@ -66,6 +87,9 @@ export interface PerpendicularConstraint extends BaseConstraint {
 export type GCSConstraint =
     | CoincidentConstraint
     | DistanceConstraint
+    | HorizontalDistanceConstraint
+    | VerticalDistanceConstraint
+    | PointLineDistanceConstraint
     | VerticalConstraint
     | HorizontalConstraint
     | ParallelConstraint
@@ -120,6 +144,27 @@ export class GCSapi {
                         id: c.id,
                         type: 'distance',
                         entityIds: [c.p1Id, c.p2Id],
+                        value: c.value
+                    };
+                case 'horizontal_distance':
+                    return {
+                        id: c.id,
+                        type: 'horizontalDistance',
+                        entityIds: [c.p1Id, c.p2Id],
+                        value: c.value
+                    };
+                case 'vertical_distance':
+                    return {
+                        id: c.id,
+                        type: 'verticalDistance',
+                        entityIds: [c.p1Id, c.p2Id],
+                        value: c.value
+                    };
+                case 'point_line_distance':
+                    return {
+                        id: c.id,
+                        type: 'pointLineDistance',
+                        entityIds: [c.pointId, c.lineId],
                         value: c.value
                     };
                 case 'vertical':

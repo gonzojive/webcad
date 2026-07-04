@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
 import { SketchStateModel } from './state.js';
 
 declare const Konva: any;
@@ -267,6 +267,376 @@ export class CanvasViewport {
         this.redrawAll();
     }
 
+    private isConstraintEntityHovered(conId: string | null, entityId: string): boolean {
+        if (!conId) return false;
+        const con = this.model.getConstraint(conId);
+        if (!con) return false;
+        switch (con.type) {
+            case 'coincident':
+            case 'distance':
+            case 'horizontal_distance':
+            case 'vertical_distance':
+                return con.p1Id === entityId || con.p2Id === entityId;
+            case 'point_line_distance':
+                return con.pointId === entityId || con.lineId === entityId;
+            case 'vertical':
+            case 'horizontal':
+                return con.lineId === entityId;
+            case 'parallel':
+            case 'perpendicular':
+                return con.line1Id === entityId || con.line2Id === entityId;
+        }
+        return false;
+    }
+
+    private drawConstraints() {
+        const constraints = this.model.getConstraints();
+        const hoveredConstraintId = this.model.getHoveredConstraintId();
+
+        constraints.forEach(con => {
+            const isHovered = con.id === hoveredConstraintId;
+            const color = isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
+            const strokeWidth = isHovered ? 2 : 1.2;
+
+            switch (con.type) {
+                case 'distance':
+                case 'horizontal_distance':
+                case 'vertical_distance': {
+                    const p1 = this.model.getPoint(con.p1Id);
+                    const p2 = this.model.getPoint(con.p2Id);
+                    if (!p1 || !p2) break;
+                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth);
+                    break;
+                }
+                case 'point_line_distance': {
+                    const p = this.model.getPoint(con.pointId);
+                    const l = this.model.getLine(con.lineId);
+                    if (!p || !l) break;
+                    const lp1 = this.model.getPoint(l.p1Id);
+                    const lp2 = this.model.getPoint(l.p2Id);
+                    if (!lp1 || !lp2) break;
+                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth);
+                    break;
+                }
+                case 'horizontal':
+                case 'vertical': {
+                    const l = this.model.getLine(con.lineId);
+                    if (!l) break;
+                    const p1 = this.model.getPoint(l.p1Id);
+                    const p2 = this.model.getPoint(l.p2Id);
+                    if (!p1 || !p2) break;
+                    this.drawHorizVertConstraint(con.type, p1, p2, color);
+                    break;
+                }
+                case 'parallel':
+                case 'perpendicular': {
+                    const l1 = this.model.getLine(con.line1Id);
+                    const l2 = this.model.getLine(con.line2Id);
+                    if (!l1 || !l2) break;
+                    const l1p1 = this.model.getPoint(l1.p1Id);
+                    const l1p2 = this.model.getPoint(l1.p2Id);
+                    const l2p1 = this.model.getPoint(l2.p1Id);
+                    const l2p2 = this.model.getPoint(l2.p2Id);
+                    if (!l1p1 || !l1p2 || !l2p1 || !l2p2) break;
+                    this.drawParallelPerpConstraint(con.type, l1p1, l1p2, l2p1, l2p2, color);
+                    break;
+                }
+                case 'coincident': {
+                    const p1 = this.model.getPoint(con.p1Id);
+                    const p2 = this.model.getPoint(con.p2Id);
+                    if (!p1 || !p2) break;
+                    this.drawCoincidentConstraint(p1, color);
+                    break;
+                }
+            }
+        });
+    }
+
+    private drawDistanceConstraint(
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance',
+        p1: GCSPoint,
+        p2: GCSPoint,
+        val: number,
+        color: string,
+        strokeWidth: number
+    ) {
+        let d1x = p1.x, d1y = p1.y;
+        let d2x = p2.x, d2y = p2.y;
+        let ext1StartX = p1.x, ext1StartY = p1.y;
+        let ext2StartX = p2.x, ext2StartY = p2.y;
+
+        const offset = 30;
+
+        if (type === 'distance') {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = Math.hypot(dx, dy);
+            if (len === 0) return;
+            const nx = -dy / len;
+            const ny = dx / len;
+
+            d1x = p1.x + nx * offset;
+            d1y = p1.y + ny * offset;
+            d2x = p2.x + nx * offset;
+            d2y = p2.y + ny * offset;
+
+        } else if (type === 'horizontal_distance') {
+            const minY = Math.min(p1.y, p2.y);
+            const dimY = minY - offset;
+
+            d1x = p1.x;
+            d1y = dimY;
+            d2x = p2.x;
+            d2y = dimY;
+
+        } else if (type === 'vertical_distance') {
+            const maxX = Math.max(p1.x, p2.x);
+            const dimX = maxX + offset;
+
+            d1x = dimX;
+            d1y = p1.y;
+            d2x = dimX;
+            d2y = p2.y;
+        }
+
+        const ext1 = new Konva.Line({
+            points: [ext1StartX, ext1StartY, d1x, d1y],
+            stroke: 'rgba(148, 163, 184, 0.3)',
+            strokeWidth: 1,
+            dash: [2, 2],
+            listening: false
+        });
+        const ext2 = new Konva.Line({
+            points: [ext2StartX, ext2StartY, d2x, d2y],
+            stroke: 'rgba(148, 163, 184, 0.3)',
+            strokeWidth: 1,
+            dash: [2, 2],
+            listening: false
+        });
+        this.mainLayer.add(ext1);
+        this.mainLayer.add(ext2);
+
+        const mx = (d1x + d2x) / 2;
+        const my = (d1y + d2y) / 2;
+
+        const arrow1 = new Konva.Arrow({
+            points: [mx, my, d1x, d1y],
+            stroke: color,
+            strokeWidth: strokeWidth,
+            pointerLength: 6,
+            pointerWidth: 4,
+            listening: false
+        });
+        const arrow2 = new Konva.Arrow({
+            points: [mx, my, d2x, d2y],
+            stroke: color,
+            strokeWidth: strokeWidth,
+            pointerLength: 6,
+            pointerWidth: 4,
+            listening: false
+        });
+        this.mainLayer.add(arrow1);
+        this.mainLayer.add(arrow2);
+
+        const text = new Konva.Text({
+            x: mx,
+            y: my,
+            text: val.toFixed(1),
+            fontSize: 10,
+            fontFamily: 'sans-serif',
+            fill: color,
+            listening: false
+        });
+        
+        text.offsetX(text.width() / 2);
+        text.offsetY(text.height() / 2);
+
+        const rect = new Konva.Rect({
+            x: mx - text.width()/2 - 2,
+            y: my - text.height()/2 - 1,
+            width: text.width() + 4,
+            height: text.height() + 2,
+            fill: 'white',
+            listening: false
+        });
+
+        this.mainLayer.add(rect);
+        this.mainLayer.add(text);
+    }
+
+    private drawPointLineDistanceConstraint(
+        p: GCSPoint,
+        lp1: GCSPoint,
+        lp2: GCSPoint,
+        val: number,
+        color: string,
+        strokeWidth: number
+    ) {
+        const ux = lp2.x - lp1.x;
+        const uy = lp2.y - lp1.y;
+        const len2 = ux*ux + uy*uy;
+        let projX = lp1.x;
+        let projY = lp1.y;
+        if (len2 > 0) {
+            const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+            projX = lp1.x + t * ux;
+            projY = lp1.y + t * uy;
+        }
+
+        const perpLine = new Konva.Line({
+            points: [p.x, p.y, projX, projY],
+            stroke: color,
+            strokeWidth: strokeWidth,
+            dash: [3, 3],
+            listening: false
+        });
+        this.mainLayer.add(perpLine);
+
+        const mx = (p.x + projX) / 2;
+        const my = (p.y + projY) / 2;
+
+        const text = new Konva.Text({
+            x: mx,
+            y: my,
+            text: val.toFixed(1),
+            fontSize: 10,
+            fontFamily: 'sans-serif',
+            fill: color,
+            listening: false
+        });
+        text.offsetX(text.width() / 2);
+        text.offsetY(text.height() / 2);
+
+        const rect = new Konva.Rect({
+            x: mx - text.width()/2 - 2,
+            y: my - text.height()/2 - 1,
+            width: text.width() + 4,
+            height: text.height() + 2,
+            fill: 'white',
+            listening: false
+        });
+
+        this.mainLayer.add(rect);
+        this.mainLayer.add(text);
+    }
+
+    private drawHorizVertConstraint(
+        type: 'horizontal' | 'vertical',
+        p1: GCSPoint,
+        p2: GCSPoint,
+        color: string
+    ) {
+        const mx = (p1.x + p2.x) / 2;
+        const my = (p1.y + p2.y) / 2;
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy);
+        if (len === 0) return;
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        const labelX = mx + nx * 12;
+        const labelY = my + ny * 12;
+
+        const label = new Konva.Label({
+            x: labelX,
+            y: labelY,
+            listening: false
+        });
+
+        label.add(new Konva.Tag({
+            fill: 'rgba(241, 245, 249, 0.9)',
+            stroke: color,
+            strokeWidth: 1,
+            cornerRadius: 2
+        }));
+
+        label.add(new Konva.Text({
+            text: type === 'horizontal' ? 'H' : 'V',
+            fontSize: 9,
+            padding: 2,
+            fontFamily: 'monospace',
+            fill: color
+        }));
+
+        label.offsetX(label.width() / 2);
+        label.offsetY(label.height() / 2);
+
+        this.mainLayer.add(label);
+    }
+
+    private drawParallelPerpConstraint(
+        type: 'parallel' | 'perpendicular',
+        l1p1: GCSPoint,
+        l1p2: GCSPoint,
+        l2p1: GCSPoint,
+        l2p2: GCSPoint,
+        color: string
+    ) {
+        const drawIconAt = (mx: number, my: number, nx: number, ny: number) => {
+            const labelX = mx + nx * 12;
+            const labelY = my + ny * 12;
+
+            const label = new Konva.Label({
+                x: labelX,
+                y: labelY,
+                listening: false
+            });
+
+            label.add(new Konva.Tag({
+                fill: 'rgba(241, 245, 249, 0.9)',
+                stroke: color,
+                strokeWidth: 1,
+                cornerRadius: 2
+            }));
+
+            label.add(new Konva.Text({
+                text: type === 'parallel' ? '//' : '⊥',
+                fontSize: 9,
+                padding: 2,
+                fontFamily: 'monospace',
+                fill: color
+            }));
+
+            label.offsetX(label.width() / 2);
+            label.offsetY(label.height() / 2);
+
+            this.mainLayer.add(label);
+        };
+
+        const m1x = (l1p1.x + l1p2.x) / 2;
+        const m1y = (l1p1.y + l1p2.y) / 2;
+        const l1dx = l1p2.x - l1p1.x;
+        const l1dy = l1p2.y - l1p1.y;
+        const l1len = Math.hypot(l1dx, l1dy);
+        if (l1len > 0) {
+            drawIconAt(m1x, m1y, -l1dy / l1len, l1dx / l1len);
+        }
+
+        const m2x = (l2p1.x + l2p2.x) / 2;
+        const m2y = (l2p1.y + l2p2.y) / 2;
+        const l2dx = l2p2.x - l2p1.x;
+        const l2dy = l2p2.y - l2p1.y;
+        const l2len = Math.hypot(l2dx, l2dy);
+        if (l2len > 0) {
+            drawIconAt(m2x, m2y, -l2dy / l2len, l2dx / l2len);
+        }
+    }
+
+    private drawCoincidentConstraint(p1: GCSPoint, color: string) {
+        const ring = new Konva.Ring({
+            x: p1.x,
+            y: p1.y,
+            innerRadius: 7,
+            outerRadius: 8.5,
+            fill: color,
+            listening: false,
+            opacity: 0.8
+        });
+        this.mainLayer.add(ring);
+    }
+
     redrawAll() {
         if (!this.stage || !this.mainLayer) return;
 
@@ -281,21 +651,7 @@ export class CanvasViewport {
         const hoveredConstraintId = this.model.getHoveredConstraintId();
 
         const isConstraintEntityHovered = (entityId: string): boolean => {
-            if (!hoveredConstraintId) return false;
-            const con = this.model.getConstraint(hoveredConstraintId);
-            if (!con) return false;
-            switch (con.type) {
-                case 'coincident':
-                case 'distance':
-                    return con.p1Id === entityId || con.p2Id === entityId;
-                case 'vertical':
-                case 'horizontal':
-                    return con.lineId === entityId;
-                case 'parallel':
-                case 'perpendicular':
-                    return con.line1Id === entityId || con.line2Id === entityId;
-            }
-            return false;
+            return this.isConstraintEntityHovered(hoveredConstraintId, entityId);
         };
 
         // Draw Lines
@@ -388,6 +744,9 @@ export class CanvasViewport {
 
             this.mainLayer.add(circleShape);
         });
+
+        // Draw constraints annotations
+        this.drawConstraints();
 
         // Draw Points
         this.model.getPoints().forEach(p => {
@@ -483,21 +842,7 @@ export class CanvasViewport {
         const hoveredConstraintId = this.model.getHoveredConstraintId();
 
         const isConstraintEntityHovered = (entityId: string): boolean => {
-            if (!hoveredConstraintId) return false;
-            const con = this.model.getConstraint(hoveredConstraintId);
-            if (!con) return false;
-            switch (con.type) {
-                case 'coincident':
-                case 'distance':
-                    return con.p1Id === entityId || con.p2Id === entityId;
-                case 'vertical':
-                case 'horizontal':
-                    return con.lineId === entityId;
-                case 'parallel':
-                case 'perpendicular':
-                    return con.line1Id === entityId || con.line2Id === entityId;
-            }
-            return false;
+            return this.isConstraintEntityHovered(hoveredConstraintId, entityId);
         };
 
         // Update Lines

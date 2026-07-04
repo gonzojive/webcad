@@ -1,6 +1,6 @@
 import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
 
-export type ToolMode = 'select' | 'point' | 'line' | 'circle';
+export type ToolMode = 'select' | 'point' | 'line' | 'circle' | 'dimension';
 
 export type StateCallback = () => void;
 
