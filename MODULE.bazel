@@ -18,11 +18,13 @@ go_deps.from_file(go_mod = "//:go.mod")
 use_repo(go_deps, "bazel_gazelle_go_repository_config", "org_golang_google_protobuf", "org_gonum_v1_gonum")
 
 bazel_dep(name = "rules_rust", version = "0.71.3")
+bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.71.3")
 
 # Configure the Rust toolchain
 rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
 rust.toolchain(
     edition = "2021",
+    extra_target_triples = ["wasm32-unknown-unknown"],
     versions = ["1.88.0"],
 )
 use_repo(rust, "rust_toolchains")
@@ -33,13 +35,28 @@ use_repo(third_party_deps, "ezpz")
 
 # Configure external crates from the ezpz Cargo workspace
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+crate.spec(
+    features = ["derive"],
+    package = "serde",
+    version = "1.0.100",
+)
+crate.spec(
+    package = "serde_json",
+    version = "1.0.100",
+)
+crate.spec(
+    package = "wasm-bindgen",
+    version = "=0.2.121",
+)
 crate.from_cargo(
     name = "crates",
-    cargo_lockfile = "@ezpz//:Cargo.lock",
+    cargo_lockfile = "//:Cargo.lock",
     manifests = [
         "@ezpz//:Cargo.toml",
         "@ezpz//ezpz:Cargo.toml",
         "@ezpz//ezpz-cli:Cargo.toml",
+        "@ezpz//ezpz-wasm:Cargo.toml",
+        "//web/poc/solver-wasm:Cargo.toml",
     ],
 )
 crate.annotation(

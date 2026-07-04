@@ -1,6 +1,5 @@
 // Package server provides a generic web server for serving WebCAD frontend assets,
-// wrapping the [runfilesserver.RunfilesServer] with command-line flag configuration
-// and local workspace source tree fallback.
+// wrapping the [runfilesserver] handler with command-line flag configuration.
 package server
 
 import (
@@ -10,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/gonzojive/webcad/web/runfilesserver"
 )
@@ -30,7 +28,7 @@ type Options struct {
 }
 
 // Server is a helper that wraps the http server, parses command line flags,
-// and delegates request handling to [runfilesserver.RunfilesServer] with local fallback.
+// and delegates request handling to [runfilesserver] with local fallback.
 type Server struct {
 	addr    string
 	handler http.Handler
@@ -40,7 +38,7 @@ type Server struct {
 // It defines and parses the command-line flag: -addr.
 //
 // If running locally in a workspace (non-runfiles environment), it automatically
-// configures a fallback handler pointing to the local workspace source files.
+// configures local workspace source files as fallback.
 func New(opts Options) *Server {
 	addrFlag := flag.String("addr", opts.DefaultAddr, "Address to listen on")
 	
@@ -48,63 +46,31 @@ func New(opts Options) *Server {
 		flag.Parse()
 	}
 
-	// Configure runfiles serving with local workspace fallback
-	var fallback http.Handler
-	// Try to locate workspace root via filesystem walk-up for fallback
+	// Resolve fallback directory if running locally in workspace
+	var fallbackDir string
 	if wd, err := os.Getwd(); err == nil {
 		if root, err := findWorkspaceRoot(wd); err == nil {
-			fallbackDir := filepath.Clean(filepath.Join(root, opts.WorkspaceSubpath))
-			fallback = &localSafeFileServer{
-				dir:        fallbackDir,
-				fileServer: http.FileServer(http.Dir(fallbackDir)),
-			}
-			log.Printf("Configured local workspace fallback serving from: %s", fallbackDir)
+			fallbackDir = filepath.Clean(filepath.Join(root, opts.WorkspaceSubpath))
+			log.Printf("server: configured local workspace fallback directory: %s", fallbackDir)
 		}
 	}
 
-	rs := runfilesserver.New(opts.RlocationRoot, fallback)
+	handler, err := runfilesserver.New(opts.RlocationRoot, fallbackDir)
+	if err != nil {
+		log.Fatalf("server: failed to initialize runfiles handler: %v", err)
+	}
 
 	return &Server{
 		addr:    *addrFlag,
-		handler: rs,
+		handler: handler,
 	}
 }
 
 // Start starts the HTTP listener and serves requests using the configured handler.
 func (s *Server) Start() error {
 	http.Handle("/", s.handler)
-	log.Printf("WebCAD Server starting on http://localhost%s (serving via RunfilesServer)", s.addr)
+	log.Printf("WebCAD Server starting on http://localhost%s (serving via Runfiles FS)", s.addr)
 	return http.ListenAndServe(s.addr, nil)
-}
-
-// localSafeFileServer wraps http.FileServer to enforce security boundaries
-// (directory traversal protection) when serving from the local filesystem fallback.
-type localSafeFileServer struct {
-	dir        string
-	fileServer http.Handler
-}
-
-func (h *localSafeFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// The path in r.URL.Path has already been cleaned and resolved
-	// by RunfilesServer before it delegates here.
-	relPath := strings.TrimPrefix(r.URL.Path, "/")
-	
-	localPath := filepath.Clean(filepath.Join(h.dir, relPath))
-	expectedPrefix := filepath.Clean(h.dir)
-	
-	// Enforce directory traversal protection
-	if !strings.HasPrefix(localPath, expectedPrefix) {
-		log.Printf("Security warning: attempted directory traversal in fallback? path=%s, localPath=%s, expectedPrefix=%s", r.URL.Path, localPath, expectedPrefix)
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
-
-	// Add JS MIME type helper for local fallback serving (some platforms don't register it)
-	if filepath.Ext(localPath) == ".js" {
-		w.Header().Set("Content-Type", "application/javascript")
-	}
-
-	h.fileServer.ServeHTTP(w, r)
 }
 
 func findWorkspaceRoot(startDir string) (string, error) {
