@@ -1,3 +1,4 @@
 {
+  "//": "Marker to tell Node.js to treat compiled JS files in this directory as ES Modules (ESM) during tests, since this library is not a workspace package.",
   "type": "module"
 }
