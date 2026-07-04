@@ -1,8 +1,16 @@
+load("@aspect_gazelle_prebuilt//:def.bzl", "aspect_gazelle")
 load("@npm//:defs.bzl", "npm_link_all_packages")
-load("@gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/gonzojive/webcad
-gazelle(name = "gazelle")
+
+aspect_gazelle(
+    name = "gazelle",
+    languages = [
+        "go",
+        "js",
+        "proto",
+    ],
+    repo_config = "@bazel_gazelle_go_repository_config//:WORKSPACE",
+)
 
 npm_link_all_packages(name = "node_modules")
-

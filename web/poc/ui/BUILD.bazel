@@ -1,5 +1,7 @@
 load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+load("@npm//:defs.bzl", "npm_link_all_packages")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,31 +11,21 @@ ts_config(
     visibility = ["//visibility:public"],
 )
 
-ts_project(
-    name = "ui",
-    srcs = glob(
-        ["*.ts"],
-        exclude = ["state_test.ts"],
-    ),
-    declaration = True,
-    source_map = True,
-    tsconfig = ":tsconfig",
-    deps = [
-        "//:node_modules/@types/node",
-        "//:node_modules/@webcad/gcsapi",
-    ],
-)
+npm_link_all_packages(name = "node_modules")
 
+# Managed by Gazelle
 ts_project(
-    name = "state_test_ts",
-    srcs = ["state_test.ts"],
+    name = "ui_lib",
+    srcs = [
+        "main.ts",
+        "state_test.ts",
+    ],
     declaration = True,
     source_map = True,
     tsconfig = ":tsconfig",
     deps = [
-        ":ui",
+        ":node_modules/@webcad/gcsapi",
         "//:node_modules/@types/node",
-        "//:node_modules/@webcad/gcsapi",
     ],
 )
 
@@ -41,10 +33,18 @@ js_test(
     name = "state_test",
     data = [
         "package.json",
-        ":state_test_ts",
-        ":ui",
+        ":ui_lib",
     ],
     entry_point = "state_test.js",
 )
 
 exports_files(["index.html"])
+
+npm_package(
+    name = "ui",
+    srcs = [
+        "package.json",
+        ":ui_lib",
+    ],
+    visibility = ["//:__pkg__"],
+)

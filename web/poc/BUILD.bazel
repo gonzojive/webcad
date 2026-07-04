@@ -15,9 +15,9 @@ go_library(
 go_binary(
     name = "poc",
     data = [
-        "//web/poc/gcsapi:gcsapi_ts",
-        "//web/poc/ui",
+        "//web/poc/gcsapi:gcsapi_lib",
         "//web/poc/ui:index.html",
+        "//web/poc/ui:ui_lib",
     ],
     embed = [":poc_lib"],
     tags = ["ibazel_notify_changes"],
