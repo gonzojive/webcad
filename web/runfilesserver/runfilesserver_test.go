@@ -100,19 +100,37 @@ func TestRunfilesServer_Security(t *testing.T) {
 		nil,
 	)
 
-	// Test non-absolute path rejection (400 Bad Request)
-	t.Run("Reject relative path in request", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "http://localhost:8080/ui/app.js", nil)
-		req.URL.Path = "../runfilesserver.go"
-		
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+	tests := []struct {
+		name           string
+		path           string // raw path to inject
+		expectedStatus int
+	}{
+		{
+			name:           "Reject relative path in request",
+			path:           "../runfilesserver.go",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Reject empty path",
+			path:           "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
 
-		resp := w.Result()
-		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("expected status 400 for relative path, got %d", resp.StatusCode)
-		}
-	})
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://localhost:8080/ui/app.js", nil)
+			req.URL.Path = tc.path
+			
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+
+			resp := w.Result()
+			if resp.StatusCode != tc.expectedStatus {
+				t.Errorf("expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
+			}
+		})
+	}
 }
 
 func TestRunfilesServer_LocalOverride(t *testing.T) {
@@ -122,6 +140,7 @@ func TestRunfilesServer_LocalOverride(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
+	// Write a file in temp dir
 	testFile := filepath.Join(tempDir, "test.txt")
 	expectedContent := "override content"
 	if err := os.WriteFile(testFile, []byte(expectedContent), 0644); err != nil {
@@ -136,85 +155,118 @@ func TestRunfilesServer_LocalOverride(t *testing.T) {
 	)
 	handler.SetLocalOverrideDir(tempDir)
 
-	req := httptest.NewRequest("GET", "/test.txt", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	tests := []struct {
+		name           string
+		path           string
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "Serve file from override",
+			path:           "/test.txt",
+			expectedStatus: http.StatusOK,
+			expectedBody:   expectedContent,
+		},
+		{
+			name:           "404 for missing file in override",
+			path:           "/missing.txt",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Override directory traversal blocked (Cleaned to root)",
+			path:           "/../escaped.txt",
+			expectedStatus: http.StatusNotFound, // cleaned to /escaped.txt, which doesn't exist
+		},
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("failed to read body: %v", err)
-	}
-	if string(bodyBytes) != expectedContent {
-		t.Errorf("expected body %q, got %q", expectedContent, string(bodyBytes))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://localhost:8080/fallback", nil)
+			req.URL.Path = tc.path
+			
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+
+			resp := w.Result()
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.expectedStatus {
+				t.Errorf("expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
+			}
+
+			if tc.expectedStatus == http.StatusOK {
+				bodyBytes, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("failed to read body: %v", err)
+				}
+				if string(bodyBytes) != tc.expectedBody {
+					t.Errorf("expected body %q, got %q", tc.expectedBody, string(bodyBytes))
+				}
+			}
+		})
 	}
 }
 
 func TestRunfilesServer_Fallback(t *testing.T) {
-	fallbackCalled := false
-	var capturedPath string
-	
-	mockFallback := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fallbackCalled = true
-		capturedPath = r.URL.Path
-		w.WriteHeader(http.StatusTeapot) // distinct status to verify it was called
-		_, _ = w.Write([]byte("fallback response"))
-	})
+	tests := []struct {
+		name           string
+		path           string
+		expectedPath   string // what path fallback should receive
+	}{
+		{
+			name:         "Triggers fallback on missing runfile",
+			path:         "/ui/app.js",
+			expectedPath: "/ui/app.js",
+		},
+		{
+			name:         "Triggers fallback on root index redirect",
+			path:         "/",
+			expectedPath: "/ui/index.html",
+		},
+	}
 
-	// Configure server pointing to a nonexistent workspace name to force runfiles resolution to fail,
-	// which should trigger the fallback handler.
-	handler := New(
-		"nonexistent_workspace",
-		"web/runfilesserver/testdata",
-		"ui/index.html",
-		mockFallback,
-	)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fallbackCalled := false
+			var capturedPath string
+			
+			mockFallback := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fallbackCalled = true
+				capturedPath = r.URL.Path
+				w.WriteHeader(http.StatusTeapot)
+				_, _ = w.Write([]byte("fallback response"))
+			})
 
-	t.Run("Triggers fallback on missing runfile", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/ui/app.js", nil)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
+			handler := New(
+				"nonexistent_workspace",
+				"web/runfilesserver/testdata",
+				"ui/index.html",
+				mockFallback,
+			)
 
-		resp := w.Result()
-		defer resp.Body.Close()
+			req := httptest.NewRequest("GET", tc.path, nil)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
 
-		if !fallbackCalled {
-			t.Error("expected fallback handler to be called, but it was not")
-		}
-		if resp.StatusCode != http.StatusTeapot {
-			t.Errorf("expected status from fallback handler %d, got %d", http.StatusTeapot, resp.StatusCode)
-		}
-		if capturedPath != "/ui/app.js" {
-			t.Errorf("expected fallback to receive path '/ui/app.js', got %q", capturedPath)
-		}
-		
-		body, _ := io.ReadAll(resp.Body)
-		if string(body) != "fallback response" {
-			t.Errorf("expected fallback body 'fallback response', got %q", string(body))
-		}
-	})
+			resp := w.Result()
+			defer resp.Body.Close()
 
-	t.Run("Triggers fallback on root index redirect", func(t *testing.T) {
-		fallbackCalled = false
-		req := httptest.NewRequest("GET", "/", nil)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, req)
-
-		resp := w.Result()
-		defer resp.Body.Close()
-
-		if !fallbackCalled {
-			t.Error("expected fallback handler to be called, but it was not")
-		}
-		// The path should have been rewritten to the indexHTML default by RunfilesServer
-		if capturedPath != "/ui/index.html" {
-			t.Errorf("expected fallback to receive index path '/ui/index.html', got %q", capturedPath)
-		}
-	})
+			if !fallbackCalled {
+				t.Error("expected fallback handler to be called, but it was not")
+			}
+			if resp.StatusCode != http.StatusTeapot {
+				t.Errorf("expected status from fallback handler %d, got %d", http.StatusTeapot, resp.StatusCode)
+			}
+			if capturedPath != tc.expectedPath {
+				t.Errorf("expected fallback to receive path %q, got %q", tc.expectedPath, capturedPath)
+			}
+			
+			if tc.path == "/ui/app.js" {
+				body, _ := io.ReadAll(resp.Body)
+				if string(body) != "fallback response" {
+					t.Errorf("expected fallback body 'fallback response', got %q", string(body))
+				}
+			}
+		})
+	}
 }
