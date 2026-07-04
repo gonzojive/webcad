@@ -37,32 +37,18 @@ type Server struct {
 }
 
 // New creates a new [Server] instance configured with [Options].
-// It defines and parses command-line flags: -addr and -assets_dir.
+// It defines and parses the command-line flag: -addr.
 //
 // If running locally in a workspace (non-runfiles environment), it automatically
 // configures a fallback handler pointing to the local workspace source files.
 func New(opts Options) *Server {
 	addrFlag := flag.String("addr", opts.DefaultAddr, "Address to listen on")
-	assetsDirFlag := flag.String("assets_dir", "", "Path to the assets directory (optional override, bypasses runfiles)")
 	
 	if !flag.Parsed() {
 		flag.Parse()
 	}
 
-	// 1. Manual override flag (highest priority, bypasses runfiles completely)
-	if *assetsDirFlag != "" {
-		fallbackDir := filepath.Clean(*assetsDirFlag)
-		log.Printf("Serving assets from manual override directory: %s", fallbackDir)
-		return &Server{
-			addr:    *addrFlag,
-			handler: &localSafeFileServer{
-				dir:        fallbackDir,
-				fileServer: http.FileServer(http.Dir(fallbackDir)),
-			},
-		}
-	}
-
-	// 2. Configure runfiles serving with local workspace fallback
+	// Configure runfiles serving with local workspace fallback
 	var fallback http.Handler
 	// Try to locate workspace root via filesystem walk-up for fallback
 	if wd, err := os.Getwd(); err == nil {
