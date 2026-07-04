@@ -15,7 +15,7 @@ import (
 // RunfilesServer implements [net/http.Handler] to serve files from Bazel runfiles,
 // with fallbacks for local workspace source trees.
 type RunfilesServer struct {
-	runfilesMarker     string
+	workspaceName      string
 	workspaceSubpath   string
 	indexHTML          string
 	localWorkspaceRoot string
@@ -23,13 +23,17 @@ type RunfilesServer struct {
 }
 
 // New creates a new [RunfilesServer] handler.
-func New(runfilesMarker, workspaceSubpath, indexHTML string) *RunfilesServer {
+//
+// The workspaceName is the apparent name of the Bazel workspace (e.g. "webcad").
+// The workspaceSubpath is the path relative to the workspace root containing the assets (e.g. "web/poc").
+// The indexHTML is the path relative to workspaceSubpath to serve at "/" (defaults to "ui/index.html").
+func New(workspaceName, workspaceSubpath, indexHTML string) *RunfilesServer {
 	if indexHTML == "" {
 		indexHTML = "ui/index.html"
 	}
 
 	s := &RunfilesServer{
-		runfilesMarker:   runfilesMarker,
+		workspaceName:    workspaceName,
 		workspaceSubpath: workspaceSubpath,
 		indexHTML:        indexHTML,
 	}
@@ -83,35 +87,28 @@ func (s *RunfilesServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Try Bazel runfiles
-	if s.runfilesMarker != "" && s.workspaceSubpath != "" {
-		// Extract workspace name from RunfilesMarker
-		markerClean := filepath.Clean(s.runfilesMarker)
-		parts := strings.Split(markerClean, string(filepath.Separator))
-		if len(parts) > 0 && parts[0] != "" {
-			workspaceName := parts[0]
-			
-			// Construct logical runfiles path: <workspace>/<subpath>/<request_path>
-			runfilesPath := filepath.Clean(filepath.Join(workspaceName, s.workspaceSubpath, relPath))
-			expectedRunfilesPrefix := filepath.Clean(filepath.Join(workspaceName, s.workspaceSubpath))
-			
-			// Ensure it doesn't escape the workspace subpath
-			if !strings.HasPrefix(runfilesPath, expectedRunfilesPrefix) {
-				log.Printf("Security warning: attempted directory traversal in runfiles? path=%s, runfilesPath=%s, expectedPrefix=%s", r.URL.Path, runfilesPath, expectedRunfilesPrefix)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
+	if s.workspaceName != "" && s.workspaceSubpath != "" {
+		// Construct logical runfiles path (rlocation path): <workspace>/<subpath>/<request_path>
+		runfilesPath := filepath.Clean(filepath.Join(s.workspaceName, s.workspaceSubpath, relPath))
+		expectedRunfilesPrefix := filepath.Clean(filepath.Join(s.workspaceName, s.workspaceSubpath))
+		
+		// Ensure it doesn't escape the workspace subpath (directory traversal protection)
+		if !strings.HasPrefix(runfilesPath, expectedRunfilesPrefix) {
+			log.Printf("Security warning: attempted directory traversal in runfiles? path=%s, runfilesPath=%s, expectedPrefix=%s", r.URL.Path, runfilesPath, expectedRunfilesPrefix)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		
+		resolvedPath, err := runfiles.Rlocation(runfilesPath)
+		if err == nil {
+			// Ensure JavaScript module files have the correct MIME type
+			if filepath.Ext(resolvedPath) == ".js" {
+				w.Header().Set("Content-Type", "application/javascript")
+			} else if filepath.Ext(resolvedPath) == ".wasm" {
+				w.Header().Set("Content-Type", "application/wasm")
 			}
-			
-			resolvedPath, err := runfiles.Rlocation(runfilesPath)
-			if err == nil {
-				// Ensure JavaScript module files have the correct MIME type
-				if filepath.Ext(resolvedPath) == ".js" {
-					w.Header().Set("Content-Type", "application/javascript")
-				} else if filepath.Ext(resolvedPath) == ".wasm" {
-					w.Header().Set("Content-Type", "application/wasm")
-				}
-				http.ServeFile(w, r, resolvedPath)
-				return
-			}
+			http.ServeFile(w, r, resolvedPath)
+			return
 		}
 	}
 

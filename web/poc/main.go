@@ -10,7 +10,7 @@ import (
 func main() {
 	s := server.New(server.Options{
 		DefaultAddr:      ":8080",
-		RunfilesMarker:   "webcad/web/poc/ui/main.js",
+		WorkspaceName:    "webcad",
 		WorkspaceSubpath: "web/poc",
 	})
 

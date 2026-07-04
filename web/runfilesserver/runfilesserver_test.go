@@ -12,10 +12,10 @@ import (
 
 func TestRunfilesServer(t *testing.T) {
 	// Configure the server pointing to our testdata
-	// Marker: webcad/web/runfilesserver/testdata/ui/index.html
+	// Workspace Name: webcad
 	// Subpath: web/runfilesserver/testdata
 	handler := New(
-		"webcad/web/runfilesserver/testdata/ui/index.html",
+		"webcad",
 		"web/runfilesserver/testdata",
 		"ui/index.html",
 	)
@@ -95,7 +95,7 @@ func TestRunfilesServer(t *testing.T) {
 
 func TestRunfilesServer_Security(t *testing.T) {
 	handler := New(
-		"webcad/web/runfilesserver/testdata/ui/index.html",
+		"webcad",
 		"web/runfilesserver/testdata",
 		"ui/index.html",
 	)
@@ -131,7 +131,7 @@ func TestRunfilesServer_LocalOverride(t *testing.T) {
 	}
 
 	handler := New(
-		"webcad/web/runfilesserver/testdata/ui/index.html",
+		"webcad",
 		"web/runfilesserver/testdata",
 		"ui/index.html",
 	)
@@ -159,25 +159,12 @@ func TestRunfilesServer_LocalOverride(t *testing.T) {
 	// Test directory traversal in override
 	t.Run("Override directory traversal blocked", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/../escaped.txt", nil)
-		// net/http will clean "/../" to "/" before calling handler in real life,
-		// but we test that our handler prefix check blocks it if it reaches it.
-		// httptest.NewRequest cleans it, so we force it.
 		req.URL.Path = "/../escaped.txt"
 		
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
-		// filepath.Clean("/../escaped.txt") -> "/escaped.txt".
-		// Join(tempDir, "escaped.txt") is still inside tempDir (it doesn't escape physically).
-		// So it returns 404 (since escaped.txt doesn't exist).
-		// But if we tried to do "/../../something" (outside tempDir).
-		// filepath.Clean("/../../something") -> "/something".
-		// Join(tempDir, "something") is still inside tempDir.
-		// It is physically impossible to escape tempDir using filepath.Join(tempDir, relPath)
-		// if relPath has no ".." after Clean.
-		// And relPath is strings.TrimPrefix(Clean(path), "/"), so it never starts with ".." or contains ".." that goes above root.
-		// So it is always safe.
 		if resp.StatusCode != http.StatusNotFound {
 			t.Errorf("expected status 404, got %d", resp.StatusCode)
 		}

@@ -16,9 +16,8 @@ type Options struct {
 	// Can be overridden by the -addr flag if registered.
 	DefaultAddr string
 
-	// RunfilesMarker is a runfile path used to locate the assets directory in runfiles
-	// (e.g., "webcad/web/poc/ui/main.js").
-	RunfilesMarker string
+	// WorkspaceName is the apparent name of the Bazel workspace (e.g. "webcad").
+	WorkspaceName string
 
 	// WorkspaceSubpath is the path relative to the workspace root where the assets are located
 	// (e.g., "web/poc").
@@ -45,7 +44,7 @@ func New(opts Options) *Server {
 		flag.Parse()
 	}
 
-	rs := runfilesserver.New(opts.RunfilesMarker, opts.WorkspaceSubpath, opts.IndexHTML)
+	rs := runfilesserver.New(opts.WorkspaceName, opts.WorkspaceSubpath, opts.IndexHTML)
 	if *assetsDirFlag != "" {
 		rs.SetLocalOverrideDir(*assetsDirFlag)
 	}
