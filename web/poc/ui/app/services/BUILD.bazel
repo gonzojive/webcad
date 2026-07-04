@@ -13,7 +13,7 @@ ts_project(
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         "//web:node_modules/@angular/core",
-        "//web/poc/gcsapi",
+        "//ts/gcsapi",
         "//web/poc/geometry",
         "//web/poc/model",
         "//web/poc/tools",

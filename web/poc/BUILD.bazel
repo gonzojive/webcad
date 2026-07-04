@@ -15,8 +15,6 @@ go_library(
 go_binary(
     name = "poc",
     data = [
-        "//web/poc/gcsapi",
-        "//web/poc/solver-wasm:solver_wasm_bindgen",
         "//web/poc/ui:assets",
         "//web/poc/ui:bundle",
     ],

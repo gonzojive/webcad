@@ -19,7 +19,8 @@ const (
 // TangentEvaluator evaluates tangent constraints between entities (Circle-Circle, Circle-Line).
 type TangentEvaluator struct {
 	subCase    tangentSubCase
-	idA, idB   gcstypes.EntityID // idA is always the Circle for Cir-Ln
+	idA, idB   gcstypes.EntityID // idA is always the Circle for Cir-Ln. For Cir-Ln, idB is unused.
+	p1ln, p2ln gcstypes.EntityID // For Cir-Ln case
 	isInternal bool   // For Cir-Cir
 	invC       float64
 }
@@ -66,32 +67,40 @@ func NewTangentEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*s
 			isInternal: isInternal,
 		}, nil
 	} else if isCirA && isLnB {
-		lineEnt := entB.GetLine()
-		dx := lineEnt.X2 - lineEnt.X1
-		dy := lineEnt.Y2 - lineEnt.Y1
+		p1Id, p2Id, p1, p2, err := getLinePoints(entB, entities)
+		if err != nil {
+			return nil, fmt.Errorf("line B endpoints unresolved: %w", err)
+		}
+		dx := p2.X - p1.X
+		dy := p2.Y - p1.Y
 		C := dx*dx + dy*dy
 		if C < 1e-9 {
 			C = 1.0
 		}
 		return &TangentEvaluator{
-			subCase: tangentCirLn,
-			idA:     idA,
-			idB:     idB,
-			invC:    1.0 / C,
+			subCase:  tangentCirLn,
+			idA:      idA,
+			p1ln:     p1Id,
+			p2ln:     p2Id,
+			invC:     1.0 / C,
 		}, nil
 	} else if isCirB && isLnA {
-		lineEnt := entA.GetLine()
-		dx := lineEnt.X2 - lineEnt.X1
-		dy := lineEnt.Y2 - lineEnt.Y1
+		p1Id, p2Id, p1, p2, err := getLinePoints(entA, entities)
+		if err != nil {
+			return nil, fmt.Errorf("line A endpoints unresolved: %w", err)
+		}
+		dx := p2.X - p1.X
+		dy := p2.Y - p1.Y
 		C := dx*dx + dy*dy
 		if C < 1e-9 {
 			C = 1.0
 		}
 		return &TangentEvaluator{
-			subCase: tangentCirLn,
-			idA:     idB, // Store circle in idA
-			idB:     idA, // Store line in idB
-			invC:    1.0 / C,
+			subCase:  tangentCirLn,
+			idA:      idB, // Store circle in idA
+			p1ln:     p1Id,
+			p2ln:     p2Id,
+			invC:     1.0 / C,
 		}, nil
 	}
 
@@ -111,14 +120,13 @@ func (t *TangentEvaluator) EvaluateJacobian(
 	rowOffset int,
 	paramIndices map[gcstypes.EntityID]int,
 ) {
-	idx1, ok1 := paramIndices[t.idA]
-	idx2, ok2 := paramIndices[t.idB]
-	if !ok1 || !ok2 {
-		return
-	}
-
 	switch t.subCase {
 	case tangentCirCir:
+		idx1, ok1 := paramIndices[t.idA]
+		idx2, ok2 := paramIndices[t.idB]
+		if !ok1 || !ok2 {
+			return
+		}
 		cx1, cy1, r1 := x[idx1], x[idx1+1], x[idx1+2]
 		cx2, cy2, r2 := x[idx2], x[idx2+1], x[idx2+2]
 		dx := cx1 - cx2
@@ -151,8 +159,15 @@ func (t *TangentEvaluator) EvaluateJacobian(
 		}
 
 	case tangentCirLn:
+		idx1, ok1 := paramIndices[t.idA]
+		idxP1, okP1 := paramIndices[t.p1ln]
+		idxP2, okP2 := paramIndices[t.p2ln]
+		if !ok1 || !okP1 || !okP2 {
+			return
+		}
 		cx, cy, R := x[idx1], x[idx1+1], x[idx1+2]
-		x1, y1, x2, y2 := x[idx2], x[idx2+1], x[idx2+2], x[idx2+3]
+		x1, y1 := x[idxP1], x[idxP1+1]
+		x2, y2 := x[idxP2], x[idxP2+1]
 		dxL := x2 - x1
 		dyL := y2 - y1
 		C := dxL*dxL + dyL*dyL
@@ -171,10 +186,10 @@ func (t *TangentEvaluator) EvaluateJacobian(
 			factorK := factor * num * invC
 			J.Set(rowOffset, idx1, factor*dyL)
 			J.Set(rowOffset, idx1+1, -factor*dxL)
-			J.Set(rowOffset, idx2, factor*(cy-y2)+factorK*dxL)
-			J.Set(rowOffset, idx2+1, factor*(x2-cx)+factorK*dyL)
-			J.Set(rowOffset, idx2+2, factor*(y1-cy)-factorK*dxL)
-			J.Set(rowOffset, idx2+3, factor*(cx-x1)-factorK*dyL)
+			J.Set(rowOffset, idxP1, factor*(cy-y2)+factorK*dxL)
+			J.Set(rowOffset, idxP1+1, factor*(x2-cx)+factorK*dyL)
+			J.Set(rowOffset, idxP2, factor*(y1-cy)-factorK*dxL)
+			J.Set(rowOffset, idxP2+1, factor*(cx-x1)-factorK*dyL)
 
 			J.Set(rowOffset, idx1+2, -2.0*R)
 		}
@@ -183,14 +198,13 @@ func (t *TangentEvaluator) EvaluateJacobian(
 
 // Evaluate computes the squared residual and accumulates the gradient.
 func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
-	idx1, ok1 := paramIndices[t.idA]
-	idx2, ok2 := paramIndices[t.idB]
-	if !ok1 || !ok2 {
-		return 0.0
-	}
-
 	switch t.subCase {
 	case tangentCirCir:
+		idx1, ok1 := paramIndices[t.idA]
+		idx2, ok2 := paramIndices[t.idB]
+		if !ok1 || !ok2 {
+			return 0.0
+		}
 		cx1, cy1, r1 := x[idx1], x[idx1+1], x[idx1+2]
 		cx2, cy2, r2 := x[idx2], x[idx2+1], x[idx2+2]
 		dx := cx1 - cx2
@@ -238,8 +252,15 @@ func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices ma
 		return totalResidualSq
 
 	case tangentCirLn:
+		idx1, ok1 := paramIndices[t.idA]
+		idxP1, okP1 := paramIndices[t.p1ln]
+		idxP2, okP2 := paramIndices[t.p2ln]
+		if !ok1 || !okP1 || !okP2 {
+			return 0.0
+		}
 		cx, cy, R := x[idx1], x[idx1+1], x[idx1+2]
-		x1, y1, x2, y2 := x[idx2], x[idx2+1], x[idx2+2], x[idx2+3]
+		x1, y1 := x[idxP1], x[idxP1+1]
+		x2, y2 := x[idxP2], x[idxP2+1]
 		dxL := x2 - x1
 		dyL := y2 - y1
 		C := dxL*dxL + dyL*dyL
@@ -260,10 +281,10 @@ func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices ma
 
 			grad[idx1] += factor * dyL
 			grad[idx1+1] -= factor * dxL
-			grad[idx2] += factor*(cy-y2) + 2.0*factorK*dxL
-			grad[idx2+1] += factor*(x2-cx) + 2.0*factorK*dyL
-			grad[idx2+2] += factor*(y1-cy) - 2.0*factorK*dxL
-			grad[idx2+3] += factor*(cx-x1) - 2.0*factorK*dyL
+			grad[idxP1] += factor*(cy-y2) + 2.0*factorK*dxL
+			grad[idxP1+1] += factor*(x2-cx) + 2.0*factorK*dyL
+			grad[idxP2] += factor*(y1-cy) - 2.0*factorK*dxL
+			grad[idxP2+1] += factor*(cx-x1) - 2.0*factorK*dyL
 
 			grad[idx1+2] -= 4.0 * r * R
 		}

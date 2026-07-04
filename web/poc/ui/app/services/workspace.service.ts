@@ -5,7 +5,7 @@ import { HistoryManager } from '../../../model/history.js';
 import { GCSBridge } from '../../../model/gcs_bridge.js';
 import { Vector2D } from '../../../geometry/vector.js';
 import { ToolContext } from '../../../tools/tool.js';
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 import { Unit } from '../../../units/units.js';
 import { SketchStore } from '../../../model/store.js';
 
@@ -237,10 +237,10 @@ export class WorkspaceService implements ToolContext {
             switch (c.type) {
                 case 'coincident':
                 case 'distance':
-                case 'horizontal_distance':
-                case 'vertical_distance':
+                case 'horizontalDistance':
+                case 'verticalDistance':
                     return !refersTo(c.p1Id) && !refersTo(c.p2Id);
-                case 'point_line_distance':
+                case 'pointLineDistance':
                     return !refersTo(c.pointId) && !refersTo(c.lineId);
                 case 'vertical':
                 case 'horizontal':
@@ -276,10 +276,10 @@ export class WorkspaceService implements ToolContext {
             switch (c.type) {
                 case 'coincident':
                 case 'distance':
-                case 'horizontal_distance':
-                case 'vertical_distance':
+                case 'horizontalDistance':
+                case 'verticalDistance':
                     return !refersToSelected(c.p1Id) && !refersToSelected(c.p2Id);
-                case 'point_line_distance':
+                case 'pointLineDistance':
                     return !refersToSelected(c.pointId) && !refersToSelected(c.lineId);
                 case 'vertical':
                 case 'horizontal':

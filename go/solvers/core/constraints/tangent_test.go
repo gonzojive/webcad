@@ -85,14 +85,20 @@ func TestTangentEvaluator_CirCir_Jacobian(t *testing.T) {
 
 func TestTangentEvaluator_CirLn_Jacobian(t *testing.T) {
 	c1 := &schema.Entity{Id: "c1", EntityType: &schema.Entity_Circle{Circle: &schema.CircleEntity{Cx: 0.0, Cy: 2.0, R: 1.0}}}
-	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{X1: -2.0, Y1: 0.0, X2: 2.0, Y2: 0.0}}}
+	p1a := &schema.Entity{Id: "p1a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: -2.0, Y: 0.0}}}
+	p2a := &schema.Entity{Id: "p2a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 2.0, Y: 0.0}}}
+
+	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "p1a", P2Id: "p2a"}}}
 	c := &schema.Constraint{
 		Id: "c",
 		ConstraintType: &schema.Constraint_Tangent{
 			Tangent: &schema.TangentConstraint{EntityA: "c1", EntityB: "l1"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"c1": c1, "l1": l1})
+	entities := map[gcstypes.EntityID]*schema.Entity{
+		"c1": c1, "p1a": p1a, "p2a": p2a, "l1": l1,
+	}
+	eval, err := constraints.NewEvaluator(c, entities)
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -103,7 +109,9 @@ func TestTangentEvaluator_CirLn_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[gcstypes.EntityID]int{"c1": 0, "l1": 3}
+	paramIndices := map[gcstypes.EntityID]int{
+		"c1": 0, "p1a": 3, "p2a": 5,
+	}
 	n := 7
 	m := je.NumEquations()
 

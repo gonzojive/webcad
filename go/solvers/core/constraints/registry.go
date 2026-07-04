@@ -30,6 +30,14 @@ func NewEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.E
 		return NewTangentEvaluator(c, entities)
 	case *schema.Constraint_Symmetric:
 		return NewSymmetricEvaluator(c, entities)
+	case *schema.Constraint_Horizontal:
+		return NewHorizontalEvaluator(c, entities)
+	case *schema.Constraint_Vertical:
+		return NewVerticalEvaluator(c, entities)
+	case *schema.Constraint_HorizontalDistance:
+		return NewHorizontalDistanceEvaluator(c, entities)
+	case *schema.Constraint_VerticalDistance:
+		return NewVerticalDistanceEvaluator(c, entities)
 	default:
 		// Return a placeholder evaluator for unregistered types to allow incremental migration.
 		return &PlaceholderEvaluator{ConstraintType: fmt.Sprintf("%T", tc)}, nil

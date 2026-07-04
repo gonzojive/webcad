@@ -42,7 +42,6 @@ js_test(
     name = "test",
     data = [
         ":test_lib",
-        "//web/poc/solver-wasm:solver_wasm_bindgen",
     ],
     entry_point = "dimension-input.component.test.js",
 )

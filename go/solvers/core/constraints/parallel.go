@@ -11,7 +11,8 @@ import (
 
 // ParallelEvaluator evaluates parallel constraints between two line entities.
 type ParallelEvaluator struct {
-	idA, idB gcstypes.EntityID
+	p1a, p2a gcstypes.EntityID
+	p1b, p2b gcstypes.EntityID
 	normC    float64
 }
 
@@ -26,15 +27,18 @@ func NewParallelEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 		return nil, fmt.Errorf("entities not found: %s, %s", idA, idB)
 	}
 
-	// Compute constant normalization using initial lengths
-	paramsA := getParams(entA)
-	paramsB := getParams(entB)
-	if len(paramsA) < 4 || len(paramsB) < 4 {
-		return nil, fmt.Errorf("invalid line parameters")
+	p1aId, p2aId, p1a, p2a, err := getLinePoints(entA, entities)
+	if err != nil {
+		return nil, fmt.Errorf("line A endpoints unresolved: %w", err)
+	}
+	p1bId, p2bId, p1b, p2b, err := getLinePoints(entB, entities)
+	if err != nil {
+		return nil, fmt.Errorf("line B endpoints unresolved: %w", err)
 	}
 
-	ilen1Sq := (paramsA[2]-paramsA[0])*(paramsA[2]-paramsA[0]) + (paramsA[3]-paramsA[1])*(paramsA[3]-paramsA[1])
-	ilen2Sq := (paramsB[2]-paramsB[0])*(paramsB[2]-paramsB[0]) + (paramsB[3]-paramsB[1])*(paramsB[3]-paramsB[1])
+	// Compute constant normalization using initial lengths
+	ilen1Sq := (p2a.X-p1a.X)*(p2a.X-p1a.X) + (p2a.Y-p1a.Y)*(p2a.Y-p1a.Y)
+	ilen2Sq := (p2b.X-p1b.X)*(p2b.X-p1b.X) + (p2b.Y-p1b.Y)*(p2b.Y-p1b.Y)
 	if ilen1Sq < 1e-9 {
 		ilen1Sq = 1.0
 	}
@@ -44,8 +48,10 @@ func NewParallelEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 	normC := math.Sqrt(ilen1Sq * ilen2Sq)
 
 	return &ParallelEvaluator{
-		idA:   idA,
-		idB:   idB,
+		p1a:   p1aId,
+		p2a:   p2aId,
+		p1b:   p1bId,
+		p2b:   p2bId,
 		normC: normC,
 	}, nil
 }
@@ -63,14 +69,18 @@ func (p *ParallelEvaluator) EvaluateJacobian(
 	rowOffset int,
 	paramIndices map[gcstypes.EntityID]int,
 ) {
-	idx1, ok1 := paramIndices[p.idA]
-	idx2, ok2 := paramIndices[p.idB]
-	if !ok1 || !ok2 {
+	idx1a, ok1a := paramIndices[p.p1a]
+	idx2a, ok2a := paramIndices[p.p2a]
+	idx1b, ok1b := paramIndices[p.p1b]
+	idx2b, ok2b := paramIndices[p.p2b]
+	if !ok1a || !ok2a || !ok1b || !ok2b {
 		return
 	}
 
-	x1, y1, x2, y2 := x[idx1], x[idx1+1], x[idx1+2], x[idx1+3]
-	x3, y3, x4, y4 := x[idx2], x[idx2+1], x[idx2+2], x[idx2+3]
+	x1, y1 := x[idx1a], x[idx1a+1]
+	x2, y2 := x[idx2a], x[idx2a+1]
+	x3, y3 := x[idx1b], x[idx1b+1]
+	x4, y4 := x[idx2b], x[idx2b+1]
 
 	dx1, dy1 := x2-x1, y2-y1
 	dx2, dy2 := x4-x3, y4-y3
@@ -82,28 +92,32 @@ func (p *ParallelEvaluator) EvaluateJacobian(
 	if J != nil {
 		invC := 1.0 / p.normC
 		// Row 0 of this constraint's Jacobian block
-		J.Set(rowOffset, idx1, -dy2*invC)
-		J.Set(rowOffset, idx1+1, dx2*invC)
-		J.Set(rowOffset, idx1+2, dy2*invC)
-		J.Set(rowOffset, idx1+3, -dx2*invC)
+		J.Set(rowOffset, idx1a, -dy2*invC)
+		J.Set(rowOffset, idx1a+1, dx2*invC)
+		J.Set(rowOffset, idx2a, dy2*invC)
+		J.Set(rowOffset, idx2a+1, -dx2*invC)
 
-		J.Set(rowOffset, idx2, dy1*invC)
-		J.Set(rowOffset, idx2+1, -dx1*invC)
-		J.Set(rowOffset, idx2+2, -dy1*invC)
-		J.Set(rowOffset, idx2+3, dx1*invC)
+		J.Set(rowOffset, idx1b, dy1*invC)
+		J.Set(rowOffset, idx1b+1, -dx1*invC)
+		J.Set(rowOffset, idx2b, -dy1*invC)
+		J.Set(rowOffset, idx2b+1, dx1*invC)
 	}
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
 func (p *ParallelEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
-	idx1, ok1 := paramIndices[p.idA]
-	idx2, ok2 := paramIndices[p.idB]
-	if !ok1 || !ok2 {
+	idx1a, ok1a := paramIndices[p.p1a]
+	idx2a, ok2a := paramIndices[p.p2a]
+	idx1b, ok1b := paramIndices[p.p1b]
+	idx2b, ok2b := paramIndices[p.p2b]
+	if !ok1a || !ok2a || !ok1b || !ok2b {
 		return 0.0
 	}
 
-	x1, y1, x2, y2 := x[idx1], x[idx1+1], x[idx1+2], x[idx1+3]
-	x3, y3, x4, y4 := x[idx2], x[idx2+1], x[idx2+2], x[idx2+3]
+	x1, y1 := x[idx1a], x[idx1a+1]
+	x2, y2 := x[idx2a], x[idx2a+1]
+	x3, y3 := x[idx1b], x[idx1b+1]
+	x4, y4 := x[idx2b], x[idx2b+1]
 
 	dx1, dy1 := x2-x1, y2-y1
 	dx2, dy2 := x4-x3, y4-y3
@@ -113,15 +127,15 @@ func (p *ParallelEvaluator) Evaluate(x []float64, grad []float64, paramIndices m
 
 	if grad != nil {
 		factor := 2.0 * r / p.normC
-		grad[idx1] -= factor * dy2
-		grad[idx1+1] += factor * dx2
-		grad[idx1+2] += factor * dy2
-		grad[idx1+3] -= factor * dx2
+		grad[idx1a] -= factor * dy2
+		grad[idx1a+1] += factor * dx2
+		grad[idx2a] += factor * dy2
+		grad[idx2a+1] -= factor * dx2
 
-		grad[idx2] += factor * dy1
-		grad[idx2+1] -= factor * dx1
-		grad[idx2+2] -= factor * dy1
-		grad[idx2+3] += factor * dx1
+		grad[idx1b] += factor * dy1
+		grad[idx1b+1] -= factor * dx1
+		grad[idx2b] -= factor * dy1
+		grad[idx2b+1] += factor * dx1
 	}
 	return totalResidualSq
 }

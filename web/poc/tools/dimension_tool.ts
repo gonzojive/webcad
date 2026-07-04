@@ -2,13 +2,13 @@ import { Tool, ToolContext } from './tool.js';
 import { Vector2D, dist } from '../geometry/vector.js';
 import { IRenderer, IInteractionProvider } from '../ui/interfaces/viewport_interfaces.js';
 import { projectPointOntoLine } from '../geometry/project.js';
-import { GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSConstraint } from '../../../ts/gcsapi/dist/index.js';
 
 function getImpliedDimensionType(
     p1: Vector2D,
     p2: Vector2D,
     mouse: Vector2D
-): 'distance' | 'horizontal_distance' | 'vertical_distance' {
+): 'distance' | 'horizontalDistance' | 'verticalDistance' {
     const cx = (p1.x + p2.x) / 2;
     const cy = (p1.y + p2.y) / 2;
 
@@ -31,9 +31,9 @@ function getImpliedDimensionType(
     }
 
     if (Math.abs(my) > Math.abs(mx)) {
-        return 'horizontal_distance';
+        return 'horizontalDistance';
     } else {
-        return 'vertical_distance';
+        return 'verticalDistance';
     }
 }
 
@@ -42,10 +42,10 @@ export class DimensionTool implements Tool {
     
     private firstEntityId: string | null = null;
     private placingDimension: {
-        type: 'distance' | 'point_line_distance';
+        type: 'distance' | 'pointLineDistance';
         entityIds: string[];
     } | null = null;
-    private currentPreviewType: 'distance' | 'horizontal_distance' | 'vertical_distance' = 'distance';
+    private currentPreviewType: 'distance' | 'horizontalDistance' | 'verticalDistance' = 'distance';
     private waitingForInput = false;
 
     onActivate(context: ToolContext, renderer: IRenderer) {
@@ -80,7 +80,7 @@ export class DimensionTool implements Tool {
                 const { type, entityIds } = this.placingDimension;
                 let defaultValue = 0;
                 
-                if (type === 'point_line_distance') {
+                if (type === 'pointLineDistance') {
                     const p = context.getPoint(entityIds[0]);
                     const l = context.getLine(entityIds[1]);
                     if (p && l) {
@@ -95,8 +95,8 @@ export class DimensionTool implements Tool {
                     const p1 = context.getPoint(entityIds[0]);
                     const p2 = context.getPoint(entityIds[1]);
                     if (p1 && p2) {
-                        defaultValue = this.currentPreviewType === 'horizontal_distance' ? Math.abs(p2.x - p1.x)
-                            : this.currentPreviewType === 'vertical_distance' ? Math.abs(p2.y - p1.y)
+                        defaultValue = this.currentPreviewType === 'horizontalDistance' ? Math.abs(p2.x - p1.x)
+                            : this.currentPreviewType === 'verticalDistance' ? Math.abs(p2.y - p1.y)
                             : dist(p1, p2);
                     }
                 }
@@ -109,18 +109,18 @@ export class DimensionTool implements Tool {
                     (value) => {
                         let constraint: GCSConstraint;
                         
-                        if (type === 'point_line_distance') {
+                        if (type === 'pointLineDistance') {
                             const cId = `PointLineDist_${entityIds[0]}_${entityIds[1]}`;
                             constraint = {
                                 id: cId,
-                                type: 'point_line_distance',
+                                type: 'pointLineDistance',
                                 pointId: entityIds[0],
                                 lineId: entityIds[1],
                                 value
                             };
                         } else {
                             const baseType = this.currentPreviewType;
-                            const prefix = baseType === 'distance' ? 'Distance' : baseType === 'horizontal_distance' ? 'HorizDist' : 'VertDist';
+                            const prefix = baseType === 'distance' ? 'Distance' : baseType === 'horizontalDistance' ? 'HorizDist' : 'VertDist';
                             const cId = `${prefix}_${entityIds[0]}_${entityIds[1]}`;
                             
                             constraint = {
@@ -170,7 +170,7 @@ export class DimensionTool implements Tool {
                             const ptId = p1 ? firstId : secondId;
                             const lnId = l1 ? firstId : secondId;
                             this.placingDimension = {
-                                type: 'point_line_distance',
+                                type: 'pointLineDistance',
                                 entityIds: [ptId, lnId]
                             };
                             this.firstEntityId = null;
@@ -200,8 +200,8 @@ export class DimensionTool implements Tool {
 
         if (this.placingDimension) {
             const { type, entityIds } = this.placingDimension;
-            if (type === 'point_line_distance') {
-                renderer.setDimensionPreview('point_line_distance', entityIds, pos);
+            if (type === 'pointLineDistance') {
+                renderer.setDimensionPreview('pointLineDistance', entityIds, pos);
             } else {
                 const p1 = context.getPoint(entityIds[0]);
                 const p2 = context.getPoint(entityIds[1]);

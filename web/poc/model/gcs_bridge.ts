@@ -1,13 +1,13 @@
-import { GCSapi, GCSSketchState } from '../gcsapi/gcsapi.js';
+import { GCSSolver, GCSSketchState } from '../../../ts/gcsapi/dist/index.js';
 import { SketchModel, cloneSketch } from './sketch.js';
 
 export class GCSBridge {
-    private readonly gcs = new GCSapi();
+    private readonly gcs = new GCSSolver();
     private isInitialized = false;
 
-    async init(wasmUrl = '/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen_bg.wasm'): Promise<void> {
+    async init(wasmUrl = '/ui/wasm_solver.wasm'): Promise<void> {
         if (this.isInitialized) return;
-        await this.gcs.init(wasmUrl);
+        await this.gcs.initGoWasm(wasmUrl);
         this.isInitialized = true;
     }
 

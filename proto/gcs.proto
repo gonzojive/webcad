@@ -42,16 +42,12 @@ message PointEntity {
   double y = 2;
 }
 
-// A line segment entity defined by its start and end coordinates.
+// A line segment entity defined by its start and end point IDs.
 message LineEntity {
-  // The X coordinate of the start point.
-  double x1 = 1;
-  // The Y coordinate of the start point.
-  double y1 = 2;
-  // The X coordinate of the end point.
-  double x2 = 3;
-  // The Y coordinate of the end point.
-  double y2 = 4;
+  // The ID of the start point.
+  string p1_id = 1;
+  // The ID of the end point.
+  string p2_id = 2;
 }
 
 // A circle entity defined by its center and radius.
@@ -204,6 +200,38 @@ message FixedConstraint {
   string entity_id = 1;
 }
 
+// Constrains a line segment to be horizontal.
+message HorizontalConstraint {
+  // The ID of the line entity.
+  string line_id = 1;
+}
+
+// Constrains a line segment to be vertical.
+message VerticalConstraint {
+  // The ID of the line entity.
+  string line_id = 1;
+}
+
+// Constrains the horizontal distance between two entities (typically points) to a target value.
+message HorizontalDistanceConstraint {
+  // The ID of the first entity.
+  string entity_a = 1;
+  // The ID of the second entity.
+  string entity_b = 2;
+  // The target distance value.
+  double value = 3;
+}
+
+// Constrains the vertical distance between two entities (typically points) to a target value.
+message VerticalDistanceConstraint {
+  // The ID of the first entity.
+  string entity_a = 1;
+  // The ID of the second entity.
+  string entity_b = 2;
+  // The target distance value.
+  double value = 3;
+}
+
 // The generic Constraint wrapper using a oneof to enforce type safety.
 message Constraint {
   // Unique identifier for the constraint (e.g., "c1").
@@ -221,6 +249,10 @@ message Constraint {
     SymmetricConstraint symmetric = 9;
     MidpointConstraint midpoint = 10;
     FixedConstraint fixed = 11;
+    HorizontalConstraint horizontal = 12;
+    VerticalConstraint vertical = 13;
+    HorizontalDistanceConstraint horizontal_distance = 14;
+    VerticalDistanceConstraint vertical_distance = 15;
   }
 }
 

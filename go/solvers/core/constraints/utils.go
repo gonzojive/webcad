@@ -1,7 +1,9 @@
 package constraints
 
 import (
+	"fmt"
 	"github.com/gonzojive/webcad/proto"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 )
 
 // getParams extracts the parameters of an entity as a flat float64 slice.
@@ -17,10 +19,7 @@ func getParams(ent *schema.Entity) []float64 {
 		}
 		return []float64{e.Point.X, e.Point.Y}
 	case *schema.Entity_Line:
-		if e.Line == nil {
-			return nil
-		}
-		return []float64{e.Line.X1, e.Line.Y1, e.Line.X2, e.Line.Y2}
+		return nil
 	case *schema.Entity_Circle:
 		if e.Circle == nil {
 			return nil
@@ -71,4 +70,34 @@ func isPointOrCenter(ent *schema.Entity) bool {
 		return true
 	}
 	return false
+}
+
+// getLinePoints retrieves the start and end point IDs and entities for a line entity from the entities map.
+func getLinePoints(lineEnt *schema.Entity, entities map[gcstypes.EntityID]*schema.Entity) (p1Id, p2Id gcstypes.EntityID, p1, p2 *schema.PointEntity, err error) {
+	line, ok := lineEnt.GetEntityType().(*schema.Entity_Line)
+	if !ok || line.Line == nil {
+		return "", "", nil, nil, fmt.Errorf("entity %q is not a line", lineEnt.GetId())
+	}
+	
+	p1Id = gcstypes.EntityID(line.Line.P1Id)
+	p1Ent, ok := entities[p1Id]
+	if !ok {
+		return "", "", nil, nil, fmt.Errorf("line %q references missing start point %q", lineEnt.GetId(), p1Id)
+	}
+	p1Wrapper, ok := p1Ent.GetEntityType().(*schema.Entity_Point)
+	if !ok || p1Wrapper.Point == nil {
+		return "", "", nil, nil, fmt.Errorf("line %q start point %q is not a point entity", lineEnt.GetId(), p1Id)
+	}
+	
+	p2Id = gcstypes.EntityID(line.Line.P2Id)
+	p2Ent, ok := entities[p2Id]
+	if !ok {
+		return "", "", nil, nil, fmt.Errorf("line %q references missing end point %q", lineEnt.GetId(), p2Id)
+	}
+	p2Wrapper, ok := p2Ent.GetEntityType().(*schema.Entity_Point)
+	if !ok || p2Wrapper.Point == nil {
+		return "", "", nil, nil, fmt.Errorf("line %q end point %q is not a point entity", lineEnt.GetId(), p2Id)
+	}
+	
+	return p1Id, p2Id, p1Wrapper.Point, p2Wrapper.Point, nil
 }

@@ -1,4 +1,4 @@
-import { GCSSketchState } from '../gcsapi/gcsapi.js';
+import { GCSSketchState } from '../../../ts/gcsapi/dist/index.js';
 import { SketchModel } from './sketch.js';
 
 export class SketchStore {

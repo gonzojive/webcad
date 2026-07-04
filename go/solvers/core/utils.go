@@ -33,10 +33,7 @@ func GetParams(ent *schema.Entity) []float64 {
 		}
 		return []float64{e.Point.X, e.Point.Y}
 	case *schema.Entity_Line:
-		if e.Line == nil {
-			return nil
-		}
-		return []float64{e.Line.X1, e.Line.Y1, e.Line.X2, e.Line.Y2}
+		return nil
 	case *schema.Entity_Circle:
 		if e.Circle == nil {
 			return nil
@@ -74,12 +71,7 @@ func SetParams(ent *schema.Entity, params []float64) {
 			e.Point.Y = params[1]
 		}
 	case *schema.Entity_Line:
-		if e.Line != nil && len(params) >= 4 {
-			e.Line.X1 = params[0]
-			e.Line.Y1 = params[1]
-			e.Line.X2 = params[2]
-			e.Line.Y2 = params[3]
-		}
+		// Line has no parameters of its own to set.
 	case *schema.Entity_Circle:
 		if e.Circle != nil && len(params) >= 3 {
 			e.Circle.Cx = params[0]

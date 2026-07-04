@@ -16,7 +16,7 @@ ts_project(
     source_map = True,
     tsconfig = "//web:tsconfig",
     deps = [
-        "//web/poc/gcsapi",
+        "//ts/gcsapi",
         "//web/poc/geometry",
         "//web/poc/ui/interfaces",
     ],

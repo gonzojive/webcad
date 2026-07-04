@@ -83,14 +83,20 @@ func TestDistanceEvaluator_PtPt_Jacobian(t *testing.T) {
 
 func TestDistanceEvaluator_PtLn_Jacobian(t *testing.T) {
 	p1 := &schema.Entity{Id: "p1", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 1.0, Y: 2.0}}}
-	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{X1: 0.0, Y1: 0.0, X2: 4.0, Y2: 0.0}}}
+	p1a := &schema.Entity{Id: "p1a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: 0.0}}}
+	p2a := &schema.Entity{Id: "p2a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 4.0, Y: 0.0}}}
+
+	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "p1a", P2Id: "p2a"}}}
 	c := &schema.Constraint{
 		Id: "c",
 		ConstraintType: &schema.Constraint_Distance{
 			Distance: &schema.DistanceConstraint{EntityA: "p1", EntityB: "l1", Value: 2.0},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"p1": p1, "l1": l1})
+	entities := map[gcstypes.EntityID]*schema.Entity{
+		"p1": p1, "p1a": p1a, "p2a": p2a, "l1": l1,
+	}
+	eval, err := constraints.NewEvaluator(c, entities)
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -101,7 +107,9 @@ func TestDistanceEvaluator_PtLn_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[gcstypes.EntityID]int{"p1": 0, "l1": 2}
+	paramIndices := map[gcstypes.EntityID]int{
+		"p1": 0, "p1a": 2, "p2a": 4,
+	}
 	n := 6
 	m := je.NumEquations()
 

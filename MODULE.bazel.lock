@@ -895,7 +895,7 @@
     "@@rules_rust+//crate_universe:extensions.bzl%crate": {
       "general": {
         "bzlTransitiveDigest": "b4+RYpkdcNTH+KdD9JtSZbAiz3JrqHUili7nrw3BL10=",
-        "usagesDigest": "tkHl3+1Jt+nzozwOIGkxHxdAnYUPrhRheoMkR0Rz5CQ=",
+        "usagesDigest": "SOLAYsNtQtkciyg1KmLm6D06B/zYh+MsNx2eg6REPgE=",
         "recordedInputs": [
           "ENV:CARGO_BAZEL_DEBUG \\0",
           "ENV:CARGO_BAZEL_GENERATOR_SHA256 \\0",
@@ -922,8 +922,7 @@
           "FILE:@@+third_party_deps+ezpz//Cargo.toml 50308ea2ab516f0e361b46c9fe03c34f403ade11769ce1616ce15726f6e819d7",
           "FILE:@@+third_party_deps+ezpz//ezpz/Cargo.toml 4b3dd4a46f5215d3a3672e1a0721e1765eed7a8d9a77adad94246454d3025141",
           "FILE:@@+third_party_deps+ezpz//ezpz-cli/Cargo.toml 19b479d52e49e4218240fb6903e6bf77f3024abff8205d4460619ef24b07267b",
-          "FILE:@@+third_party_deps+ezpz//ezpz-wasm/Cargo.toml 01eb7464371853c3e9902527db58972db9418ec0313772d7ce0a3f458a4e8e0d",
-          "FILE:@@//web/poc/solver-wasm/Cargo.toml 9024abfacb7840ccdc54f41d566c0011781fbe6ab8b24fdbb67bbe15dd576d12"
+          "FILE:@@+third_party_deps+ezpz//ezpz-wasm/Cargo.toml 01eb7464371853c3e9902527db58972db9418ec0313772d7ce0a3f458a4e8e0d"
         ],
         "generatedRepoSpecs": {
           "crates": {

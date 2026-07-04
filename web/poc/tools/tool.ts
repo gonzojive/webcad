@@ -1,6 +1,6 @@
 import { Vector2D } from '../geometry/vector.js';
 import { IRenderer, IInteractionProvider } from '../ui/interfaces/viewport_interfaces.js';
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../ts/gcsapi/dist/index.js';
 
 export interface ToolContext {
     addPoint(pos: Vector2D): string;

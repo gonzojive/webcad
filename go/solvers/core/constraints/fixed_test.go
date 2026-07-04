@@ -55,9 +55,21 @@ func TestFixedEvaluator(t *testing.T) {
 			name: "FixedLine",
 			entities: []*schema.Entity{
 				{
+					Id: "l1_p1",
+					EntityType: &schema.Entity_Point{
+						Point: &schema.PointEntity{X: 1.0, Y: 2.0},
+					},
+				},
+				{
+					Id: "l1_p2",
+					EntityType: &schema.Entity_Point{
+						Point: &schema.PointEntity{X: 3.0, Y: 4.0},
+					},
+				},
+				{
 					Id: "l1",
 					EntityType: &schema.Entity_Line{
-						Line: &schema.LineEntity{X1: 1.0, Y1: 2.0, X2: 3.0, Y2: 4.0},
+						Line: &schema.LineEntity{P1Id: "l1_p1", P2Id: "l1_p2"},
 					},
 				},
 			},
@@ -70,7 +82,7 @@ func TestFixedEvaluator(t *testing.T) {
 				},
 			},
 			targetID:     "l1",
-			paramIndices: map[gcstypes.EntityID]int{"l1": 0},
+			paramIndices: map[gcstypes.EntityID]int{"l1_p1": 0, "l1_p2": 2},
 			numEqs:       4,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{

@@ -11,7 +11,7 @@ ts_project(
     deps = [
         "//web:node_modules/@angular/common",
         "//web:node_modules/@angular/core",
-        "//web/poc/gcsapi",
+        "//ts/gcsapi",
         "//web/poc/geometry",
         "//web/poc/ui/app/services",
     ],

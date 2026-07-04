@@ -4,7 +4,7 @@ import { ToolService } from '../services/tool.service.js';
 import { IRenderer, IInteractionProvider } from '../../interfaces/viewport_interfaces.js';
 import { Vector2D, dist } from '../../../geometry/vector.js';
 import { projectPointOntoLine } from '../../../geometry/project.js';
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint, GCSValueConstraint } from '../../../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 
 declare const Konva: any;
 
@@ -36,7 +36,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     private tempCirclePreview: any = null;
     private tempPointPreview: any = null;
     private tempDimensionPreview: {
-        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance';
+        type: 'distance' | 'horizontalDistance' | 'verticalDistance' | 'pointLineDistance';
         entityIds: string[];
         mousePos: Vector2D;
     } | null = null;
@@ -183,7 +183,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     }
 
     setDimensionPreview(
-        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance',
+        type: 'distance' | 'horizontalDistance' | 'verticalDistance' | 'pointLineDistance',
         entityIds: string[],
         pos: Vector2D
     ) {
@@ -316,11 +316,11 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
                     if (con) {
                         const newOffset = this.calculateConstraintOffset(con, pos);
                         if (newOffset !== null) {
-                            if (con.type === 'point_line_distance') {
+                            if (con.type === 'pointLineDistance') {
                                 const offsets = newOffset as { x: number; y: number };
                                 con.layoutOffsetX = offsets.x;
                                 con.layoutOffsetY = offsets.y;
-                            } else if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance') {
+                            } else if (con.type === 'distance' || con.type === 'horizontalDistance' || con.type === 'verticalDistance') {
                                 con.layoutOffset = newOffset as number;
                             }
                             this.redrawAll();
@@ -387,10 +387,10 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         switch (con.type) {
             case 'coincident':
             case 'distance':
-            case 'horizontal_distance':
-            case 'vertical_distance':
+            case 'horizontalDistance':
+            case 'verticalDistance':
                 return con.p1Id === entityId || con.p2Id === entityId;
-            case 'point_line_distance':
+            case 'pointLineDistance':
                 return con.pointId === entityId || con.lineId === entityId;
             case 'vertical':
             case 'horizontal':
@@ -546,7 +546,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
             const { type, entityIds, mousePos } = this.tempDimensionPreview;
             const previewColor = 'rgba(99, 102, 241, 0.6)';
             
-            if (type === 'point_line_distance') {
+            if (type === 'pointLineDistance') {
                 const p = this.workspace.getPoint(entityIds[0]);
                 const l = this.workspace.getLine(entityIds[1]);
                 if (p && l) {
@@ -565,8 +565,8 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
                 const p1 = this.workspace.getPoint(entityIds[0]);
                 const p2 = this.workspace.getPoint(entityIds[1]);
                 if (p1 && p2) {
-                    const val = type === 'horizontal_distance' ? Math.abs(p2.x - p1.x)
-                        : type === 'vertical_distance' ? Math.abs(p2.y - p1.y)
+                    const val = type === 'horizontalDistance' ? Math.abs(p2.x - p1.x)
+                        : type === 'verticalDistance' ? Math.abs(p2.y - p1.y)
                         : dist(p1, p2);
                         
                     const previewGroup = new Konva.Group({ listening: false });
@@ -657,13 +657,13 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
             if (con.type === 'coincident') {
                 const p1 = this.workspace.getPoint(con.p1Id);
                 if (p1) this.drawCoincidentConstraint(p1, color, conGroup, invS);
-            } else if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance') {
+            } else if (con.type === 'distance' || con.type === 'horizontalDistance' || con.type === 'verticalDistance') {
                 const p1 = this.workspace.getPoint(con.p1Id);
                 const p2 = this.workspace.getPoint(con.p2Id);
                 if (p1 && p2) {
                     this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth, conGroup, con, invS);
                 }
-            } else if (con.type === 'point_line_distance') {
+            } else if (con.type === 'pointLineDistance') {
                 const p = this.workspace.getPoint(con.pointId);
                 const l = this.workspace.getLine(con.lineId);
                 if (p && l) {
@@ -715,7 +715,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     }
 
     private drawDistanceConstraint(
-        type: 'distance' | 'horizontal_distance' | 'vertical_distance',
+        type: 'distance' | 'horizontalDistance' | 'verticalDistance',
         p1: GCSPoint,
         p2: GCSPoint,
         val: number,
@@ -735,10 +735,10 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         if (type === 'distance') {
             nx = -dy / len;
             ny = dx / len;
-        } else if (type === 'horizontal_distance') {
+        } else if (type === 'horizontalDistance') {
             nx = 0;
             ny = 1;
-        } else if (type === 'vertical_distance') {
+        } else if (type === 'verticalDistance') {
             nx = 1;
             ny = 0;
         }
@@ -752,11 +752,11 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         const ap2X = p2.x + offX;
         const ap2Y = p2.y + offY;
 
-        if (type === 'horizontal_distance') {
+        if (type === 'horizontalDistance') {
             const ext1 = new Konva.Line({ points: [p1.x, p1.y, p1.x, ap1Y], stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 1 * invS, dash: [4, 4] });
             const ext2 = new Konva.Line({ points: [p2.x, p2.y, p2.x, ap2Y], stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 1 * invS, dash: [4, 4] });
             parentGroup.add(ext1, ext2);
-        } else if (type === 'vertical_distance') {
+        } else if (type === 'verticalDistance') {
             const ext1 = new Konva.Line({ points: [p1.x, p1.y, ap1X, p1.y], stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 1 * invS, dash: [4, 4] });
             const ext2 = new Konva.Line({ points: [p2.x, p2.y, ap2X, p2.y], stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 1 * invS, dash: [4, 4] });
             parentGroup.add(ext1, ext2);
@@ -964,7 +964,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     }
 
     private drawDistanceConstraintPreview(
-        type: 'distance' | 'horizontal_distance' | 'vertical_distance',
+        type: 'distance' | 'horizontalDistance' | 'verticalDistance',
         p1: GCSPoint,
         p2: GCSPoint,
         val: number,
@@ -983,10 +983,10 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         if (type === 'distance') {
             nx = -dy / len;
             ny = dx / len;
-        } else if (type === 'horizontal_distance') {
+        } else if (type === 'horizontalDistance') {
             nx = 0;
             ny = 1;
-        } else if (type === 'vertical_distance') {
+        } else if (type === 'verticalDistance') {
             nx = 1;
             ny = 0;
         }
@@ -1100,14 +1100,14 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     }
 
     private calculateConstraintOffset(con: GCSConstraint, mousePos: Vector2D): number | { x: number; y: number } | null {
-        if (con.type === 'point_line_distance') {
+        if (con.type === 'pointLineDistance') {
             const p = this.workspace.getPoint(con.pointId);
             if (!p) return null;
             return {
                 x: mousePos.x - p.x,
                 y: mousePos.y - p.y
             };
-        } else if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance') {
+        } else if (con.type === 'distance' || con.type === 'horizontalDistance' || con.type === 'verticalDistance') {
             const p1 = this.workspace.getPoint(con.p1Id);
             const p2 = this.workspace.getPoint(con.p2Id);
             if (!p1 || !p2) return null;
@@ -1122,10 +1122,10 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
             if (con.type === 'distance') {
                 nx = -dy / len;
                 ny = dx / len;
-            } else if (con.type === 'horizontal_distance') {
+            } else if (con.type === 'horizontalDistance') {
                 nx = 0;
                 ny = 1;
-            } else if (con.type === 'vertical_distance') {
+            } else if (con.type === 'verticalDistance') {
                 nx = 1;
                 ny = 0;
             }

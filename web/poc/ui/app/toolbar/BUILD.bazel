@@ -39,7 +39,6 @@ js_test(
     name = "test",
     data = [
         ":test_lib",
-        "//web/poc/solver-wasm:solver_wasm_bindgen",
     ],
     entry_point = "toolbar.component.test.js",
 )

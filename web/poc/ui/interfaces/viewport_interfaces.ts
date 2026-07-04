@@ -18,7 +18,7 @@ export interface IRenderer {
     clearPointPreview(): void;
 
     setDimensionPreview(
-        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance',
+        type: 'distance' | 'horizontalDistance' | 'verticalDistance' | 'pointLineDistance',
         entityIds: string[],
         pos: Vector2D
     ): void;

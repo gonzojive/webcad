@@ -111,9 +111,21 @@ func TestBFGSSolver(t *testing.T) {
 				Id: "fixed_line_dist",
 				Entities: []*schema.Entity{
 					{
+						Id: "l1_p1",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 0, Y: 0},
+						},
+					},
+					{
+						Id: "l1_p2",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 10, Y: 0},
+						},
+					},
+					{
 						Id: "l1",
 						EntityType: &schema.Entity_Line{
-							Line: &schema.LineEntity{X1: 0, Y1: 0, X2: 10, Y2: 0},
+							Line: &schema.LineEntity{P1Id: "l1_p1", P2Id: "l1_p2"},
 						},
 					},
 					{
@@ -145,15 +157,16 @@ func TestBFGSSolver(t *testing.T) {
 				},
 			},
 			assert: func(t *testing.T, res *schema.SolveResult) {
-				l1Solved := res.SolvedState.Entities["l1"].GetLine()
-				p2Solved := res.SolvedState.Entities["p2"].GetPoint()
-				if math.Abs(l1Solved.X1) > 1e-4 || math.Abs(l1Solved.Y1) > 1e-4 ||
-					math.Abs(l1Solved.X2-10) > 1e-4 || math.Abs(l1Solved.Y2) > 1e-4 {
-					t.Errorf("Fixed line L1 moved! Got (%f,%f) -> (%f,%f), expected (0,0) -> (10,0)",
-						l1Solved.X1, l1Solved.Y1, l1Solved.X2, l1Solved.Y2)
+				p1Solved := res.SolvedState.Entities["l1_p1"].GetPoint()
+				p2Solved := res.SolvedState.Entities["l1_p2"].GetPoint()
+				p2_Solved := res.SolvedState.Entities["p2"].GetPoint()
+				if math.Abs(p1Solved.X) > 1e-4 || math.Abs(p1Solved.Y) > 1e-4 ||
+					math.Abs(p2Solved.X-10) > 1e-4 || math.Abs(p2Solved.Y) > 1e-4 {
+					t.Errorf("Fixed line L1 endpoints moved! Got (%f,%f) and (%f,%f), expected (0,0) and (10,0)",
+						p1Solved.X, p1Solved.Y, p2Solved.X, p2Solved.Y)
 				}
-				if math.Abs(math.Abs(p2Solved.Y)-10) > 1e-4 {
-					t.Errorf("Distance to line is incorrect! P2.Y = %f, expected 10 or -10", p2Solved.Y)
+				if math.Abs(math.Abs(p2_Solved.Y)-10) > 1e-4 {
+					t.Errorf("Distance to line is incorrect! P2.Y = %f, expected 10 or -10", p2_Solved.Y)
 				}
 			},
 		},

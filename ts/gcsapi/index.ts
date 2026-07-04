@@ -295,28 +295,20 @@ export class GCSSolver {
         }
         
         for (const l of state.lines) {
-            const p1 = state.points.find(pt => pt.id === l.p1Id);
-            const p2 = state.points.find(pt => pt.id === l.p2Id);
-            if (!p1 || !p2) continue;
-            
             entities.push({
                 id: l.id,
                 line: {
-                    x1: p1.x, y1: p1.y,
-                    x2: p2.x, y2: p2.y
+                    p1Id: l.p1Id,
+                    p2Id: l.p2Id
                 }
             });
         }
         
         for (const c of state.circles) {
-            const center = state.points.find(pt => pt.id === c.centerId);
-            if (!center) continue;
-            
             entities.push({
                 id: c.id,
                 circle: {
-                    cx: center.x,
-                    cy: center.y,
+                    centerId: c.centerId,
                     r: c.radius
                 }
             });
@@ -343,9 +335,34 @@ export class GCSSolver {
                     });
                     break;
                 case 'horizontalDistance':
+                    goConstraints.push({
+                        id: c.id,
+                        horizontalDistance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
+                    });
+                    break;
                 case 'verticalDistance':
-                    // We can map these to distance for now or ignore since the proto doesn't explicitly have horizontal/vertical yet, 
-                    // or implement a workaround. For now we will rely on distance if possible.
+                    goConstraints.push({
+                        id: c.id,
+                        verticalDistance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
+                    });
+                    break;
+                case 'pointLineDistance':
+                    goConstraints.push({
+                        id: c.id,
+                        distance: { entityA: c.pointId, entityB: c.lineId, value: c.value }
+                    });
+                    break;
+                case 'horizontal':
+                    goConstraints.push({
+                        id: c.id,
+                        horizontal: { lineId: c.lineId }
+                    });
+                    break;
+                case 'vertical':
+                    goConstraints.push({
+                        id: c.id,
+                        vertical: { lineId: c.lineId }
+                    });
                     break;
                 case 'parallel':
                     goConstraints.push({

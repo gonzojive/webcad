@@ -23,10 +23,23 @@ ts_project(
     ],
 )
 
+genrule(
+    name = "copy_wasm_solver",
+    srcs = ["//go/cmd/wasm_solver:wasm_solver"],
+    outs = ["wasm_solver.wasm"],
+    cmd = "cp $< $@",
+)
+
+genrule(
+    name = "copy_wasm_exec",
+    srcs = ["@go_sdk//:lib/wasm/wasm_exec.js"],
+    outs = ["wasm_exec.js"],
+    cmd = "cp $< $@",
+)
+
 esbuild(
     name = "bundle",
     entry_point = "main.ts",
-    external = ["../solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js"],
     format = "esm",
     minify = True,
     output = "bundle.js",
@@ -37,7 +50,11 @@ esbuild(
 
 filegroup(
     name = "assets",
-    srcs = ["index.html"],
+    srcs = [
+        "index.html",
+        ":wasm_solver.wasm",
+        ":wasm_exec.js",
+    ],
 )
 
 ts_config(

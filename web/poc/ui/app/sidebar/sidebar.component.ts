@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkspaceService } from '../services/workspace.service.js';
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 import { dist } from '../../../geometry/vector.js';
 
 @Component({
@@ -396,9 +396,9 @@ export class SidebarComponent {
         switch (con.type) {
             case 'coincident': return `${con.p1Id} coincident with ${con.p2Id}`;
             case 'distance': return `${con.p1Id} ↔ ${con.p2Id}: ${con.value.toFixed(2)} mm`;
-            case 'horizontal_distance': return `${con.p1Id} ↔ ${con.p2Id} (H): ${con.value.toFixed(2)} mm`;
-            case 'vertical_distance': return `${con.p1Id} ↔ ${con.p2Id} (V): ${con.value.toFixed(2)} mm`;
-            case 'point_line_distance': return `${con.pointId} to line ${con.lineId}: ${con.value.toFixed(2)} mm`;
+            case 'horizontalDistance': return `${con.p1Id} ↔ ${con.p2Id} (H): ${con.value.toFixed(2)} mm`;
+            case 'verticalDistance': return `${con.p1Id} ↔ ${con.p2Id} (V): ${con.value.toFixed(2)} mm`;
+            case 'pointLineDistance': return `${con.pointId} to line ${con.lineId}: ${con.value.toFixed(2)} mm`;
             case 'vertical': return `line ${con.lineId} vertical`;
             case 'horizontal': return `line ${con.lineId} horizontal`;
             case 'parallel': return `line ${con.line1Id} parallel to ${con.line2Id}`;
