@@ -18,11 +18,13 @@ export class CanvasViewport {
 
     private tempLinePreview: any = null;
     private tempCirclePreview: any = null;
+    private tempPointPreview: any = null;
     private tempDimensionPreview: {
         type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance';
         entityIds: string[];
         mousePos: { x: number; y: number };
     } | null = null;
+    private draggedConstraintId: string | null = null;
 
     // Viewport panning/zooming state
     private isPanning = false;
@@ -36,7 +38,7 @@ export class CanvasViewport {
     private onEntityClick: ((id: string, event: any) => void) | null = null;
     private onConstraintDblClick: ((id: string, event: any) => void) | null = null;
     private onStageMouseDown: ((pos: { x: number; y: number }, event: any) => void) | null = null;
-    private onStageMouseMove: ((pos: { x: number; y: number }) => void) | null = null;
+    private onStageMouseMove: ((pos: { x: number; y: number }, e: any) => void) | null = null;
 
     constructor(containerId: string, model: SketchStateModel) {
         this.containerId = containerId;
@@ -200,10 +202,37 @@ export class CanvasViewport {
             this.tempCirclePreview.destroy();
             this.tempCirclePreview = null;
         }
+        if (this.tempPointPreview) {
+            this.tempPointPreview.destroy();
+            this.tempPointPreview = null;
+        }
         if (this.snapIndicator) {
             this.snapIndicator.visible(false);
         }
         this.mainLayer.batchDraw();
+    }
+
+    public setPointPreview(x: number, y: number) {
+        if (!this.tempPointPreview) {
+            this.tempPointPreview = new Konva.Circle({
+                radius: 4.5,
+                fill: 'rgba(51, 65, 85, 0.4)',
+                stroke: 'rgba(255, 255, 255, 0.8)',
+                strokeWidth: 1,
+                listening: false
+            });
+            this.mainLayer.add(this.tempPointPreview);
+        }
+        this.tempPointPreview.position({ x, y });
+        this.tempPointPreview.visible(true);
+        this.mainLayer.draw();
+    }
+
+    public clearPointPreview() {
+        if (this.tempPointPreview) {
+            this.tempPointPreview.visible(false);
+            this.mainLayer.draw();
+        }
     }
 
     // --- Drawing & Rendering Logic ---
@@ -401,8 +430,7 @@ export class CanvasViewport {
 
             const conGroup = new Konva.Group({
                 id: con.id,
-                listening: true,
-                draggable: this.model.getTool() === 'select'
+                listening: true
             });
 
             conGroup.on('mouseenter', () => {
@@ -434,34 +462,11 @@ export class CanvasViewport {
                 }
             });
 
-            conGroup.on('dragmove', (e: any) => {
-                e.cancelBubble = true;
-                const pointer = this.stage.getPointerPosition();
-                if (!pointer) return;
-                
-                const canvasPos = {
-                    x: (pointer.x - this.stage.x()) / this.stage.scaleX(),
-                    y: (pointer.y - this.stage.y()) / this.stage.scaleY()
-                };
-
-                conGroup.position({ x: 0, y: 0 });
-
-                const newOffset = this.calculateConstraintOffset(con, canvasPos);
-                if (newOffset !== null) {
-                    if (con.type === 'point_line_distance') {
-                        const offsets = newOffset as { x: number; y: number };
-                        con.layoutOffsetX = offsets.x;
-                        con.layoutOffsetY = offsets.y;
-                    } else if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance') {
-                        con.layoutOffset = newOffset as number;
-                    }
-                    this.model.updateConstraint(con);
-                    this.redrawAll();
+            conGroup.on('mousedown', (e: any) => {
+                if (this.model.getTool() === 'select') {
+                    e.cancelBubble = true;
+                    this.draggedConstraintId = con.id;
                 }
-            });
-
-            conGroup.on('dragend', (e: any) => {
-                e.cancelBubble = true;
             });
 
             switch (con.type) {
@@ -1136,8 +1141,6 @@ export class CanvasViewport {
             const conGroup = this.mainLayer.findOne('#' + con.id) as any;
             if (!conGroup) return;
 
-            conGroup.draggable(this.model.getTool() === 'select');
-
             const isSelected = selectedEntityIds.includes(con.id);
             const isHovered = hoveredConstraintId === con.id;
             const color = isSelected || isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
@@ -1227,8 +1230,28 @@ export class CanvasViewport {
             }
 
             const pos = this.getStagePointerPosition();
-            if (pos && this.onStageMouseMove) {
-                this.onStageMouseMove(pos);
+            if (pos) {
+                if (this.draggedConstraintId !== null) {
+                    const con = this.model.getConstraint(this.draggedConstraintId);
+                    if (con) {
+                        const newOffset = this.calculateConstraintOffset(con, pos);
+                        if (newOffset !== null) {
+                            if (con.type === 'point_line_distance') {
+                                const offsets = newOffset as { x: number; y: number };
+                                con.layoutOffsetX = offsets.x;
+                                con.layoutOffsetY = offsets.y;
+                            } else if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance') {
+                                con.layoutOffset = newOffset as number;
+                            }
+                            this.model.updateConstraint(con);
+                            this.redrawAll();
+                        }
+                    }
+                }
+
+                if (this.onStageMouseMove) {
+                    this.onStageMouseMove(pos, e);
+                }
             }
         });
 
@@ -1238,6 +1261,17 @@ export class CanvasViewport {
                 this.stage.container().style.cursor = 
                     this.model.getTool() === 'select' ? 'default' : 'crosshair';
             }
+
+            if (this.draggedConstraintId !== null) {
+                this.draggedConstraintId = null;
+                if (this.onDragEnd) this.onDragEnd();
+                this.redrawAll();
+            }
+        });
+
+        this.stage.on('mouseleave', () => {
+            this.updateSnapIndicator(0, 0, false);
+            this.clearPointPreview();
         });
 
         // Double Click to Zoom to Fit

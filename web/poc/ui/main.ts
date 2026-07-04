@@ -156,9 +156,14 @@ export class SketchController {
         this.viewport.clearDimensionPreview();
     }
 
+    public cancelActiveOperation() {
+        this.resetDrawingState();
+        this.model.setTool('select');
+    }
+
     private updateToolbarUI() {
         const activeTool = this.model.getTool();
-        const tools: ToolMode[] = ['select', 'point', 'line', 'circle'];
+        const tools: ToolMode[] = ['select', 'point', 'line', 'circle', 'dimension'];
         tools.forEach(t => {
             const btn = document.getElementById(`btn-${t}`);
             if (btn) {
@@ -358,6 +363,7 @@ export class SketchController {
         
         if (snap) {
             this.viewport.updateSnapIndicator(snap.x, snap.y, true);
+            this.viewport.clearPointPreview();
         } else {
             this.viewport.updateSnapIndicator(0, 0, false);
         }
@@ -365,6 +371,14 @@ export class SketchController {
         const targetX = snap ? snap.x : pos.x;
         const targetY = snap ? snap.y : pos.y;
         const currentTool = this.model.getTool();
+
+        if (!snap) {
+            if (currentTool === 'point' || currentTool === 'line' || currentTool === 'circle') {
+                this.viewport.setPointPreview(pos.x, pos.y);
+            } else {
+                this.viewport.clearPointPreview();
+            }
+        }
 
         if (currentTool === 'line' && this.lineStartPointId) {
             const start = this.model.getPoint(this.lineStartPointId);
@@ -859,7 +873,9 @@ window.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (e.key === 'd' || e.key === 'D') {
+        if (e.key === 'Escape') {
+            controller.cancelActiveOperation();
+        } else if (e.key === 'd' || e.key === 'D') {
             controller.model.setTool('dimension');
         } else if (e.key === 'f' || e.key === 'F') {
             controller.viewport.zoomToFit();
