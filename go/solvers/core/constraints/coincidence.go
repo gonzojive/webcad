@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"math"
 
@@ -19,16 +20,16 @@ const (
 // CoincidenceEvaluator evaluates coincidence constraints (Point-Point, Point-Line, Point-Circle).
 type CoincidenceEvaluator struct {
 	subCase  coincidenceSubCase
-	idA, idB schema.EntityID // idA is always the Point for Pt-Ln and Pt-Cir
+	idA, idB gcstypes.EntityID // idA is always the Point for Pt-Ln and Pt-Cir
 	invC     float64
 	sqrtInvC float64 // Precomputed sqrt(1/C) for Pt-Ln
 }
 
 // NewCoincidenceEvaluator creates a new CoincidenceEvaluator for the given constraint.
-func NewCoincidenceEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*CoincidenceEvaluator, error) {
+func NewCoincidenceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*CoincidenceEvaluator, error) {
 	cc := c.GetCoincidence()
-	idA := schema.EntityID(cc.GetEntityA())
-	idB := schema.EntityID(cc.GetEntityB())
+	idA := gcstypes.EntityID(cc.GetEntityA())
+	idB := gcstypes.EntityID(cc.GetEntityB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -109,7 +110,7 @@ func (c *CoincidenceEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[schema.EntityID]int,
+	paramIndices map[gcstypes.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[c.idA]
 	idx2, ok2 := paramIndices[c.idB]
@@ -175,7 +176,7 @@ func (c *CoincidenceEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (c *CoincidenceEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (c *CoincidenceEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[c.idA]
 	idx2, ok2 := paramIndices[c.idB]
 	if !ok1 || !ok2 {

@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"math"
 
@@ -10,16 +11,16 @@ import (
 
 // AngleEvaluator evaluates the angle constraint between two line entities.
 type AngleEvaluator struct {
-	idA, idB  schema.EntityID
+	idA, idB  gcstypes.EntityID
 	sinTarget float64
 	cosTarget float64
 }
 
 // NewAngleEvaluator creates a new AngleEvaluator for the given angle constraint.
-func NewAngleEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*AngleEvaluator, error) {
+func NewAngleEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*AngleEvaluator, error) {
 	a := c.GetAngle()
-	idA := schema.EntityID(a.GetEntityA())
-	idB := schema.EntityID(a.GetEntityB())
+	idA := gcstypes.EntityID(a.GetEntityA())
+	idB := gcstypes.EntityID(a.GetEntityB())
 	if _, ok := entities[idA]; !ok {
 		return nil, fmt.Errorf("entity A %s not found", idA)
 	}
@@ -47,7 +48,7 @@ func (a *AngleEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[schema.EntityID]int,
+	paramIndices map[gcstypes.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[a.idA]
 	idx2, ok2 := paramIndices[a.idB]
@@ -88,7 +89,7 @@ func (a *AngleEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (a *AngleEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (a *AngleEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[a.idA]
 	idx2, ok2 := paramIndices[a.idB]
 	if !ok1 || !ok2 {

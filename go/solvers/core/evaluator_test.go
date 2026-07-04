@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 	"testing"
 
@@ -410,9 +411,9 @@ func TestCalculateConstraintResidual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			entityMap := make(map[schema.EntityID]*schema.Entity)
+			entityMap := make(map[gcstypes.EntityID]*schema.Entity)
 			for _, ent := range tt.entities {
-				entityMap[schema.EntityID(ent.Id)] = ent
+				entityMap[gcstypes.EntityID(ent.Id)] = ent
 			}
 
 			// Construct scenario

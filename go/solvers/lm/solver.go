@@ -5,6 +5,7 @@
 package lm
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"errors"
 	"fmt"
 	"sync"
@@ -60,7 +61,7 @@ func New() *LMSolver {
 }
 
 // ID returns the unique identifier "lm" for this solver.
-func (s *LMSolver) ID() core.SolverID {
+func (s *LMSolver) ID() gcstypes.SolverID {
 	return "lm"
 }
 

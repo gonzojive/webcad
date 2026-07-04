@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"github.com/gonzojive/webcad/proto"
 	"gonum.org/v1/gonum/mat"
@@ -8,14 +9,14 @@ import (
 
 // MidpointEvaluator evaluates midpoint constraints, constraining a point to be the midpoint of a line segment.
 type MidpointEvaluator struct {
-	idPt, idLn schema.EntityID
+	idPt, idLn gcstypes.EntityID
 }
 
 // NewMidpointEvaluator creates a new MidpointEvaluator for the given constraint.
-func NewMidpointEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*MidpointEvaluator, error) {
+func NewMidpointEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*MidpointEvaluator, error) {
 	m := c.GetMidpoint()
-	idPt := schema.EntityID(m.GetPoint())
-	idLn := schema.EntityID(m.GetLine())
+	idPt := gcstypes.EntityID(m.GetPoint())
+	idLn := gcstypes.EntityID(m.GetLine())
 	entPt, okPt := entities[idPt]
 	if !okPt {
 		return nil, fmt.Errorf("point entity %s not found", idPt)
@@ -34,7 +35,7 @@ func NewMidpointEvaluator(c *schema.Constraint, entities map[schema.EntityID]*sc
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (m *MidpointEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (m *MidpointEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idxPt, ok1 := paramIndices[m.idPt]
 	idxLn, ok2 := paramIndices[m.idLn]
 	if !ok1 || !ok2 {
@@ -69,7 +70,7 @@ func (m *MidpointEvaluator) NumEquations() int {
 }
 
 // EvaluateJacobian evaluates the unsquared residuals and writes them to J.
-func (m *MidpointEvaluator) EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[schema.EntityID]int) {
+func (m *MidpointEvaluator) EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[gcstypes.EntityID]int) {
 	idxPt, ok1 := paramIndices[m.idPt]
 	idxLn, ok2 := paramIndices[m.idLn]
 	if !ok1 || !ok2 {

@@ -3,6 +3,7 @@
 package core
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"github.com/gonzojive/webcad/proto"
 )
 
@@ -14,7 +15,7 @@ type Solver interface {
 	// ID returns the unique identifier for this solver.
 	// This ID should be consistent across runs and uniquely identify the
 	// solver implementation (e.g., "lm", "bfgs").
-	ID() SolverID
+	ID() gcstypes.SolverID
 
 	// Solve solves the sketch starting from the current state of its entities.
 	// It updates the sketch with the solved parameters and returns a SolveResult.

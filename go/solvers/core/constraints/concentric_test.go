@@ -1,6 +1,7 @@
 package constraints_test
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 	"math/rand"
 	"testing"
@@ -47,7 +48,7 @@ func TestConcentricEvaluator(t *testing.T) {
 	}
 
 	// 3. Construct decomposed evaluator
-	entities := map[schema.EntityID]*schema.Entity{"c1": c1, "c2": c2}
+	entities := map[gcstypes.EntityID]*schema.Entity{"c1": c1, "c2": c2}
 	eval, err := constraints.NewEvaluator(concentric, entities)
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
@@ -61,7 +62,7 @@ func TestConcentricEvaluator(t *testing.T) {
 
 	// 4. Test over multiple random states
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[schema.EntityID]int{"c1": 0, "c2": 3} // c1 has 3 params, c2 starts at 3
+	paramIndices := map[gcstypes.EntityID]int{"c1": 0, "c2": 3} // c1 has 3 params, c2 starts at 3
 	n := sys.NumVars()
 	m := je.NumEquations()
 

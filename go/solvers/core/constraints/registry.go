@@ -3,13 +3,14 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"github.com/gonzojive/webcad/proto"
 )
 
 // NewEvaluator is a factory function that creates a new Evaluator for a given constraint.
 // It analyzes the initial state of the involved entities to lock chirality or precompute constants.
-func NewEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (Evaluator, error) {
+func NewEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (Evaluator, error) {
 	switch tc := c.GetConstraintType().(type) {
 	case *schema.Constraint_Fixed:
 		return NewFixedEvaluator(c, entities)
@@ -43,6 +44,6 @@ type PlaceholderEvaluator struct {
 }
 
 // Evaluate implements Evaluator. It returns 0 and does nothing.
-func (p *PlaceholderEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (p *PlaceholderEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	return 0.0
 }

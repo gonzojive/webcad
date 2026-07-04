@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"math"
 
@@ -10,14 +11,14 @@ import (
 
 // FixedEvaluator evaluates fixed constraints, pinning an entity's parameters to their initial values.
 type FixedEvaluator struct {
-	entityID      schema.EntityID
+	entityID      gcstypes.EntityID
 	initialValues []float64
 }
 
 // NewFixedEvaluator creates a new FixedEvaluator for the given constraint.
-func NewFixedEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*FixedEvaluator, error) {
+func NewFixedEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*FixedEvaluator, error) {
 	fixed := c.GetFixed()
-	entID := schema.EntityID(fixed.GetEntityId())
+	entID := gcstypes.EntityID(fixed.GetEntityId())
 	ent, ok := entities[entID]
 	if !ok {
 		return nil, fmt.Errorf("entity %s not found", entID)
@@ -37,7 +38,7 @@ func NewFixedEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schem
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (f *FixedEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (f *FixedEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx, ok := paramIndices[f.entityID]
 	if !ok {
 		return 0.0
@@ -62,7 +63,7 @@ func (f *FixedEvaluator) NumEquations() int {
 }
 
 // EvaluateJacobian evaluates the unsquared residuals and writes them to J.
-func (f *FixedEvaluator) EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[schema.EntityID]int) {
+func (f *FixedEvaluator) EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[gcstypes.EntityID]int) {
 	idx, ok := paramIndices[f.entityID]
 	if !ok {
 		return
