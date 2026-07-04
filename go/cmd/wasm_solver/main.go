@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 // Package main provides the WebAssembly entry point for the Geometric Constraint Solver.
 package main
 
