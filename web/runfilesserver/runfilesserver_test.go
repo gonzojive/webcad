@@ -4,8 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -13,9 +11,7 @@ import (
 func TestRunfilesServer(t *testing.T) {
 	// Configure the server pointing to our testdata (no fallback)
 	handler := New(
-		"webcad",
-		"web/runfilesserver/testdata",
-		"ui/index.html",
+		"webcad/web/runfilesserver/testdata",
 		nil,
 	)
 
@@ -25,13 +21,25 @@ func TestRunfilesServer(t *testing.T) {
 		expectedStatus int
 		expectedBody   string
 		expectedMime   string
+		expectedLoc    string // for redirects
 	}{
 		{
-			name:           "Serve Index Fallback at root",
+			name:           "404 for root index (no index.html at root)",
 			path:           "/",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Serve Index at /ui/",
+			path:           "/ui/",
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Test Index Content",
 			expectedMime:   "text/html",
+		},
+		{
+			name:           "Redirect /ui to /ui/",
+			path:           "/ui",
+			expectedStatus: http.StatusMovedPermanently,
+			expectedLoc:    "/ui/",
 		},
 		{
 			name:           "Serve JS file",
@@ -51,11 +59,10 @@ func TestRunfilesServer(t *testing.T) {
 			name:           "404 for missing file",
 			path:           "/ui/missing.js",
 			expectedStatus: http.StatusNotFound,
-			expectedMime:   "text/plain",
 		},
 		{
 			name:           "404 for file outside subpath (blocked logically)",
-			path:           "/runfilesserver.go", // exists in workspace but not in testdata subpath
+			path:           "/../runfilesserver.go", // Cleaned to /runfilesserver.go, not found
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -71,6 +78,13 @@ func TestRunfilesServer(t *testing.T) {
 
 			if resp.StatusCode != tc.expectedStatus {
 				t.Errorf("expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
+			}
+
+			if tc.expectedStatus == http.StatusMovedPermanently {
+				loc := resp.Header.Get("Location")
+				if loc != tc.expectedLoc {
+					t.Errorf("expected redirect location %q, got %q", tc.expectedLoc, loc)
+				}
 			}
 
 			if tc.expectedStatus == http.StatusOK {
@@ -94,9 +108,7 @@ func TestRunfilesServer(t *testing.T) {
 
 func TestRunfilesServer_Security(t *testing.T) {
 	handler := New(
-		"webcad",
-		"web/runfilesserver/testdata",
-		"ui/index.html",
+		"webcad/web/runfilesserver/testdata",
 		nil,
 	)
 
@@ -133,95 +145,30 @@ func TestRunfilesServer_Security(t *testing.T) {
 	}
 }
 
-func TestRunfilesServer_LocalOverride(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "runfiles_override_test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Write a file in temp dir
-	testFile := filepath.Join(tempDir, "test.txt")
-	expectedContent := "override content"
-	if err := os.WriteFile(testFile, []byte(expectedContent), 0644); err != nil {
-		t.Fatalf("failed to write test file: %v", err)
-	}
-
-	handler := New(
-		"webcad",
-		"web/runfilesserver/testdata",
-		"ui/index.html",
-		nil,
-	)
-	handler.SetLocalOverrideDir(tempDir)
-
-	tests := []struct {
-		name           string
-		path           string
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name:           "Serve file from override",
-			path:           "/test.txt",
-			expectedStatus: http.StatusOK,
-			expectedBody:   expectedContent,
-		},
-		{
-			name:           "404 for missing file in override",
-			path:           "/missing.txt",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "Override directory traversal blocked (Cleaned to root)",
-			path:           "/../escaped.txt",
-			expectedStatus: http.StatusNotFound, // cleaned to /escaped.txt, which doesn't exist
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "http://localhost:8080/fallback", nil)
-			req.URL.Path = tc.path
-			
-			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, req)
-
-			resp := w.Result()
-			defer resp.Body.Close()
-
-			if resp.StatusCode != tc.expectedStatus {
-				t.Errorf("expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
-			}
-
-			if tc.expectedStatus == http.StatusOK {
-				bodyBytes, err := io.ReadAll(resp.Body)
-				if err != nil {
-					t.Fatalf("failed to read body: %v", err)
-				}
-				if string(bodyBytes) != tc.expectedBody {
-					t.Errorf("expected body %q, got %q", tc.expectedBody, string(bodyBytes))
-				}
-			}
-		})
-	}
-}
-
 func TestRunfilesServer_Fallback(t *testing.T) {
 	tests := []struct {
 		name           string
 		path           string
 		expectedPath   string // what path fallback should receive
+		expectedStatus int
 	}{
 		{
-			name:         "Triggers fallback on missing runfile",
-			path:         "/ui/app.js",
-			expectedPath: "/ui/app.js",
+			name:           "Triggers fallback on missing runfile",
+			path:           "/ui/app.js",
+			expectedPath:   "/ui/app.js",
+			expectedStatus: http.StatusTeapot,
 		},
 		{
-			name:         "Triggers fallback on root index redirect",
-			path:         "/",
-			expectedPath: "/ui/index.html",
+			name:           "Triggers fallback on root directory",
+			path:           "/ui/",
+			expectedPath:   "/ui/",
+			expectedStatus: http.StatusTeapot,
+		},
+		{
+			name:           "Triggers fallback on directory missing slash (no redirect if missing runfiles)",
+			path:           "/ui",
+			expectedPath:   "/ui", // fallback receives the original requested path
+			expectedStatus: http.StatusTeapot,
 		},
 	}
 
@@ -238,9 +185,7 @@ func TestRunfilesServer_Fallback(t *testing.T) {
 			})
 
 			handler := New(
-				"nonexistent_workspace",
-				"web/runfilesserver/testdata",
-				"ui/index.html",
+				"nonexistent_workspace/web/runfilesserver/testdata",
 				mockFallback,
 			)
 
@@ -254,18 +199,11 @@ func TestRunfilesServer_Fallback(t *testing.T) {
 			if !fallbackCalled {
 				t.Error("expected fallback handler to be called, but it was not")
 			}
-			if resp.StatusCode != http.StatusTeapot {
-				t.Errorf("expected status from fallback handler %d, got %d", http.StatusTeapot, resp.StatusCode)
+			if resp.StatusCode != tc.expectedStatus {
+				t.Errorf("expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
 			}
 			if capturedPath != tc.expectedPath {
 				t.Errorf("expected fallback to receive path %q, got %q", tc.expectedPath, capturedPath)
-			}
-			
-			if tc.path == "/ui/app.js" {
-				body, _ := io.ReadAll(resp.Body)
-				if string(body) != "fallback response" {
-					t.Errorf("expected fallback body 'fallback response', got %q", string(body))
-				}
 			}
 		})
 	}

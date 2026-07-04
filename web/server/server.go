@@ -21,15 +21,12 @@ type Options struct {
 	// Can be overridden by the -addr flag if registered.
 	DefaultAddr string
 
-	// WorkspaceName is the apparent name of the Bazel workspace (e.g. "webcad").
-	WorkspaceName string
+	// RlocationRoot is the runfiles-root-relative path to the assets directory (e.g. "webcad/web/poc").
+	RlocationRoot string
 
 	// WorkspaceSubpath is the path relative to the workspace root where the assets are located
-	// (e.g., "web/poc").
+	// (e.g., "web/poc"). Used for local fallback serving.
 	WorkspaceSubpath string
-
-	// IndexHTML is the path relative to WorkspaceSubpath to serve at "/" (e.g., "ui/index.html").
-	IndexHTML string
 }
 
 // Server is a helper that wraps the http server, parses command line flags,
@@ -52,24 +49,34 @@ func New(opts Options) *Server {
 		flag.Parse()
 	}
 
+	// 1. Manual override flag (highest priority, bypasses runfiles completely)
+	if *assetsDirFlag != "" {
+		fallbackDir := filepath.Clean(*assetsDirFlag)
+		log.Printf("Serving assets from manual override directory: %s", fallbackDir)
+		return &Server{
+			addr:    *addrFlag,
+			handler: &localSafeFileServer{
+				dir:        fallbackDir,
+				fileServer: http.FileServer(http.Dir(fallbackDir)),
+			},
+		}
+	}
+
+	// 2. Configure runfiles serving with local workspace fallback
 	var fallback http.Handler
 	// Try to locate workspace root via filesystem walk-up for fallback
 	if wd, err := os.Getwd(); err == nil {
 		if root, err := findWorkspaceRoot(wd); err == nil {
 			fallbackDir := filepath.Clean(filepath.Join(root, opts.WorkspaceSubpath))
 			fallback = &localSafeFileServer{
-				dir:          fallbackDir,
-				fileServer:   http.FileServer(http.Dir(fallbackDir)),
-				indexHTML:    opts.IndexHTML,
+				dir:        fallbackDir,
+				fileServer: http.FileServer(http.Dir(fallbackDir)),
 			}
 			log.Printf("Configured local workspace fallback serving from: %s", fallbackDir)
 		}
 	}
 
-	rs := runfilesserver.New(opts.WorkspaceName, opts.WorkspaceSubpath, opts.IndexHTML, fallback)
-	if *assetsDirFlag != "" {
-		rs.SetLocalOverrideDir(*assetsDirFlag)
-	}
+	rs := runfilesserver.New(opts.RlocationRoot, fallback)
 
 	return &Server{
 		addr:    *addrFlag,
@@ -87,13 +94,12 @@ func (s *Server) Start() error {
 // localSafeFileServer wraps http.FileServer to enforce security boundaries
 // (directory traversal protection) when serving from the local filesystem fallback.
 type localSafeFileServer struct {
-	dir          string
-	fileServer   http.Handler
-	indexHTML    string
+	dir        string
+	fileServer http.Handler
 }
 
 func (h *localSafeFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// The path in r.URL.Path has already been cleaned and resolved (including indexHTML)
+	// The path in r.URL.Path has already been cleaned and resolved
 	// by RunfilesServer before it delegates here.
 	relPath := strings.TrimPrefix(r.URL.Path, "/")
 	
