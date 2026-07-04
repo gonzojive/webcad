@@ -1,4 +1,0 @@
-{
-  "//": "Marker package.json. Tells Node.js to treat compiled JS in this folder as ES Modules. See web/README.md for details.",
-  "type": "module"
-}

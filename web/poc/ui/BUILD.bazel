@@ -27,7 +27,6 @@ js_test(
     name = "state_test",
     data = [
         "package.json",
-        "//web/poc/gcsapi:package_json",
         ":ui_tests",
     ],
     entry_point = "state.test.js",

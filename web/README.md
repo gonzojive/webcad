@@ -74,23 +74,19 @@ If you add new source files, rename files, or add/remove dependencies in `packag
 ```
 This keeps your Bazel build files in sync with your source code and npm configurations automatically.
 
-## ES Modules (ESM) and Marker package.json Files
+## ES Modules (ESM) Configuration
 
 We use modern ES Modules (`import`/`export` syntax) in our TypeScript/JavaScript code. 
 
-When Node.js executes JavaScript files (for example, when running tests via `js_test`), it needs to know whether to interpret them as ES Modules or legacy CommonJS modules. 
+To ensure Node.js executes all compiled files as ES Modules by default (even when running tests in the Bazel sandbox), we configure Node.js globally using the following setting in our root `.bazelrc`:
 
-Node.js determines this by looking for the nearest `package.json` file walking up from the file being executed.
-*   **Applications (e.g. `web/poc/ui`)**: Have a full `package.json` that declares `"type": "module"`. All files inside this directory are automatically treated as ESM.
-*   **Shared Libraries (e.g. `web/poc/gcsapi`)**: Do not need a full `package.json` because they are not distinct npm workspace packages. However, because they are located outside the `ui/` directory, Node.js cannot find `ui/package.json` when executing library code in isolation.
-
-To solve this, we place a minimal **marker `package.json`** in the library directory (e.g. `web/poc/gcsapi/package.json`) containing only:
-```json
-{
-  "type": "module"
-}
+```text
+test --test_env=NODE_OPTIONS=--experimental-default-type=module
 ```
-This serves solely to instruct Node.js to treat the compiled files in that library directory as ES Modules. It is ignored by npm/pnpm workspaces.
+
+This instructs the Node.js runtime to default to ES Modules for all executed files in this workspace. Consequently:
+*   You **do not need** to create marker `package.json` files (containing `{"type": "module"}`) in shared TypeScript library directories.
+*   You **do not need** to pass special ESM flags to individual `js_test` targets in your `BUILD` files.
 
 ---
 
