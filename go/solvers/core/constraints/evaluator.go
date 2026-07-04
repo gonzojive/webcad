@@ -30,3 +30,9 @@ type JacobianEvaluator interface {
 	EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[gcstypes.EntityID]int)
 }
 
+// ConstraintResidual represents the absolute residual error of a constraint.
+// It is a unitless number with a magnitude that depends on the constraint's
+// definition and weights.
+type ConstraintResidual float64
+
+

@@ -14,8 +14,8 @@ import (
 // entity states (as defined by the parameter values stored in the sketch's entities).
 // It returns a map of constraint ID to its absolute residual error.
 // This is used for verifying solver correctness and providing telemetry.
-func CalculateResiduals(sketch *schema.Sketch) (map[gcstypes.ConstraintID]gcstypes.ConstraintResidual, error) {
-	residuals := make(map[gcstypes.ConstraintID]gcstypes.ConstraintResidual)
+func CalculateResiduals(sketch *schema.Sketch) (map[gcstypes.ConstraintID]constraints.ConstraintResidual, error) {
+	residuals := make(map[gcstypes.ConstraintID]constraints.ConstraintResidual)
 	if sketch == nil {
 		return residuals, nil
 	}
@@ -28,7 +28,7 @@ func CalculateResiduals(sketch *schema.Sketch) (map[gcstypes.ConstraintID]gcstyp
 
 	for _, ce := range sys.evaluators {
 		valSq := ce.eval.Evaluate(x, nil, sys.paramIndexMap)
-		residuals[ce.id] = gcstypes.ConstraintResidual(math.Sqrt(valSq))
+		residuals[ce.id] = constraints.ConstraintResidual(math.Sqrt(valSq))
 	}
 
 	return residuals, nil
@@ -36,12 +36,12 @@ func CalculateResiduals(sketch *schema.Sketch) (map[gcstypes.ConstraintID]gcstyp
 
 // MaxResidual returns the maximum absolute residual error across all constraints in the sketch,
 // evaluating them at the current entity states.
-func MaxResidual(sketch *schema.Sketch) (gcstypes.ConstraintResidual, error) {
+func MaxResidual(sketch *schema.Sketch) (constraints.ConstraintResidual, error) {
 	residuals, err := CalculateResiduals(sketch)
 	if err != nil {
 		return 0, err
 	}
-	maxRes := gcstypes.ConstraintResidual(0.0)
+	maxRes := constraints.ConstraintResidual(0.0)
 	for _, res := range residuals {
 		if res > maxRes {
 			maxRes = res
@@ -52,7 +52,7 @@ func MaxResidual(sketch *schema.Sketch) (gcstypes.ConstraintResidual, error) {
 
 // CalculateConstraintResidual computes the absolute residual error for a single constraint,
 // evaluating it at the current states of the entities in the sketch.
-func CalculateConstraintResidual(c *schema.Constraint, sketch *schema.Sketch, entityMap map[gcstypes.EntityID]*schema.Entity) (gcstypes.ConstraintResidual, error) {
+func CalculateConstraintResidual(c *schema.Constraint, sketch *schema.Sketch, entityMap map[gcstypes.EntityID]*schema.Entity) (constraints.ConstraintResidual, error) {
 	sys, err := NewConstraintSystem(sketch)
 	if err != nil {
 		return 0, err
@@ -66,7 +66,7 @@ func CalculateConstraintResidual(c *schema.Constraint, sketch *schema.Sketch, en
 		return 0, err
 	}
 	valSq := eval.Evaluate(x, nil, sys.paramIndexMap)
-	return gcstypes.ConstraintResidual(math.Sqrt(valSq)), nil
+	return constraints.ConstraintResidual(math.Sqrt(valSq)), nil
 }
 
 type constraintEvaluator struct {
