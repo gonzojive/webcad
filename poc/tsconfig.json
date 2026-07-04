@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./"
+  },
+  "include": [
+    "gcsapi/**/*",
+    "ui/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "solver-wasm/**/*"
+  ]
+}
