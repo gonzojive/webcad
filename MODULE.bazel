@@ -50,7 +50,7 @@ crate.spec(
 )
 crate.from_cargo(
     name = "crates",
-    cargo_lockfile = "@ezpz//:Cargo.lock",
+    cargo_lockfile = "//:Cargo.lock",
     manifests = [
         "@ezpz//:Cargo.toml",
         "@ezpz//ezpz:Cargo.toml",
