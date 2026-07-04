@@ -164,43 +164,55 @@ export class CanvasViewport {
 
     updateSnapIndicator(x: number, y: number, visible: boolean) {
         if (this.snapIndicator) {
+            const scale = this.stage ? this.stage.scaleX() : 1;
+            const invS = 1 / scale;
             this.snapIndicator.x(x);
             this.snapIndicator.y(y);
+            this.snapIndicator.radius(8 * invS);
+            this.snapIndicator.strokeWidth(2 * invS);
             this.snapIndicator.visible(visible);
             this.mainLayer.batchDraw();
         }
     }
 
     updateLinePreview(x1: number, y1: number, x2: number, y2: number) {
+        const scale = this.stage ? this.stage.scaleX() : 1;
+        const invS = 1 / scale;
         if (!this.tempLinePreview) {
             this.tempLinePreview = new Konva.Line({
                 points: [x1, y1, x2, y2],
                 stroke: 'var(--accent-color)',
-                strokeWidth: 2,
-                dash: [4, 4],
+                strokeWidth: 2 * invS,
+                dash: [4 * invS, 4 * invS],
                 listening: false
             });
             this.mainLayer.add(this.tempLinePreview);
         } else {
             this.tempLinePreview.points([x1, y1, x2, y2]);
+            this.tempLinePreview.strokeWidth(2 * invS);
+            this.tempLinePreview.dash([4 * invS, 4 * invS]);
         }
         this.mainLayer.batchDraw();
     }
 
     updateCirclePreview(cx: number, cy: number, r: number) {
+        const scale = this.stage ? this.stage.scaleX() : 1;
+        const invS = 1 / scale;
         if (!this.tempCirclePreview) {
             this.tempCirclePreview = new Konva.Circle({
                 x: cx,
                 y: cy,
                 radius: r,
                 stroke: 'var(--accent-color)',
-                strokeWidth: 2,
-                dash: [4, 4],
+                strokeWidth: 2 * invS,
+                dash: [4 * invS, 4 * invS],
                 listening: false
             });
             this.mainLayer.add(this.tempCirclePreview);
         } else {
             this.tempCirclePreview.radius(r);
+            this.tempCirclePreview.strokeWidth(2 * invS);
+            this.tempCirclePreview.dash([4 * invS, 4 * invS]);
         }
         this.mainLayer.batchDraw();
     }
@@ -225,15 +237,20 @@ export class CanvasViewport {
     }
 
     public setPointPreview(x: number, y: number) {
+        const scale = this.stage ? this.stage.scaleX() : 1;
+        const invS = 1 / scale;
         if (!this.tempPointPreview) {
             this.tempPointPreview = new Konva.Circle({
-                radius: 4.5,
+                radius: 4.5 * invS,
                 fill: 'rgba(51, 65, 85, 0.4)',
                 stroke: 'rgba(255, 255, 255, 0.8)',
-                strokeWidth: 1,
+                strokeWidth: 1 * invS,
                 listening: false
             });
             this.mainLayer.add(this.tempPointPreview);
+        } else {
+            this.tempPointPreview.radius(4.5 * invS);
+            this.tempPointPreview.strokeWidth(1 * invS);
         }
         this.tempPointPreview.position({ x, y });
         this.tempPointPreview.visible(true);
@@ -433,12 +450,14 @@ export class CanvasViewport {
         const constraints = this.model.getConstraints();
         const hoveredConstraintId = this.model.getHoveredConstraintId();
         const selectedEntityIds = this.model.getSelectedEntityIds();
+        const scale = this.stage ? this.stage.scaleX() : 1;
+        const invS = 1 / scale;
 
         constraints.forEach(con => {
             const isSelected = selectedEntityIds.includes(con.id);
             const isHovered = con.id === hoveredConstraintId;
             const color = isSelected || isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
-            const strokeWidth = isSelected || isHovered ? 2 : 1.2;
+            const strokeWidth = (isSelected || isHovered ? 2 : 1.2) * invS;
 
             const conGroup = new Konva.Group({
                 id: con.id,
@@ -469,8 +488,6 @@ export class CanvasViewport {
                 }
             });
 
-
-
             conGroup.on('mousedown', (e: any) => {
                 if (this.model.getTool() === 'select') {
                     e.cancelBubble = true;
@@ -485,7 +502,7 @@ export class CanvasViewport {
                     const p1 = this.model.getPoint(con.p1Id);
                     const p2 = this.model.getPoint(con.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth, conGroup, con);
+                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth, conGroup, con, invS);
                     break;
                 }
                 case 'point_line_distance': {
@@ -495,7 +512,7 @@ export class CanvasViewport {
                     const lp1 = this.model.getPoint(l.p1Id);
                     const lp2 = this.model.getPoint(l.p2Id);
                     if (!lp1 || !lp2) break;
-                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth, conGroup, con);
+                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth, conGroup, con, invS);
                     break;
                 }
                 case 'horizontal':
@@ -505,7 +522,7 @@ export class CanvasViewport {
                     const p1 = this.model.getPoint(l.p1Id);
                     const p2 = this.model.getPoint(l.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawHorizVertConstraint(con.type, p1, p2, color, conGroup);
+                    this.drawHorizVertConstraint(con.type, p1, p2, color, conGroup, invS);
                     break;
                 }
                 case 'parallel':
@@ -518,14 +535,14 @@ export class CanvasViewport {
                     const l2p1 = this.model.getPoint(l2.p1Id);
                     const l2p2 = this.model.getPoint(l2.p2Id);
                     if (!l1p1 || !l1p2 || !l2p1 || !l2p2) break;
-                    this.drawParallelPerpConstraint(con.type, l1p1, l1p2, l2p1, l2p2, color, conGroup);
+                    this.drawParallelPerpConstraint(con.type, l1p1, l1p2, l2p1, l2p2, color, conGroup, invS);
                     break;
                 }
                 case 'coincident': {
                     const p1 = this.model.getPoint(con.p1Id);
                     const p2 = this.model.getPoint(con.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawCoincidentConstraint(p1, color, conGroup);
+                    this.drawCoincidentConstraint(p1, color, conGroup, invS);
                     break;
                 }
             }
@@ -542,14 +559,15 @@ export class CanvasViewport {
         color: string,
         strokeWidth: number,
         parentGroup: any,
-        con: DistanceConstraint | HorizontalDistanceConstraint | VerticalDistanceConstraint
+        con: DistanceConstraint | HorizontalDistanceConstraint | VerticalDistanceConstraint,
+        invS: number
     ) {
         let d1x = p1.x, d1y = p1.y;
         let d2x = p2.x, d2y = p2.y;
         let ext1StartX = p1.x, ext1StartY = p1.y;
         let ext2StartX = p2.x, ext2StartY = p2.y;
 
-        const offset = con.layoutOffset !== undefined ? con.layoutOffset : 30;
+        const offset = con.layoutOffset !== undefined ? con.layoutOffset : 30 * invS;
 
         if (type === 'distance') {
             const dx = p2.x - p1.x;
@@ -566,7 +584,7 @@ export class CanvasViewport {
 
         } else if (type === 'horizontal_distance') {
             const minY = Math.min(p1.y, p2.y);
-            const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : -30;
+            const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : -30 * invS;
             const dimY = minY + offsetVal;
 
             d1x = p1.x;
@@ -576,7 +594,7 @@ export class CanvasViewport {
 
         } else if (type === 'vertical_distance') {
             const maxX = Math.max(p1.x, p2.x);
-            const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : 30;
+            const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : 30 * invS;
             const dimX = maxX + offsetVal;
 
             d1x = dimX;
@@ -588,15 +606,15 @@ export class CanvasViewport {
         const ext1 = new Konva.Line({
             points: [ext1StartX, ext1StartY, d1x, d1y],
             stroke: 'rgba(148, 163, 184, 0.3)',
-            strokeWidth: 1,
-            dash: [2, 2],
+            strokeWidth: 1 * invS,
+            dash: [2 * invS, 2 * invS],
             listening: false
         });
         const ext2 = new Konva.Line({
             points: [ext2StartX, ext2StartY, d2x, d2y],
             stroke: 'rgba(148, 163, 184, 0.3)',
-            strokeWidth: 1,
-            dash: [2, 2],
+            strokeWidth: 1 * invS,
+            dash: [2 * invS, 2 * invS],
             listening: false
         });
         parentGroup.add(ext1);
@@ -609,16 +627,16 @@ export class CanvasViewport {
             points: [mx, my, d1x, d1y],
             stroke: color,
             strokeWidth: strokeWidth,
-            pointerLength: 6,
-            pointerWidth: 4,
+            pointerLength: 6 * invS,
+            pointerWidth: 4 * invS,
             listening: true
         });
         const arrow2 = new Konva.Arrow({
             points: [mx, my, d2x, d2y],
             stroke: color,
             strokeWidth: strokeWidth,
-            pointerLength: 6,
-            pointerWidth: 4,
+            pointerLength: 6 * invS,
+            pointerWidth: 4 * invS,
             listening: true
         });
         parentGroup.add(arrow1);
@@ -628,7 +646,7 @@ export class CanvasViewport {
             x: mx,
             y: my,
             text: val.toFixed(1),
-            fontSize: 10,
+            fontSize: 10 * invS,
             fontFamily: 'sans-serif',
             fill: color,
             listening: true
@@ -638,10 +656,10 @@ export class CanvasViewport {
         text.offsetY(text.height() / 2);
 
         const rect = new Konva.Rect({
-            x: mx - text.width()/2 - 2,
-            y: my - text.height()/2 - 1,
-            width: text.width() + 4,
-            height: text.height() + 2,
+            x: mx - text.width()/2 - 2 * invS,
+            y: my - text.height()/2 - 1 * invS,
+            width: text.width() + 4 * invS,
+            height: text.height() + 2 * invS,
             fill: 'white',
             listening: true
         });
@@ -658,7 +676,8 @@ export class CanvasViewport {
         color: string,
         strokeWidth: number,
         parentGroup: any,
-        con: PointLineDistanceConstraint
+        con: PointLineDistanceConstraint,
+        invS: number
     ) {
         const ux = lp2.x - lp1.x;
         const uy = lp2.y - lp1.y;
@@ -675,7 +694,7 @@ export class CanvasViewport {
             points: [p.x, p.y, projX, projY],
             stroke: color,
             strokeWidth: strokeWidth,
-            dash: [3, 3],
+            dash: [3 * invS, 3 * invS],
             listening: true
         });
         parentGroup.add(perpLine);
@@ -688,12 +707,12 @@ export class CanvasViewport {
 
         const ox = con.layoutOffsetX || 0;
         const oy = con.layoutOffsetY || 0;
-        if (Math.hypot(ox, oy) > 2) {
+        if (Math.hypot(ox, oy) > 2 * invS) {
             const leaderLine = new Konva.Line({
                 points: [projMidX, projMidY, labelPos.x, labelPos.y],
                 stroke: 'rgba(148, 163, 184, 0.4)',
-                strokeWidth: 1,
-                dash: [2, 2],
+                strokeWidth: 1 * invS,
+                dash: [2 * invS, 2 * invS],
                 listening: false
             });
             parentGroup.add(leaderLine);
@@ -703,7 +722,7 @@ export class CanvasViewport {
             x: labelPos.x,
             y: labelPos.y,
             text: val.toFixed(1),
-            fontSize: 10,
+            fontSize: 10 * invS,
             fontFamily: 'sans-serif',
             fill: color,
             listening: true
@@ -712,10 +731,10 @@ export class CanvasViewport {
         text.offsetY(text.height() / 2);
 
         const rect = new Konva.Rect({
-            x: labelPos.x - text.width()/2 - 2,
-            y: labelPos.y - text.height()/2 - 1,
-            width: text.width() + 4,
-            height: text.height() + 2,
+            x: labelPos.x - text.width()/2 - 2 * invS,
+            y: labelPos.y - text.height()/2 - 1 * invS,
+            width: text.width() + 4 * invS,
+            height: text.height() + 2 * invS,
             fill: 'white',
             listening: true
         });
@@ -729,7 +748,8 @@ export class CanvasViewport {
         p1: GCSPoint,
         p2: GCSPoint,
         color: string,
-        parentGroup: any
+        parentGroup: any,
+        invS: number
     ) {
         const mx = (p1.x + p2.x) / 2;
         const my = (p1.y + p2.y) / 2;
@@ -741,8 +761,8 @@ export class CanvasViewport {
         const nx = -dy / len;
         const ny = dx / len;
 
-        const labelX = mx + nx * 12;
-        const labelY = my + ny * 12;
+        const labelX = mx + nx * 12 * invS;
+        const labelY = my + ny * 12 * invS;
 
         const label = new Konva.Label({
             x: labelX,
@@ -753,14 +773,14 @@ export class CanvasViewport {
         label.add(new Konva.Tag({
             fill: 'rgba(241, 245, 249, 0.9)',
             stroke: color,
-            strokeWidth: 1,
-            cornerRadius: 2
+            strokeWidth: 1 * invS,
+            cornerRadius: 2 * invS
         }));
 
         label.add(new Konva.Text({
             text: type === 'horizontal' ? 'H' : 'V',
-            fontSize: 9,
-            padding: 2,
+            fontSize: 9 * invS,
+            padding: 2 * invS,
             fontFamily: 'monospace',
             fill: color
         }));
@@ -778,11 +798,12 @@ export class CanvasViewport {
         l2p1: GCSPoint,
         l2p2: GCSPoint,
         color: string,
-        parentGroup: any
+        parentGroup: any,
+        invS: number
     ) {
         const drawIconAt = (mx: number, my: number, nx: number, ny: number) => {
-            const labelX = mx + nx * 12;
-            const labelY = my + ny * 12;
+            const labelX = mx + nx * 12 * invS;
+            const labelY = my + ny * 12 * invS;
 
             const label = new Konva.Label({
                 x: labelX,
@@ -793,14 +814,14 @@ export class CanvasViewport {
             label.add(new Konva.Tag({
                 fill: 'rgba(241, 245, 249, 0.9)',
                 stroke: color,
-                strokeWidth: 1,
-                cornerRadius: 2
+                strokeWidth: 1 * invS,
+                cornerRadius: 2 * invS
             }));
 
             label.add(new Konva.Text({
                 text: type === 'parallel' ? '//' : '⊥',
-                fontSize: 9,
-                padding: 2,
+                fontSize: 9 * invS,
+                padding: 2 * invS,
                 fontFamily: 'monospace',
                 fill: color
             }));
@@ -830,12 +851,12 @@ export class CanvasViewport {
         }
     }
 
-    private drawCoincidentConstraint(p1: GCSPoint, color: string, parentGroup: any) {
+    private drawCoincidentConstraint(p1: GCSPoint, color: string, parentGroup: any, invS: number) {
         const ring = new Konva.Ring({
             x: p1.x,
             y: p1.y,
-            innerRadius: 7,
-            outerRadius: 8.5,
+            innerRadius: 7 * invS,
+            outerRadius: 8.5 * invS,
             fill: color,
             listening: true,
             opacity: 0.8
@@ -848,8 +869,13 @@ export class CanvasViewport {
 
         this.mainLayer.destroyChildren();
 
-        // Re-add snap indicator
+        const scale = this.stage ? this.stage.scaleX() : 1;
+        const invS = 1 / scale;
+
+        // Re-add snap indicator (scale it appropriately)
         this.mainLayer.add(this.snapIndicator);
+        this.snapIndicator.radius(8 * invS);
+        this.snapIndicator.strokeWidth(2 * invS);
 
         const currentTool = this.model.getTool();
         const selectedEntityIds = this.model.getSelectedEntityIds();
@@ -870,7 +896,7 @@ export class CanvasViewport {
             const isHovered = hoveredEntityId === l.id || isConstraintEntityHovered(l.id);
 
             const strokeColor = isSelected ? '#3b82f6' : (isHovered ? 'var(--accent-color)' : 'var(--text-muted)');
-            const strokeWidth = isSelected || isHovered ? 4 : 2.5;
+            const strokeWidth = (isSelected || isHovered ? 4 : 2.5) * invS;
 
             const lineShape = new Konva.Line({
                 points: [p1.x, p1.y, p2.x, p2.y],
@@ -914,7 +940,7 @@ export class CanvasViewport {
             const isHovered = hoveredEntityId === c.id || isConstraintEntityHovered(c.id);
 
             const strokeColor = isSelected ? '#3b82f6' : (isHovered ? 'var(--accent-color)' : '#64748b');
-            const strokeWidth = isSelected || isHovered ? 3.5 : 2;
+            const strokeWidth = (isSelected || isHovered ? 3.5 : 2) * invS;
 
             const circleShape = new Konva.Circle({
                 x: center.x,
@@ -978,7 +1004,7 @@ export class CanvasViewport {
                         const val = Math.hypot(p.x - projX, p.y - projY);
 
                         const previewGroup = new Konva.Group({ listening: false });
-                        this.drawPointLineDistanceConstraintPreview(p, lp1, lp2, val, mousePos, previewColor, previewGroup);
+                        this.drawPointLineDistanceConstraintPreview(p, lp1, lp2, val, mousePos, previewColor, previewGroup, invS);
                         this.mainLayer.add(previewGroup);
                     }
                 }
@@ -992,7 +1018,7 @@ export class CanvasViewport {
                               : Math.hypot(p2.x - p1.x, p2.y - p1.y);
 
                     const previewGroup = new Konva.Group({ listening: false });
-                    this.drawDistanceConstraintPreview(type, p1, p2, val, mousePos, previewColor, previewGroup);
+                    this.drawDistanceConstraintPreview(type, p1, p2, val, mousePos, previewColor, previewGroup, invS);
                     this.mainLayer.add(previewGroup);
                 }
             }
@@ -1021,15 +1047,15 @@ export class CanvasViewport {
 
             const dot = new Konva.Circle({
                 name: 'dot',
-                radius: isHovered || isSelected ? 6 : 4.5,
+                radius: (isHovered || isSelected ? 6 : 4.5) * invS,
                 fill: pointColor,
                 stroke: p.fixed ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0,0,0,0.5)',
-                strokeWidth: 1.5
+                strokeWidth: 1.5 * invS
             });
 
             const hitArea = new Konva.Circle({
                 name: 'hitArea',
-                radius: 16,
+                radius: 16 * invS,
                 fill: 'rgba(0, 0, 0, 0)'
             });
 
@@ -1087,6 +1113,9 @@ export class CanvasViewport {
     updateEntityVisuals() {
         if (!this.mainLayer) return;
 
+        const scale = this.stage ? this.stage.scaleX() : 1;
+        const invS = 1 / scale;
+
         const selectedEntityIds = this.model.getSelectedEntityIds();
         const hoveredEntityId = this.model.getHoveredEntityId();
         const hoveredConstraintId = this.model.getHoveredConstraintId();
@@ -1104,7 +1133,7 @@ export class CanvasViewport {
             const isHovered = hoveredEntityId === l.id || isConstraintEntityHovered(l.id);
 
             lineShape.stroke(isSelected ? '#3b82f6' : (isHovered ? '#1a73e8' : '#64748b'));
-            lineShape.strokeWidth(isSelected || isHovered ? 4 : 2.5);
+            lineShape.strokeWidth((isSelected || isHovered ? 4 : 2.5) * invS);
         });
 
         // Update Circles
@@ -1116,7 +1145,7 @@ export class CanvasViewport {
             const isHovered = hoveredEntityId === c.id || isConstraintEntityHovered(c.id);
 
             circleShape.stroke(isSelected ? '#3b82f6' : (isHovered ? '#1a73e8' : '#64748b'));
-            circleShape.strokeWidth(isSelected || isHovered ? 3.5 : 2);
+            circleShape.strokeWidth((isSelected || isHovered ? 3.5 : 2) * invS);
         });
 
         // Update Points
@@ -1140,8 +1169,13 @@ export class CanvasViewport {
 
             const dot = pointGroup.findOne('.dot');
             if (dot) {
-                dot.radius(isHovered || isSelected ? 6 : 4.5);
+                dot.radius((isHovered || isSelected ? 6 : 4.5) * invS);
+                dot.strokeWidth(1.5 * invS);
                 dot.fill(pointColor);
+            }
+            const hitArea = pointGroup.findOne('.hitArea');
+            if (hitArea) {
+                hitArea.radius(16 * invS);
             }
         });
 
@@ -1153,21 +1187,48 @@ export class CanvasViewport {
             const isSelected = selectedEntityIds.includes(con.id);
             const isHovered = hoveredConstraintId === con.id;
             const color = isSelected || isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
-            const strokeWidth = isSelected || isHovered ? 2 : 1.2;
+            const strokeWidth = (isSelected || isHovered ? 2 : 1.2) * invS;
 
             conGroup.getChildren().forEach((child: any) => {
                 if (child.className === 'Line' || child.className === 'Arrow' || child.className === 'Ring') {
                     child.stroke(color);
+                    child.strokeWidth(strokeWidth);
                     if (child.className === 'Arrow') {
-                        child.strokeWidth(strokeWidth);
+                        child.pointerLength(6 * invS);
+                        child.pointerWidth(4 * invS);
+                    }
+                    if (child.className === 'Ring') {
+                        child.innerRadius(7 * invS);
+                        child.outerRadius(8.5 * invS);
                     }
                 } else if (child.className === 'Text') {
                     child.fill(color);
+                    child.fontSize(10 * invS);
+                    child.offsetX(child.width() / 2);
+                    child.offsetY(child.height() / 2);
+                } else if (child.className === 'Rect') {
+                    const txt = conGroup.findOne('Text');
+                    if (txt) {
+                        child.x(txt.x() - txt.width()/2 - 2 * invS);
+                        child.y(txt.y() - txt.height()/2 - 1 * invS);
+                        child.width(txt.width() + 4 * invS);
+                        child.height(txt.height() + 2 * invS);
+                    }
                 } else if (child.className === 'Label') {
                     const tag = child.getTag();
-                    if (tag) tag.stroke(color);
+                    if (tag) {
+                        tag.stroke(color);
+                        tag.strokeWidth(1 * invS);
+                        tag.cornerRadius(2 * invS);
+                    }
                     const text = child.getText();
-                    if (text) text.fill(color);
+                    if (text) {
+                        text.fill(color);
+                        text.fontSize(9 * invS);
+                        text.padding(2 * invS);
+                    }
+                    child.offsetX(child.width() / 2);
+                    child.offsetY(child.height() / 2);
                 }
             });
         });
@@ -1303,7 +1364,7 @@ export class CanvasViewport {
             };
 
             const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-            const boundedScale = Math.max(0.1, Math.min(newScale, 15));
+            const boundedScale = Math.max(0.01, Math.min(newScale, 1000));
 
             this.stage.scale({ x: boundedScale, y: boundedScale });
 
@@ -1313,6 +1374,7 @@ export class CanvasViewport {
             };
             this.stage.position(newPos);
             this.drawGrid();
+            this.redrawAll();
         });
     }
 
@@ -1323,7 +1385,8 @@ export class CanvasViewport {
         val: number,
         mousePos: { x: number; y: number },
         color: string,
-        parent: any
+        parent: any,
+        invS: number
     ) {
         const ux = lp2.x - lp1.x;
         const uy = lp2.y - lp1.y;
@@ -1339,8 +1402,8 @@ export class CanvasViewport {
         const perpLine = new Konva.Line({
             points: [p.x, p.y, projX, projY],
             stroke: color,
-            strokeWidth: 1,
-            dash: [3, 3],
+            strokeWidth: 1 * invS,
+            dash: [3 * invS, 3 * invS],
             listening: false
         });
         parent.add(perpLine);
@@ -1351,8 +1414,8 @@ export class CanvasViewport {
         const leaderLine = new Konva.Line({
             points: [projMidX, projMidY, mousePos.x, mousePos.y],
             stroke: 'rgba(148, 163, 184, 0.2)',
-            strokeWidth: 0.8,
-            dash: [2, 2],
+            strokeWidth: 0.8 * invS,
+            dash: [2 * invS, 2 * invS],
             listening: false
         });
         parent.add(leaderLine);
@@ -1361,7 +1424,7 @@ export class CanvasViewport {
             x: mousePos.x,
             y: mousePos.y,
             text: val.toFixed(1),
-            fontSize: 9,
+            fontSize: 9 * invS,
             fontFamily: 'sans-serif',
             fill: color,
             listening: false
@@ -1370,10 +1433,10 @@ export class CanvasViewport {
         text.offsetY(text.height() / 2);
 
         const rect = new Konva.Rect({
-            x: mousePos.x - text.width()/2 - 2,
-            y: mousePos.y - text.height()/2 - 1,
-            width: text.width() + 4,
-            height: text.height() + 2,
+            x: mousePos.x - text.width()/2 - 2 * invS,
+            y: mousePos.y - text.height()/2 - 1 * invS,
+            width: text.width() + 4 * invS,
+            height: text.height() + 2 * invS,
             fill: 'white',
             listening: false
         });
@@ -1389,7 +1452,8 @@ export class CanvasViewport {
         val: number,
         mousePos: { x: number; y: number },
         color: string,
-        parent: any
+        parent: any,
+        invS: number
     ) {
         let d1x = p1.x, d1y = p1.y;
         let d2x = p2.x, d2y = p2.y;
@@ -1431,15 +1495,15 @@ export class CanvasViewport {
         const ext1 = new Konva.Line({
             points: [ext1StartX, ext1StartY, d1x, d1y],
             stroke: 'rgba(148, 163, 184, 0.2)',
-            strokeWidth: 1,
-            dash: [2, 2],
+            strokeWidth: 1 * invS,
+            dash: [2 * invS, 2 * invS],
             listening: false
         });
         const ext2 = new Konva.Line({
             points: [ext2StartX, ext2StartY, d2x, d2y],
             stroke: 'rgba(148, 163, 184, 0.2)',
-            strokeWidth: 1,
-            dash: [2, 2],
+            strokeWidth: 1 * invS,
+            dash: [2 * invS, 2 * invS],
             listening: false
         });
         parent.add(ext1);
@@ -1451,17 +1515,17 @@ export class CanvasViewport {
         const arrow1 = new Konva.Arrow({
             points: [mx, my, d1x, d1y],
             stroke: color,
-            strokeWidth: 1,
-            pointerLength: 5,
-            pointerWidth: 3,
+            strokeWidth: 1 * invS,
+            pointerLength: 5 * invS,
+            pointerWidth: 3 * invS,
             listening: false
         });
         const arrow2 = new Konva.Arrow({
             points: [mx, my, d2x, d2y],
             stroke: color,
-            strokeWidth: 1,
-            pointerLength: 5,
-            pointerWidth: 3,
+            strokeWidth: 1 * invS,
+            pointerLength: 5 * invS,
+            pointerWidth: 3 * invS,
             listening: false
         });
         parent.add(arrow1);
@@ -1471,7 +1535,7 @@ export class CanvasViewport {
             x: mx,
             y: my,
             text: val.toFixed(1),
-            fontSize: 9,
+            fontSize: 9 * invS,
             fontFamily: 'sans-serif',
             fill: color,
             listening: false
@@ -1480,10 +1544,10 @@ export class CanvasViewport {
         text.offsetY(text.height() / 2);
 
         const rect = new Konva.Rect({
-            x: mx - text.width()/2 - 2,
-            y: my - text.height()/2 - 1,
-            width: text.width() + 4,
-            height: text.height() + 2,
+            x: mx - text.width()/2 - 2 * invS,
+            y: my - text.height()/2 - 1 * invS,
+            width: text.width() + 4 * invS,
+            height: text.height() + 2 * invS,
             fill: 'white',
             listening: false
         });
