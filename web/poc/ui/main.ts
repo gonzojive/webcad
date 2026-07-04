@@ -412,7 +412,26 @@ export class SketchController {
         }
     }
 
+    private lastClickTime = 0;
+    private lastClickEntityId: string | null = null;
+
     private handleEntityClick(id: string, e: any) {
+        const now = Date.now();
+        if (id === this.lastClickEntityId && (now - this.lastClickTime) < 300) {
+            this.lastClickTime = 0;
+            this.lastClickEntityId = null;
+            
+            const con = this.model.getConstraint(id);
+            if (con) {
+                e.cancelBubble = true;
+                this.editConstraintValue(con);
+                return;
+            }
+        }
+        
+        this.lastClickTime = now;
+        this.lastClickEntityId = id;
+
         if (this.isDistanceSelectionActive) {
             e.cancelBubble = true;
             const selectedIds = this.model.getSelectedEntityIds();
@@ -669,6 +688,7 @@ export class SketchController {
         const input = document.getElementById('inline-distance-input') as HTMLInputElement;
         if (!input) return;
 
+        input.blur();
         input.style.display = 'none';
         if ((input as any)._cleanup) {
             (input as any)._cleanup();

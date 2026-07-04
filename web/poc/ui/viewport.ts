@@ -469,12 +469,7 @@ export class CanvasViewport {
                 }
             });
 
-            conGroup.on('dblclick', (e: any) => {
-                if (this.model.getTool() === 'select') {
-                    e.cancelBubble = true;
-                    if (this.onConstraintDblClick) this.onConstraintDblClick(con.id, e);
-                }
-            });
+
 
             conGroup.on('mousedown', (e: any) => {
                 if (this.model.getTool() === 'select') {
