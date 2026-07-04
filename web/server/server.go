@@ -1,19 +1,16 @@
-// Package server provides a generic web server for serving WebCAD frontend assets.
+// Package server provides a generic web server for serving WebCAD frontend assets,
+// wrapping the [runfilesserver.RunfilesServer] with command-line flag configuration.
 package server
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/bazelbuild/rules_go/go/runfiles"
+	"github.com/gonzojive/webcad/web/runfilesserver"
 )
 
-// Options configures the WebCAD web server.
+// Options configures the [Server] instance.
 type Options struct {
 	// DefaultAddr is the default address to listen on (e.g. ":8080").
 	// Can be overridden by the -addr flag if registered.
@@ -26,110 +23,42 @@ type Options struct {
 	// WorkspaceSubpath is the path relative to the workspace root where the assets are located
 	// (e.g., "web/poc").
 	WorkspaceSubpath string
+
+	// IndexHTML is the path relative to WorkspaceSubpath to serve at "/" (e.g., "ui/index.html").
+	IndexHTML string
 }
 
-// Server wraps the http server and handles asset resolution.
+// Server is a helper that wraps the http server, parses command line flags,
+// and delegates request handling to [runfilesserver.RunfilesServer].
 type Server struct {
-	opts      Options
-	assetsDir string
-	addr      string
+	addr    string
+	handler http.Handler
 }
 
-// New creates a new Server instance.
-// It defines and parses flags: -addr and -assets_dir.
+// New creates a new [Server] instance configured with [Options].
+// It defines and parses command-line flags: -addr and -assets_dir.
 func New(opts Options) *Server {
 	addrFlag := flag.String("addr", opts.DefaultAddr, "Address to listen on")
-	assetsDirFlag := flag.String("assets_dir", "", "Path to the assets directory (optional override)")
+	assetsDirFlag := flag.String("assets_dir", "", "Path to the assets directory (optional override, bypasses runfiles)")
 	
-	// Check if flags are already parsed (e.g. by the caller)
 	if !flag.Parsed() {
 		flag.Parse()
 	}
 
-	s := &Server{
-		opts: opts,
-		addr: *addrFlag,
+	rs := runfilesserver.New(opts.RunfilesMarker, opts.WorkspaceSubpath, opts.IndexHTML)
+	if *assetsDirFlag != "" {
+		rs.SetLocalOverrideDir(*assetsDirFlag)
 	}
 
-	s.assetsDir = s.resolveAssetDir(*assetsDirFlag)
-	return s
+	return &Server{
+		addr:    *addrFlag,
+		handler: rs,
+	}
 }
 
-// Start starts the HTTP server.
+// Start starts the HTTP listener and serves requests using the configured handler.
 func (s *Server) Start() error {
-	fs := http.FileServer(http.Dir(s.assetsDir))
-	http.Handle("/", fs)
-
-	log.Printf("WebCAD Server starting on http://localhost%s (serving %s)", s.addr, s.assetsDir)
+	http.Handle("/", s.handler)
+	log.Printf("WebCAD Server starting on http://localhost%s (serving via RunfilesServer)", s.addr)
 	return http.ListenAndServe(s.addr, nil)
-}
-
-// AssetsDir returns the resolved assets directory.
-func (s *Server) AssetsDir() string {
-	return s.assetsDir
-}
-
-func (s *Server) resolveAssetDir(flagValue string) string {
-	// 1. Flag override
-	if flagValue != "" {
-		log.Printf("Using assets directory from flag: %s", flagValue)
-		return flagValue
-	}
-
-	// 2. Try Bazel runfiles
-	if s.opts.RunfilesMarker != "" && s.opts.WorkspaceSubpath != "" {
-		if jsPath, err := runfiles.Rlocation(s.opts.RunfilesMarker); err == nil {
-			// jsPath: /path/to/runfiles/webcad/web/poc/ui/main.js
-			// RunfilesMarker: webcad/web/poc/ui/main.js
-			// We want to find the root and append WorkspaceSubpath.
-			
-			// Normalize paths for comparison
-			jsPathClean := filepath.Clean(jsPath)
-			markerClean := filepath.Clean(s.opts.RunfilesMarker)
-			
-			// Strip the marker from the end of the resolved path
-			if strings.HasSuffix(jsPathClean, markerClean) {
-				runfilesRoot := jsPathClean[:len(jsPathClean)-len(markerClean)]
-				// Workspace name is the first segment of the marker (e.g., "webcad")
-				parts := strings.Split(markerClean, string(filepath.Separator))
-				workspaceName := parts[0]
-				
-				assetDir := filepath.Join(runfilesRoot, workspaceName, s.opts.WorkspaceSubpath)
-				log.Printf("Serving assets from Bazel runfiles: %s", assetDir)
-				return assetDir
-			}
-		}
-	}
-
-	// 3. Try to locate workspace root via filesystem walk-up
-	if wd, err := os.Getwd(); err == nil {
-		if root, err := findWorkspaceRoot(wd); err == nil {
-			assetDir := filepath.Join(root, s.opts.WorkspaceSubpath)
-			log.Printf("Located workspace root, serving assets from: %s", assetDir)
-			return assetDir
-		}
-	}
-
-	// 4. Fallback to current working directory
-	wd, _ := os.Getwd()
-	log.Printf("Fallback: serving assets from current working directory: %s", wd)
-	return wd
-}
-
-func findWorkspaceRoot(startDir string) (string, error) {
-	dir := startDir
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "MODULE.bazel")); err == nil {
-			return dir, nil
-		}
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	return "", fmt.Errorf("workspace root not found")
 }
