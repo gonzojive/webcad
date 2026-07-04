@@ -240,4 +240,31 @@ export class SketchStateModel {
             this.emit('hover-change');
         }
     }
+
+    generateNextId(prefix: string): string {
+        let maxNum = 0;
+        const regex = new RegExp(`^${prefix}(\\d+)$`);
+        const checkId = (id: string) => {
+            const match = id.match(regex);
+            if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
+            }
+        };
+        this.points.forEach(p => checkId(p.id));
+        this.lines.forEach(l => checkId(l.id));
+        this.circles.forEach(c => checkId(c.id));
+        this.constraints.forEach(con => checkId(con.id));
+        return `${prefix}${maxNum + 1}`;
+    }
+
+    makeUniqueConstraintId(baseId: string): string {
+        let candidate = baseId;
+        let counter = 1;
+        while (this.constraints.some(c => c.id === candidate)) {
+            candidate = `${baseId}_${counter}`;
+            counter++;
+        }
+        return candidate;
+    }
 }

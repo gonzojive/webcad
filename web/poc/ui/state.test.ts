@@ -48,3 +48,34 @@ test('SketchStateModel add constraints works', () => {
     assert.strictEqual(constraints[1].type, 'vertical_distance');
     assert.strictEqual(constraints[2].type, 'point_line_distance');
 });
+
+test('SketchStateModel generateNextId works sequentially', () => {
+    const model = new SketchStateModel();
+    assert.strictEqual(model.generateNextId('P'), 'P1');
+    model.addPoint({ id: 'P1', x: 0, y: 0 });
+    assert.strictEqual(model.generateNextId('P'), 'P2');
+    model.addPoint({ id: 'P3', x: 10, y: 10 });
+    assert.strictEqual(model.generateNextId('P'), 'P4');
+});
+
+test('SketchStateModel makeUniqueConstraintId avoids name clashes', () => {
+    const model = new SketchStateModel();
+    const base = 'Distance_P1_P2';
+    assert.strictEqual(model.makeUniqueConstraintId(base), base);
+    model.addConstraint({
+        id: base,
+        type: 'distance',
+        p1Id: 'P1',
+        p2Id: 'P2',
+        value: 10
+    });
+    assert.strictEqual(model.makeUniqueConstraintId(base), 'Distance_P1_P2_1');
+    model.addConstraint({
+        id: 'Distance_P1_P2_1',
+        type: 'distance',
+        p1Id: 'P1',
+        p2Id: 'P2',
+        value: 20
+    });
+    assert.strictEqual(model.makeUniqueConstraintId(base), 'Distance_P1_P2_2');
+});

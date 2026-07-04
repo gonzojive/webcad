@@ -39,6 +39,7 @@ export interface DistanceConstraint extends BaseConstraint {
     p1Id: string;
     p2Id: string;
     value: number;
+    layoutOffset?: number;
 }
 
 export interface HorizontalDistanceConstraint extends BaseConstraint {
@@ -46,6 +47,7 @@ export interface HorizontalDistanceConstraint extends BaseConstraint {
     p1Id: string;
     p2Id: string;
     value: number;
+    layoutOffset?: number;
 }
 
 export interface VerticalDistanceConstraint extends BaseConstraint {
@@ -53,6 +55,7 @@ export interface VerticalDistanceConstraint extends BaseConstraint {
     p1Id: string;
     p2Id: string;
     value: number;
+    layoutOffset?: number;
 }
 
 export interface PointLineDistanceConstraint extends BaseConstraint {
@@ -60,6 +63,8 @@ export interface PointLineDistanceConstraint extends BaseConstraint {
     pointId: string;
     lineId: string;
     value: number;
+    layoutOffsetX?: number;
+    layoutOffsetY?: number;
 }
 
 export interface VerticalConstraint extends BaseConstraint {

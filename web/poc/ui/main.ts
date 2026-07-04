@@ -19,6 +19,8 @@ function distance(x1: number, y1: number, x2: number, y2: number): number {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
+
+
 function getImpliedDimensionType(
     p1: { x: number; y: number },
     p2: { x: number; y: number },
@@ -212,7 +214,7 @@ export class SketchController {
 
         if (currentTool === 'point') {
             if (!snap) {
-                const pId = generateId('P');
+                const pId = this.model.generateNextId('P');
                 this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                 this.runGCSSolver();
             }
@@ -222,7 +224,7 @@ export class SketchController {
                 if (snap) {
                     this.lineStartPointId = snap.id;
                 } else {
-                    const pId = generateId('P');
+                    const pId = this.model.generateNextId('P');
                     this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                     this.lineStartPointId = pId;
                 }
@@ -233,14 +235,14 @@ export class SketchController {
                 if (snap) {
                     endPointId = snap.id;
                 } else {
-                    const pId = generateId('P');
+                    const pId = this.model.generateNextId('P');
                     this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                     endPointId = pId;
                 }
 
                 if (this.lineStartPointId !== endPointId) {
                     this.model.addLine({
-                        id: generateId('L'),
+                        id: this.model.generateNextId('L'),
                         p1Id: this.lineStartPointId,
                         p2Id: endPointId
                     });
@@ -254,7 +256,7 @@ export class SketchController {
                 if (snap) {
                     this.circleCenterPointId = snap.id;
                 } else {
-                    const pId = generateId('P');
+                    const pId = this.model.generateNextId('P');
                     this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                     this.circleCenterPointId = pId;
                 }
@@ -265,7 +267,7 @@ export class SketchController {
                 if (center) {
                     const rad = distance(center.x, center.y, pos.x, pos.y);
                     this.model.addCircle({
-                        id: generateId('C'),
+                        id: this.model.generateNextId('C'),
                         centerId: this.circleCenterPointId,
                         radius: Math.max(5, rad)
                     });
@@ -288,6 +290,8 @@ export class SketchController {
                 this.placingDimension = null;
                 this.viewport.clearDimensionPreview();
 
+                const layoutProps: { offset?: number; offsetX?: number; offsetY?: number } = {};
+
                 if (finalType === 'point_line_distance') {
                     const p = this.model.getPoint(entityIds[0]);
                     const l = this.model.getLine(entityIds[1]);
@@ -306,7 +310,13 @@ export class SketchController {
                                 projY = lp1.y + t * uy;
                             }
                             const val = distance(p.x, p.y, projX, projY);
-                            this.showInlineDimensionInput('point_line_distance', entityIds, val, pos);
+                            
+                            const cx = (p.x + projX) / 2;
+                            const cy = (p.y + projY) / 2;
+                            layoutProps.offsetX = pos.x - cx;
+                            layoutProps.offsetY = pos.y - cy;
+
+                            this.showInlineDimensionInput('point_line_distance', entityIds, val, pos, layoutProps);
                         }
                     }
                 } else {
@@ -316,7 +326,27 @@ export class SketchController {
                         const val = (finalType === 'horizontal_distance') ? Math.abs(p2.x - p1.x)
                                   : (finalType === 'vertical_distance') ? Math.abs(p2.y - p1.y)
                                   : distance(p1.x, p1.y, p2.x, p2.y);
-                        this.showInlineDimensionInput(finalType, entityIds, val, pos);
+                        
+                        if (finalType === 'distance') {
+                            const dx = p2.x - p1.x;
+                            const dy = p2.y - p1.y;
+                            const len = Math.hypot(dx, dy);
+                            if (len > 0) {
+                                const nx = -dy / len;
+                                const ny = dx / len;
+                                const cx = (p1.x + p2.x) / 2;
+                                const cy = (p1.y + p2.y) / 2;
+                                layoutProps.offset = (pos.x - cx) * nx + (pos.y - cy) * ny;
+                            }
+                        } else if (finalType === 'horizontal_distance') {
+                            const minY = Math.min(p1.y, p2.y);
+                            layoutProps.offset = pos.y - minY;
+                        } else if (finalType === 'vertical_distance') {
+                            const maxX = Math.max(p1.x, p2.x);
+                            layoutProps.offset = pos.x - maxX;
+                        }
+
+                        this.showInlineDimensionInput(finalType, entityIds, val, pos, layoutProps);
                     }
                 }
             }
@@ -440,8 +470,9 @@ export class SketchController {
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Coincident_${selectedPoints[0]}_${selectedPoints[1]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'coincident',
             p1Id: selectedPoints[0],
             p2Id: selectedPoints[1]
@@ -540,7 +571,8 @@ export class SketchController {
         type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance',
         entityIds: string[],
         defaultValue: number,
-        spawnPos: { x: number; y: number }
+        spawnPos: { x: number; y: number },
+        layoutProps?: { offset?: number; offsetX?: number; offsetY?: number }
     ) {
         const input = document.getElementById('inline-distance-input') as HTMLInputElement;
         if (!input) return;
@@ -559,22 +591,27 @@ export class SketchController {
         const applyInput = () => {
             const val = parseFloat(input.value);
             if (!isNaN(val) && val > 0) {
-                const conId = generateId('CON');
                 if (type === 'distance' || type === 'horizontal_distance' || type === 'vertical_distance') {
+                    const prefix = type === 'distance' ? 'Distance' : type === 'horizontal_distance' ? 'HorizDist' : 'VertDist';
+                    const conId = this.model.makeUniqueConstraintId(`${prefix}_${entityIds[0]}_${entityIds[1]}`);
                     this.model.addConstraint({
                         id: conId,
                         type: type,
                         p1Id: entityIds[0],
                         p2Id: entityIds[1],
-                        value: val
+                        value: val,
+                        layoutOffset: layoutProps?.offset
                     });
                 } else if (type === 'point_line_distance') {
+                    const conId = this.model.makeUniqueConstraintId(`Dist_${entityIds[0]}_${entityIds[1]}`);
                     this.model.addConstraint({
                         id: conId,
                         type: 'point_line_distance',
                         pointId: entityIds[0],
                         lineId: entityIds[1],
-                        value: val
+                        value: val,
+                        layoutOffsetX: layoutProps?.offsetX,
+                        layoutOffsetY: layoutProps?.offsetY
                     });
                 }
                 this.runGCSSolver();
@@ -706,8 +743,9 @@ export class SketchController {
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Horizontal_${selectedLines[0]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'horizontal',
             lineId: selectedLines[0]
         });
@@ -723,8 +761,9 @@ export class SketchController {
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Vertical_${selectedLines[0]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'vertical',
             lineId: selectedLines[0]
         });
@@ -740,8 +779,9 @@ export class SketchController {
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Parallel_${selectedLines[0]}_${selectedLines[1]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'parallel',
             line1Id: selectedLines[0],
             line2Id: selectedLines[1]
@@ -758,8 +798,9 @@ export class SketchController {
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Perp_${selectedLines[0]}_${selectedLines[1]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'perpendicular',
             line1Id: selectedLines[0],
             line2Id: selectedLines[1]

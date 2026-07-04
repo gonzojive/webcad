@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint, DistanceConstraint, HorizontalDistanceConstraint, VerticalDistanceConstraint, PointLineDistanceConstraint } from '../gcsapi/gcsapi.js';
 import { SketchStateModel } from './state.js';
 
 declare const Konva: any;
@@ -323,7 +323,8 @@ export class CanvasViewport {
                 const p1 = this.model.getPoint(con.p1Id);
                 const p2 = this.model.getPoint(con.p2Id);
                 if (!p1 || !p2) return null;
-                const offset = 30;
+                
+                const offset = con.layoutOffset !== undefined ? con.layoutOffset : 30;
 
                 if (con.type === 'distance') {
                     const dx = p2.x - p1.x;
@@ -335,10 +336,12 @@ export class CanvasViewport {
                     return { x: (p1.x + p2.x) / 2 + nx * offset, y: (p1.y + p2.y) / 2 + ny * offset };
                 } else if (con.type === 'horizontal_distance') {
                     const minY = Math.min(p1.y, p2.y);
-                    return { x: (p1.x + p2.x) / 2, y: minY - offset };
+                    const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : -30;
+                    return { x: (p1.x + p2.x) / 2, y: minY + offsetVal };
                 } else if (con.type === 'vertical_distance') {
                     const maxX = Math.max(p1.x, p2.x);
-                    return { x: maxX + offset, y: (p1.y + p2.y) / 2 };
+                    const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : 30;
+                    return { x: maxX + offsetVal, y: (p1.y + p2.y) / 2 };
                 }
                 break;
             }
@@ -360,7 +363,11 @@ export class CanvasViewport {
                     projX = lp1.x + t * ux;
                     projY = lp1.y + t * uy;
                 }
-                return { x: (p.x + projX) / 2, y: (p.y + projY) / 2 };
+                const cx = (p.x + projX) / 2;
+                const cy = (p.y + projY) / 2;
+                const ox = con.layoutOffsetX !== undefined ? con.layoutOffsetX : 0;
+                const oy = con.layoutOffsetY !== undefined ? con.layoutOffsetY : 0;
+                return { x: cx + ox, y: cy + oy };
             }
             case 'horizontal':
             case 'vertical': {
@@ -394,7 +401,8 @@ export class CanvasViewport {
 
             const conGroup = new Konva.Group({
                 id: con.id,
-                listening: true
+                listening: true,
+                draggable: this.model.getTool() === 'select'
             });
 
             conGroup.on('mouseenter', () => {
@@ -426,6 +434,36 @@ export class CanvasViewport {
                 }
             });
 
+            conGroup.on('dragmove', (e: any) => {
+                e.cancelBubble = true;
+                const pointer = this.stage.getPointerPosition();
+                if (!pointer) return;
+                
+                const canvasPos = {
+                    x: (pointer.x - this.stage.x()) / this.stage.scaleX(),
+                    y: (pointer.y - this.stage.y()) / this.stage.scaleY()
+                };
+
+                conGroup.position({ x: 0, y: 0 });
+
+                const newOffset = this.calculateConstraintOffset(con, canvasPos);
+                if (newOffset !== null) {
+                    if (con.type === 'point_line_distance') {
+                        const offsets = newOffset as { x: number; y: number };
+                        con.layoutOffsetX = offsets.x;
+                        con.layoutOffsetY = offsets.y;
+                    } else if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance') {
+                        con.layoutOffset = newOffset as number;
+                    }
+                    this.model.updateConstraint(con);
+                    this.redrawAll();
+                }
+            });
+
+            conGroup.on('dragend', (e: any) => {
+                e.cancelBubble = true;
+            });
+
             switch (con.type) {
                 case 'distance':
                 case 'horizontal_distance':
@@ -433,7 +471,7 @@ export class CanvasViewport {
                     const p1 = this.model.getPoint(con.p1Id);
                     const p2 = this.model.getPoint(con.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth, conGroup);
+                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth, conGroup, con);
                     break;
                 }
                 case 'point_line_distance': {
@@ -443,7 +481,7 @@ export class CanvasViewport {
                     const lp1 = this.model.getPoint(l.p1Id);
                     const lp2 = this.model.getPoint(l.p2Id);
                     if (!lp1 || !lp2) break;
-                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth, conGroup);
+                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth, conGroup, con);
                     break;
                 }
                 case 'horizontal':
@@ -489,14 +527,15 @@ export class CanvasViewport {
         val: number,
         color: string,
         strokeWidth: number,
-        parentGroup: any
+        parentGroup: any,
+        con: DistanceConstraint | HorizontalDistanceConstraint | VerticalDistanceConstraint
     ) {
         let d1x = p1.x, d1y = p1.y;
         let d2x = p2.x, d2y = p2.y;
         let ext1StartX = p1.x, ext1StartY = p1.y;
         let ext2StartX = p2.x, ext2StartY = p2.y;
 
-        const offset = 30;
+        const offset = con.layoutOffset !== undefined ? con.layoutOffset : 30;
 
         if (type === 'distance') {
             const dx = p2.x - p1.x;
@@ -513,7 +552,8 @@ export class CanvasViewport {
 
         } else if (type === 'horizontal_distance') {
             const minY = Math.min(p1.y, p2.y);
-            const dimY = minY - offset;
+            const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : -30;
+            const dimY = minY + offsetVal;
 
             d1x = p1.x;
             d1y = dimY;
@@ -522,7 +562,8 @@ export class CanvasViewport {
 
         } else if (type === 'vertical_distance') {
             const maxX = Math.max(p1.x, p2.x);
-            const dimX = maxX + offset;
+            const offsetVal = con.layoutOffset !== undefined ? con.layoutOffset : 30;
+            const dimX = maxX + offsetVal;
 
             d1x = dimX;
             d1y = p1.y;
@@ -602,7 +643,8 @@ export class CanvasViewport {
         val: number,
         color: string,
         strokeWidth: number,
-        parentGroup: any
+        parentGroup: any,
+        con: PointLineDistanceConstraint
     ) {
         const ux = lp2.x - lp1.x;
         const uy = lp2.y - lp1.y;
@@ -624,12 +666,28 @@ export class CanvasViewport {
         });
         parentGroup.add(perpLine);
 
-        const mx = (p.x + projX) / 2;
-        const my = (p.y + projY) / 2;
+        const labelPos = this.getConstraintLabelPosition(con);
+        if (!labelPos) return;
+
+        const projMidX = (p.x + projX) / 2;
+        const projMidY = (p.y + projY) / 2;
+
+        const ox = con.layoutOffsetX || 0;
+        const oy = con.layoutOffsetY || 0;
+        if (Math.hypot(ox, oy) > 2) {
+            const leaderLine = new Konva.Line({
+                points: [projMidX, projMidY, labelPos.x, labelPos.y],
+                stroke: 'rgba(148, 163, 184, 0.4)',
+                strokeWidth: 1,
+                dash: [2, 2],
+                listening: false
+            });
+            parentGroup.add(leaderLine);
+        }
 
         const text = new Konva.Text({
-            x: mx,
-            y: my,
+            x: labelPos.x,
+            y: labelPos.y,
             text: val.toFixed(1),
             fontSize: 10,
             fontFamily: 'sans-serif',
@@ -640,8 +698,8 @@ export class CanvasViewport {
         text.offsetY(text.height() / 2);
 
         const rect = new Konva.Rect({
-            x: mx - text.width()/2 - 2,
-            y: my - text.height()/2 - 1,
+            x: labelPos.x - text.width()/2 - 2,
+            y: labelPos.y - text.height()/2 - 1,
             width: text.width() + 4,
             height: text.height() + 2,
             fill: 'white',
@@ -1078,6 +1136,8 @@ export class CanvasViewport {
             const conGroup = this.mainLayer.findOne('#' + con.id) as any;
             if (!conGroup) return;
 
+            conGroup.draggable(this.model.getTool() === 'select');
+
             const isSelected = selectedEntityIds.includes(con.id);
             const isHovered = hoveredConstraintId === con.id;
             const color = isSelected || isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
@@ -1387,5 +1447,60 @@ export class CanvasViewport {
 
         parent.add(rect);
         parent.add(text);
+    }
+
+    public calculateConstraintOffset(con: GCSConstraint, mousePos: { x: number; y: number }): number | { x: number; y: number } | null {
+        switch (con.type) {
+            case 'distance': {
+                const p1 = this.model.getPoint(con.p1Id);
+                const p2 = this.model.getPoint(con.p2Id);
+                if (!p1 || !p2) return null;
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const len = Math.hypot(dx, dy);
+                if (len === 0) return null;
+                const nx = -dy / len;
+                const ny = dx / len;
+                const cx = (p1.x + p2.x) / 2;
+                const cy = (p1.y + p2.y) / 2;
+                return (mousePos.x - cx) * nx + (mousePos.y - cy) * ny;
+            }
+            case 'horizontal_distance': {
+                const p1 = this.model.getPoint(con.p1Id);
+                const p2 = this.model.getPoint(con.p2Id);
+                if (!p1 || !p2) return null;
+                const minY = Math.min(p1.y, p2.y);
+                return mousePos.y - minY;
+            }
+            case 'vertical_distance': {
+                const p1 = this.model.getPoint(con.p1Id);
+                const p2 = this.model.getPoint(con.p2Id);
+                if (!p1 || !p2) return null;
+                const maxX = Math.max(p1.x, p2.x);
+                return mousePos.x - maxX;
+            }
+            case 'point_line_distance': {
+                const p = this.model.getPoint(con.pointId);
+                const l = this.model.getLine(con.lineId);
+                if (!p || !l) return null;
+                const lp1 = this.model.getPoint(l.p1Id);
+                const lp2 = this.model.getPoint(l.p2Id);
+                if (!lp1 || !lp2) return null;
+                const ux = lp2.x - lp1.x;
+                const uy = lp2.y - lp1.y;
+                const len2 = ux*ux + uy*uy;
+                let projX = lp1.x;
+                let projY = lp1.y;
+                if (len2 > 0) {
+                    const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+                    projX = lp1.x + t * ux;
+                    projY = lp1.y + t * uy;
+                }
+                const cx = (p.x + projX) / 2;
+                const cy = (p.y + projY) / 2;
+                return { x: mousePos.x - cx, y: mousePos.y - cy };
+            }
+        }
+        return null;
     }
 }
