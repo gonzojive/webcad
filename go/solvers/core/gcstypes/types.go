@@ -13,7 +13,4 @@ type SketchID string
 // SolverID uniquely identifies a solver implementation (e.g., "lm", "bfgs").
 type SolverID string
 
-// ConstraintResidual represents the absolute residual error of a constraint.
-// It is a unitless number with a magnitude that depends on the constraint's
-// definition and weights.
-type ConstraintResidual float64
+
