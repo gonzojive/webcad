@@ -16,26 +16,20 @@ npm_link_all_packages(name = "node_modules")
 # Managed by Gazelle
 ts_project(
     name = "ui_lib",
-    srcs = [
-        "main.ts",
-        "state_test.ts",
-    ],
+    srcs = ["main.ts"],
     declaration = True,
     source_map = True,
     tsconfig = ":tsconfig",
-    deps = [
-        ":node_modules/@webcad/gcsapi",
-        "//:node_modules/@types/node",
-    ],
+    deps = [":node_modules/@webcad/gcsapi"],
 )
 
 js_test(
     name = "state_test",
     data = [
         "package.json",
-        ":ui_lib",
+        ":ui_tests",
     ],
-    entry_point = "state_test.js",
+    entry_point = "state.test.js",
 )
 
 exports_files(["index.html"])
@@ -47,4 +41,17 @@ npm_package(
         ":ui_lib",
     ],
     visibility = ["//:__pkg__"],
+)
+
+ts_project(
+    name = "ui_tests",
+    testonly = True,
+    srcs = ["state.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = ":tsconfig",
+    deps = [
+        ":node_modules/@webcad/gcsapi",
+        "//:node_modules/@types/node",
+    ],
 )
