@@ -1,3 +1,4 @@
+# gazelle:exclude
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
 load("@npm//web:@angular/compiler-cli/package_json.bzl", compiler_cli = "bin")

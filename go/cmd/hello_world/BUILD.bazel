@@ -5,7 +5,7 @@ go_library(
     srcs = ["hello_world.go"],
     importpath = "github.com/gonzojive/webcad/go/cmd/hello_world",
     visibility = ["//visibility:private"],
-    deps = ["@rules_go//go/runfiles:go_default_library"],
+    deps = ["@rules_go//go/runfiles"],
 )
 
 go_binary(
