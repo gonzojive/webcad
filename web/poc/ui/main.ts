@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint, GCSValueConstraint } from '../gcsapi/gcsapi.js';
 import { SketchStateModel, ToolMode } from './state.js';
 import { SketchStore } from './store.js';
 import { SolverService } from './solver.js';
@@ -57,6 +57,7 @@ export class SketchController {
         this.viewport.setDragMoveCallback((id, x, y) => this.handleDragMove(id, x, y));
         this.viewport.setDragEndCallback(() => this.handleDragEnd());
         this.viewport.setEntityClickCallback((id, e) => this.handleEntityClick(id, e));
+        this.viewport.setConstraintDblClickCallback((id: string) => this.handleConstraintDblClick(id));
         this.viewport.setStageMouseDownCallback((pos, e) => this.handleStageMouseDown(pos, e));
         this.viewport.setStageMouseMoveCallback((pos) => this.handleStageMouseMove(pos));
 
@@ -558,6 +559,84 @@ export class SketchController {
         }
     }
 
+    private handleConstraintDblClick(id: string) {
+        const con = this.model.getConstraint(id);
+        if (con) {
+            this.editConstraintValue(con);
+        }
+    }
+
+    private editConstraintValue(con: GCSConstraint) {
+        if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance' || con.type === 'point_line_distance') {
+            const labelPos = this.viewport.getConstraintLabelPosition(con);
+            if (labelPos) {
+                this.showInlineDimensionInputForEdit(con as GCSValueConstraint, labelPos);
+            }
+        }
+    }
+
+    private showInlineDimensionInputForEdit(con: GCSValueConstraint, spawnPos: { x: number; y: number }) {
+        const input = document.getElementById('inline-distance-input') as HTMLInputElement;
+        if (!input) return;
+
+        const stage = this.viewport['stage'];
+        const screenX = stage.x() + spawnPos.x * stage.scaleX();
+        const screenY = stage.y() + spawnPos.y * stage.scaleY();
+
+        input.value = con.value!.toFixed(1);
+        input.style.left = `${screenX + 15}px`;
+        input.style.top = `${screenY - 15}px`;
+        input.style.display = 'block';
+        input.focus();
+        input.select();
+
+        const applyInput = () => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val) && val > 0) {
+                con.value = val;
+                this.model.updateConstraint(con);
+                this.runGCSSolver();
+            }
+            this.hideInlineDistanceInput();
+        };
+
+        const keyHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                applyInput();
+            } else if (e.key === 'Escape') {
+                this.hideInlineDistanceInput();
+            }
+        };
+
+        const blurHandler = () => {
+            applyInput();
+        };
+
+        input.addEventListener('keydown', keyHandler);
+        input.addEventListener('blur', blurHandler);
+
+        (input as any)._cleanup = () => {
+            input.removeEventListener('keydown', keyHandler);
+            input.removeEventListener('blur', blurHandler);
+        };
+    }
+
+    public deleteSelected() {
+        const selectedIds = this.model.getSelectedEntityIds();
+        if (selectedIds.length === 0) return;
+
+        selectedIds.forEach(id => {
+            if (id.startsWith('CON_')) {
+                this.model.deleteConstraint(id);
+            } else {
+                this.model.deleteEntity(id);
+            }
+        });
+
+        this.model.setSelectedEntityIds([]);
+        this.runGCSSolver();
+    }
+
     private applyHorizontal() {
         const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
         if (selectedLines.length !== 1) {
@@ -681,6 +760,8 @@ window.addEventListener('DOMContentLoaded', async () => {
             controller.model.setTool('dimension');
         } else if (e.key === 'f' || e.key === 'F') {
             controller.viewport.zoomToFit();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            controller.deleteSelected();
         }
     });
 

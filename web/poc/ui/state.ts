@@ -110,6 +110,14 @@ export class SketchStateModel {
         this.emit('change');
     }
 
+    updateConstraint(c: GCSConstraint) {
+        const idx = this.constraints.findIndex(x => x.id === c.id);
+        if (idx > -1) {
+            this.constraints[idx] = c;
+            this.emit('change');
+        }
+    }
+
     deleteEntity(id: string) {
         // 1. Remove entity
         this.points = this.points.filter(p => p.id !== id);
@@ -127,7 +135,11 @@ export class SketchStateModel {
             switch (con.type) {
                 case 'coincident':
                 case 'distance':
+                case 'horizontal_distance':
+                case 'vertical_distance':
                     return con.p1Id !== id && con.p2Id !== id;
+                case 'point_line_distance':
+                    return con.pointId !== id && con.lineId !== id;
                 case 'vertical':
                 case 'horizontal':
                     return con.lineId !== id;

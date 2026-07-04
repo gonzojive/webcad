@@ -29,6 +29,7 @@ export class CanvasViewport {
     private onDragMove: ((id: string, x: number, y: number) => void) | null = null;
     private onDragEnd: (() => void) | null = null;
     private onEntityClick: ((id: string, event: any) => void) | null = null;
+    private onConstraintDblClick: ((id: string, event: any) => void) | null = null;
     private onStageMouseDown: ((pos: { x: number; y: number }, event: any) => void) | null = null;
     private onStageMouseMove: ((pos: { x: number; y: number }) => void) | null = null;
 
@@ -92,6 +93,10 @@ export class CanvasViewport {
 
     setEntityClickCallback(cb: (id: string, event: any) => void) {
         this.onEntityClick = cb;
+    }
+
+    setConstraintDblClickCallback(cb: (id: string, event: any) => void) {
+        this.onConstraintDblClick = cb;
     }
 
     setStageMouseDownCallback(cb: (pos: { x: number; y: number }, event: any) => void) {
@@ -289,14 +294,116 @@ export class CanvasViewport {
         return false;
     }
 
+    public getConstraintLabelPosition(con: GCSConstraint): { x: number; y: number } | null {
+        switch (con.type) {
+            case 'distance':
+            case 'horizontal_distance':
+            case 'vertical_distance': {
+                const p1 = this.model.getPoint(con.p1Id);
+                const p2 = this.model.getPoint(con.p2Id);
+                if (!p1 || !p2) return null;
+                const offset = 30;
+
+                if (con.type === 'distance') {
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const len = Math.hypot(dx, dy);
+                    if (len === 0) return null;
+                    const nx = -dy / len;
+                    const ny = dx / len;
+                    return { x: (p1.x + p2.x) / 2 + nx * offset, y: (p1.y + p2.y) / 2 + ny * offset };
+                } else if (con.type === 'horizontal_distance') {
+                    const minY = Math.min(p1.y, p2.y);
+                    return { x: (p1.x + p2.x) / 2, y: minY - offset };
+                } else if (con.type === 'vertical_distance') {
+                    const maxX = Math.max(p1.x, p2.x);
+                    return { x: maxX + offset, y: (p1.y + p2.y) / 2 };
+                }
+                break;
+            }
+            case 'point_line_distance': {
+                const p = this.model.getPoint(con.pointId);
+                const l = this.model.getLine(con.lineId);
+                if (!p || !l) return null;
+                const lp1 = this.model.getPoint(l.p1Id);
+                const lp2 = this.model.getPoint(l.p2Id);
+                if (!lp1 || !lp2) return null;
+
+                const ux = lp2.x - lp1.x;
+                const uy = lp2.y - lp1.y;
+                const len2 = ux*ux + uy*uy;
+                let projX = lp1.x;
+                let projY = lp1.y;
+                if (len2 > 0) {
+                    const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+                    projX = lp1.x + t * ux;
+                    projY = lp1.y + t * uy;
+                }
+                return { x: (p.x + projX) / 2, y: (p.y + projY) / 2 };
+            }
+            case 'horizontal':
+            case 'vertical': {
+                const l = this.model.getLine(con.lineId);
+                if (!l) return null;
+                const p1 = this.model.getPoint(l.p1Id);
+                const p2 = this.model.getPoint(l.p2Id);
+                if (!p1 || !p2) return null;
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const len = Math.hypot(dx, dy);
+                if (len === 0) return null;
+                const nx = -dy / len;
+                const ny = dx / len;
+                return { x: (p1.x + p2.x) / 2 + nx * 12, y: (p1.y + p2.y) / 2 + ny * 12 };
+            }
+        }
+        return null;
+    }
+
     private drawConstraints() {
         const constraints = this.model.getConstraints();
         const hoveredConstraintId = this.model.getHoveredConstraintId();
+        const selectedEntityIds = this.model.getSelectedEntityIds();
 
         constraints.forEach(con => {
+            const isSelected = selectedEntityIds.includes(con.id);
             const isHovered = con.id === hoveredConstraintId;
-            const color = isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
-            const strokeWidth = isHovered ? 2 : 1.2;
+            const color = isSelected || isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
+            const strokeWidth = isSelected || isHovered ? 2 : 1.2;
+
+            const conGroup = new Konva.Group({
+                id: con.id,
+                listening: true
+            });
+
+            conGroup.on('mouseenter', () => {
+                if (this.model.getTool() === 'select') {
+                    this.model.setHoveredConstraintId(con.id);
+                    this.stage.container().style.cursor = 'pointer';
+                }
+            });
+
+            conGroup.on('mouseleave', () => {
+                if (this.model.getHoveredConstraintId() === con.id) {
+                    this.model.setHoveredConstraintId(null);
+                    this.stage.container().style.cursor = 
+                        this.model.getTool() === 'select' ? 'default' : 'crosshair';
+                }
+            });
+
+            conGroup.on('click', (e: any) => {
+                if (this.model.getTool() === 'select') {
+                    e.cancelBubble = true;
+                    if (this.onEntityClick) this.onEntityClick(con.id, e);
+                }
+            });
+
+            conGroup.on('dblclick', (e: any) => {
+                if (this.model.getTool() === 'select') {
+                    e.cancelBubble = true;
+                    if (this.onConstraintDblClick) this.onConstraintDblClick(con.id, e);
+                }
+            });
 
             switch (con.type) {
                 case 'distance':
@@ -305,7 +412,7 @@ export class CanvasViewport {
                     const p1 = this.model.getPoint(con.p1Id);
                     const p2 = this.model.getPoint(con.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth);
+                    this.drawDistanceConstraint(con.type, p1, p2, con.value, color, strokeWidth, conGroup);
                     break;
                 }
                 case 'point_line_distance': {
@@ -315,7 +422,7 @@ export class CanvasViewport {
                     const lp1 = this.model.getPoint(l.p1Id);
                     const lp2 = this.model.getPoint(l.p2Id);
                     if (!lp1 || !lp2) break;
-                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth);
+                    this.drawPointLineDistanceConstraint(p, lp1, lp2, con.value, color, strokeWidth, conGroup);
                     break;
                 }
                 case 'horizontal':
@@ -325,7 +432,7 @@ export class CanvasViewport {
                     const p1 = this.model.getPoint(l.p1Id);
                     const p2 = this.model.getPoint(l.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawHorizVertConstraint(con.type, p1, p2, color);
+                    this.drawHorizVertConstraint(con.type, p1, p2, color, conGroup);
                     break;
                 }
                 case 'parallel':
@@ -338,17 +445,19 @@ export class CanvasViewport {
                     const l2p1 = this.model.getPoint(l2.p1Id);
                     const l2p2 = this.model.getPoint(l2.p2Id);
                     if (!l1p1 || !l1p2 || !l2p1 || !l2p2) break;
-                    this.drawParallelPerpConstraint(con.type, l1p1, l1p2, l2p1, l2p2, color);
+                    this.drawParallelPerpConstraint(con.type, l1p1, l1p2, l2p1, l2p2, color, conGroup);
                     break;
                 }
                 case 'coincident': {
                     const p1 = this.model.getPoint(con.p1Id);
                     const p2 = this.model.getPoint(con.p2Id);
                     if (!p1 || !p2) break;
-                    this.drawCoincidentConstraint(p1, color);
+                    this.drawCoincidentConstraint(p1, color, conGroup);
                     break;
                 }
             }
+
+            this.mainLayer.add(conGroup);
         });
     }
 
@@ -358,7 +467,8 @@ export class CanvasViewport {
         p2: GCSPoint,
         val: number,
         color: string,
-        strokeWidth: number
+        strokeWidth: number,
+        parentGroup: any
     ) {
         let d1x = p1.x, d1y = p1.y;
         let d2x = p2.x, d2y = p2.y;
@@ -413,8 +523,8 @@ export class CanvasViewport {
             dash: [2, 2],
             listening: false
         });
-        this.mainLayer.add(ext1);
-        this.mainLayer.add(ext2);
+        parentGroup.add(ext1);
+        parentGroup.add(ext2);
 
         const mx = (d1x + d2x) / 2;
         const my = (d1y + d2y) / 2;
@@ -425,7 +535,7 @@ export class CanvasViewport {
             strokeWidth: strokeWidth,
             pointerLength: 6,
             pointerWidth: 4,
-            listening: false
+            listening: true
         });
         const arrow2 = new Konva.Arrow({
             points: [mx, my, d2x, d2y],
@@ -433,10 +543,10 @@ export class CanvasViewport {
             strokeWidth: strokeWidth,
             pointerLength: 6,
             pointerWidth: 4,
-            listening: false
+            listening: true
         });
-        this.mainLayer.add(arrow1);
-        this.mainLayer.add(arrow2);
+        parentGroup.add(arrow1);
+        parentGroup.add(arrow2);
 
         const text = new Konva.Text({
             x: mx,
@@ -445,7 +555,7 @@ export class CanvasViewport {
             fontSize: 10,
             fontFamily: 'sans-serif',
             fill: color,
-            listening: false
+            listening: true
         });
         
         text.offsetX(text.width() / 2);
@@ -457,11 +567,11 @@ export class CanvasViewport {
             width: text.width() + 4,
             height: text.height() + 2,
             fill: 'white',
-            listening: false
+            listening: true
         });
 
-        this.mainLayer.add(rect);
-        this.mainLayer.add(text);
+        parentGroup.add(rect);
+        parentGroup.add(text);
     }
 
     private drawPointLineDistanceConstraint(
@@ -470,7 +580,8 @@ export class CanvasViewport {
         lp2: GCSPoint,
         val: number,
         color: string,
-        strokeWidth: number
+        strokeWidth: number,
+        parentGroup: any
     ) {
         const ux = lp2.x - lp1.x;
         const uy = lp2.y - lp1.y;
@@ -488,9 +599,9 @@ export class CanvasViewport {
             stroke: color,
             strokeWidth: strokeWidth,
             dash: [3, 3],
-            listening: false
+            listening: true
         });
-        this.mainLayer.add(perpLine);
+        parentGroup.add(perpLine);
 
         const mx = (p.x + projX) / 2;
         const my = (p.y + projY) / 2;
@@ -502,7 +613,7 @@ export class CanvasViewport {
             fontSize: 10,
             fontFamily: 'sans-serif',
             fill: color,
-            listening: false
+            listening: true
         });
         text.offsetX(text.width() / 2);
         text.offsetY(text.height() / 2);
@@ -513,18 +624,19 @@ export class CanvasViewport {
             width: text.width() + 4,
             height: text.height() + 2,
             fill: 'white',
-            listening: false
+            listening: true
         });
 
-        this.mainLayer.add(rect);
-        this.mainLayer.add(text);
+        parentGroup.add(rect);
+        parentGroup.add(text);
     }
 
     private drawHorizVertConstraint(
         type: 'horizontal' | 'vertical',
         p1: GCSPoint,
         p2: GCSPoint,
-        color: string
+        color: string,
+        parentGroup: any
     ) {
         const mx = (p1.x + p2.x) / 2;
         const my = (p1.y + p2.y) / 2;
@@ -542,7 +654,7 @@ export class CanvasViewport {
         const label = new Konva.Label({
             x: labelX,
             y: labelY,
-            listening: false
+            listening: true
         });
 
         label.add(new Konva.Tag({
@@ -563,7 +675,7 @@ export class CanvasViewport {
         label.offsetX(label.width() / 2);
         label.offsetY(label.height() / 2);
 
-        this.mainLayer.add(label);
+        parentGroup.add(label);
     }
 
     private drawParallelPerpConstraint(
@@ -572,7 +684,8 @@ export class CanvasViewport {
         l1p2: GCSPoint,
         l2p1: GCSPoint,
         l2p2: GCSPoint,
-        color: string
+        color: string,
+        parentGroup: any
     ) {
         const drawIconAt = (mx: number, my: number, nx: number, ny: number) => {
             const labelX = mx + nx * 12;
@@ -581,7 +694,7 @@ export class CanvasViewport {
             const label = new Konva.Label({
                 x: labelX,
                 y: labelY,
-                listening: false
+                listening: true
             });
 
             label.add(new Konva.Tag({
@@ -602,7 +715,7 @@ export class CanvasViewport {
             label.offsetX(label.width() / 2);
             label.offsetY(label.height() / 2);
 
-            this.mainLayer.add(label);
+            parentGroup.add(label);
         };
 
         const m1x = (l1p1.x + l1p2.x) / 2;
@@ -624,17 +737,17 @@ export class CanvasViewport {
         }
     }
 
-    private drawCoincidentConstraint(p1: GCSPoint, color: string) {
+    private drawCoincidentConstraint(p1: GCSPoint, color: string, parentGroup: any) {
         const ring = new Konva.Ring({
             x: p1.x,
             y: p1.y,
             innerRadius: 7,
             outerRadius: 8.5,
             fill: color,
-            listening: false,
+            listening: true,
             opacity: 0.8
         });
-        this.mainLayer.add(ring);
+        parentGroup.add(ring);
     }
 
     redrawAll() {
@@ -893,6 +1006,33 @@ export class CanvasViewport {
                 dot.radius(isHovered || isSelected ? 6 : 4.5);
                 dot.fill(pointColor);
             }
+        });
+
+        // Update Constraints
+        this.model.getConstraints().forEach(con => {
+            const conGroup = this.mainLayer.findOne('#' + con.id) as any;
+            if (!conGroup) return;
+
+            const isSelected = selectedEntityIds.includes(con.id);
+            const isHovered = hoveredConstraintId === con.id;
+            const color = isSelected || isHovered ? '#3b82f6' : 'rgba(148, 163, 184, 0.6)';
+            const strokeWidth = isSelected || isHovered ? 2 : 1.2;
+
+            conGroup.getChildren().forEach((child: any) => {
+                if (child.className === 'Line' || child.className === 'Arrow' || child.className === 'Ring') {
+                    child.stroke(color);
+                    if (child.className === 'Arrow') {
+                        child.strokeWidth(strokeWidth);
+                    }
+                } else if (child.className === 'Text') {
+                    child.fill(color);
+                } else if (child.className === 'Label') {
+                    const tag = child.getTag();
+                    if (tag) tag.stroke(color);
+                    const text = child.getText();
+                    if (text) text.fill(color);
+                }
+            });
         });
 
         this.mainLayer.batchDraw();

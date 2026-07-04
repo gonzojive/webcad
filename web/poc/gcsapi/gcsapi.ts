@@ -95,6 +95,12 @@ export type GCSConstraint =
     | ParallelConstraint
     | PerpendicularConstraint;
 
+export type GCSValueConstraint =
+    | DistanceConstraint
+    | HorizontalDistanceConstraint
+    | VerticalDistanceConstraint
+    | PointLineDistanceConstraint;
+
 export interface GCSSketchState {
     points: GCSPoint[];
     lines: GCSLine[];
