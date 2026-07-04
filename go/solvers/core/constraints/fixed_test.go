@@ -1,6 +1,7 @@
 package constraints_test
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 	"math/rand"
 	"testing"
@@ -17,8 +18,8 @@ func TestFixedEvaluator(t *testing.T) {
 		name         string
 		entities     []*schema.Entity
 		constraint   *schema.Constraint
-		targetID     schema.EntityID
-		paramIndices map[schema.EntityID]int
+		targetID     gcstypes.EntityID
+		paramIndices map[gcstypes.EntityID]int
 		numEqs       int
 		perturb      func(rng *rand.Rand) []float64
 	}{
@@ -41,7 +42,7 @@ func TestFixedEvaluator(t *testing.T) {
 				},
 			},
 			targetID:     "p1",
-			paramIndices: map[schema.EntityID]int{"p1": 0},
+			paramIndices: map[gcstypes.EntityID]int{"p1": 0},
 			numEqs:       2,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{
@@ -69,7 +70,7 @@ func TestFixedEvaluator(t *testing.T) {
 				},
 			},
 			targetID:     "l1",
-			paramIndices: map[schema.EntityID]int{"l1": 0},
+			paramIndices: map[gcstypes.EntityID]int{"l1": 0},
 			numEqs:       4,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{
@@ -94,9 +95,9 @@ func TestFixedEvaluator(t *testing.T) {
 				t.Fatalf("NewConstraintSystem failed: %v", err)
 			}
 
-			entityMap := make(map[schema.EntityID]*schema.Entity)
+			entityMap := make(map[gcstypes.EntityID]*schema.Entity)
 			for _, ent := range tt.entities {
-				entityMap[schema.EntityID(ent.Id)] = ent
+				entityMap[gcstypes.EntityID(ent.Id)] = ent
 			}
 
 			eval, err := constraints.NewEvaluator(tt.constraint, entityMap)

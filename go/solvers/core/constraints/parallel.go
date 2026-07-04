@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"math"
 
@@ -10,15 +11,15 @@ import (
 
 // ParallelEvaluator evaluates parallel constraints between two line entities.
 type ParallelEvaluator struct {
-	idA, idB schema.EntityID
+	idA, idB gcstypes.EntityID
 	normC    float64
 }
 
 // NewParallelEvaluator creates a new ParallelEvaluator for the given constraint.
-func NewParallelEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*ParallelEvaluator, error) {
+func NewParallelEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*ParallelEvaluator, error) {
 	p := c.GetParallel()
-	idA := schema.EntityID(p.GetLineA())
-	idB := schema.EntityID(p.GetLineB())
+	idA := gcstypes.EntityID(p.GetLineA())
+	idB := gcstypes.EntityID(p.GetLineB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -60,7 +61,7 @@ func (p *ParallelEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[schema.EntityID]int,
+	paramIndices map[gcstypes.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
@@ -94,7 +95,7 @@ func (p *ParallelEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (p *ParallelEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (p *ParallelEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
 	if !ok1 || !ok2 {

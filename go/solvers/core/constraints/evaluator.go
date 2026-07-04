@@ -1,7 +1,7 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/proto"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -14,7 +14,7 @@ type Evaluator interface {
 	// x: the flat parameter vector.
 	// grad: the global gradient vector to accumulate into (may be nil).
 	// paramIndices: maps entity ID to its starting index in x.
-	Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64
+	Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64
 }
 
 // JacobianEvaluator allows second-order solvers (like LM) to extract
@@ -27,6 +27,6 @@ type JacobianEvaluator interface {
 	// EvaluateJacobian evaluates the unsquared residuals and writes their
 	// gradients (Jacobian rows) directly into the J matrix starting at rowOffset.
 	// If J is nil, only the residuals are evaluated.
-	EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[schema.EntityID]int)
+	EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[gcstypes.EntityID]int)
 }
 

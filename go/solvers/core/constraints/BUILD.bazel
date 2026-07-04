@@ -20,6 +20,7 @@ go_library(
     importpath = "github.com/gonzojive/webcad/go/solvers/core/constraints",
     visibility = ["//visibility:public"],
     deps = [
+        "//go/solvers/core/gcstypes",
         "//proto",
         "@org_gonum_v1_gonum//mat",
     ],
@@ -42,6 +43,7 @@ go_test(
     deps = [
         ":constraints",
         "//go/solvers/core",
+        "//go/solvers/core/gcstypes",
         "//proto",
         "@org_gonum_v1_gonum//diff/fd",
         "@org_gonum_v1_gonum//mat",

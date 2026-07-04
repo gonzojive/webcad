@@ -1,6 +1,7 @@
 package constraints_test
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 	"math/rand"
 	"testing"
@@ -26,7 +27,7 @@ func TestPerpendicularEvaluator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConstraintSystem failed: %v", err)
 	}
-	eval, err := constraints.NewEvaluator(c, map[schema.EntityID]*schema.Entity{"l1": l1, "l2": l2})
+	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"l1": l1, "l2": l2})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestPerpendicularEvaluator(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[schema.EntityID]int{"l1": 0, "l2": 4}
+	paramIndices := map[gcstypes.EntityID]int{"l1": 0, "l2": 4}
 	n := sys.NumVars()
 	m := je.NumEquations()
 

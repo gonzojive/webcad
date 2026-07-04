@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"math"
 
@@ -10,15 +11,15 @@ import (
 
 // PerpendicularEvaluator evaluates perpendicular constraints between two line entities.
 type PerpendicularEvaluator struct {
-	idA, idB schema.EntityID
+	idA, idB gcstypes.EntityID
 	normC    float64
 }
 
 // NewPerpendicularEvaluator creates a new PerpendicularEvaluator for the given constraint.
-func NewPerpendicularEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*PerpendicularEvaluator, error) {
+func NewPerpendicularEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*PerpendicularEvaluator, error) {
 	p := c.GetPerpendicular()
-	idA := schema.EntityID(p.GetLineA())
-	idB := schema.EntityID(p.GetLineB())
+	idA := gcstypes.EntityID(p.GetLineA())
+	idB := gcstypes.EntityID(p.GetLineB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -60,7 +61,7 @@ func (p *PerpendicularEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[schema.EntityID]int,
+	paramIndices map[gcstypes.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
@@ -93,7 +94,7 @@ func (p *PerpendicularEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (p *PerpendicularEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (p *PerpendicularEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
 	if !ok1 || !ok2 {

@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "gcstypes",
+    srcs = ["types.go"],
+    importpath = "github.com/gonzojive/webcad/go/solvers/core/gcstypes",
+    visibility = ["//visibility:public"],
+)

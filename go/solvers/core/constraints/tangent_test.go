@@ -1,6 +1,7 @@
 package constraints_test
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 	"math/rand"
 	"testing"
@@ -20,7 +21,7 @@ func TestTangentEvaluator_CirCir_Jacobian(t *testing.T) {
 			Tangent: &schema.TangentConstraint{EntityA: "c1", EntityB: "c2"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[schema.EntityID]*schema.Entity{"c1": c1, "c2": c2})
+	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"c1": c1, "c2": c2})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -31,7 +32,7 @@ func TestTangentEvaluator_CirCir_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[schema.EntityID]int{"c1": 0, "c2": 3}
+	paramIndices := map[gcstypes.EntityID]int{"c1": 0, "c2": 3}
 	n := 6
 	m := je.NumEquations()
 
@@ -91,7 +92,7 @@ func TestTangentEvaluator_CirLn_Jacobian(t *testing.T) {
 			Tangent: &schema.TangentConstraint{EntityA: "c1", EntityB: "l1"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[schema.EntityID]*schema.Entity{"c1": c1, "l1": l1})
+	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"c1": c1, "l1": l1})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -102,7 +103,7 @@ func TestTangentEvaluator_CirLn_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[schema.EntityID]int{"c1": 0, "l1": 3}
+	paramIndices := map[gcstypes.EntityID]int{"c1": 0, "l1": 3}
 	n := 7
 	m := je.NumEquations()
 

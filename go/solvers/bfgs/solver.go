@@ -4,6 +4,7 @@
 package bfgs
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,7 +34,7 @@ func NewNumerical() *Solver {
 }
 
 // ID returns the unique identifier of this solver.
-func (s *Solver) ID() core.SolverID {
+func (s *Solver) ID() gcstypes.SolverID {
 	if s.NumericalGradients {
 		return "bfgs_numerical"
 	}

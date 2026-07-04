@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 	"math"
 
@@ -18,16 +19,16 @@ const (
 // TangentEvaluator evaluates tangent constraints between entities (Circle-Circle, Circle-Line).
 type TangentEvaluator struct {
 	subCase    tangentSubCase
-	idA, idB   schema.EntityID // idA is always the Circle for Cir-Ln
+	idA, idB   gcstypes.EntityID // idA is always the Circle for Cir-Ln
 	isInternal bool   // For Cir-Cir
 	invC       float64
 }
 
 // NewTangentEvaluator creates a new TangentEvaluator for the given constraint.
-func NewTangentEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*TangentEvaluator, error) {
+func NewTangentEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*TangentEvaluator, error) {
 	t := c.GetTangent()
-	idA := schema.EntityID(t.GetEntityA())
-	idB := schema.EntityID(t.GetEntityB())
+	idA := gcstypes.EntityID(t.GetEntityA())
+	idB := gcstypes.EntityID(t.GetEntityB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -108,7 +109,7 @@ func (t *TangentEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[schema.EntityID]int,
+	paramIndices map[gcstypes.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[t.idA]
 	idx2, ok2 := paramIndices[t.idB]
@@ -181,7 +182,7 @@ func (t *TangentEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[t.idA]
 	idx2, ok2 := paramIndices[t.idB]
 	if !ok1 || !ok2 {

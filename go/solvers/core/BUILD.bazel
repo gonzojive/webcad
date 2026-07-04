@@ -12,6 +12,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//go/solvers/core/constraints",
+        "//go/solvers/core/gcstypes",
         "//proto",
         "@org_gonum_v1_gonum//mat",
     ],
@@ -22,6 +23,7 @@ go_test(
     srcs = ["evaluator_test.go"],
     embed = [":core"],
     deps = [
+        "//go/solvers/core/gcstypes",
         "//proto",
         "@org_gonum_v1_gonum//diff/fd",
     ],

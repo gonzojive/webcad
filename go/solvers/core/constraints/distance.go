@@ -1,6 +1,7 @@
 package constraints
 
 import (
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
 
 	"github.com/gonzojive/webcad/proto"
@@ -17,16 +18,16 @@ const (
 // DistanceEvaluator evaluates distance constraints between entities (Point-Point, Point-Line).
 type DistanceEvaluator struct {
 	subCase  distanceSubCase
-	idA, idB schema.EntityID  // idA is always the Point for Pt-Ln
+	idA, idB gcstypes.EntityID  // idA is always the Point for Pt-Ln
 	value    float64 // D
 	invC     float64 // 1/C, where C is initial line length squared (for Pt-Ln)
 }
 
 // NewDistanceEvaluator creates a new DistanceEvaluator for the given constraint.
-func NewDistanceEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*DistanceEvaluator, error) {
+func NewDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*schema.Entity) (*DistanceEvaluator, error) {
 	d := c.GetDistance()
-	idA := schema.EntityID(d.GetEntityA())
-	idB := schema.EntityID(d.GetEntityB())
+	idA := gcstypes.EntityID(d.GetEntityA())
+	idB := gcstypes.EntityID(d.GetEntityB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -91,7 +92,7 @@ func (d *DistanceEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[schema.EntityID]int,
+	paramIndices map[gcstypes.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[d.idA]
 	idx2, ok2 := paramIndices[d.idB]
@@ -139,7 +140,7 @@ func (d *DistanceEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (d *DistanceEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
+func (d *DistanceEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[d.idA]
 	idx2, ok2 := paramIndices[d.idB]
 	if !ok1 || !ok2 {
