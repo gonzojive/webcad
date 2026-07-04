@@ -10,15 +10,15 @@ import (
 
 // ParallelEvaluator evaluates parallel constraints between two line entities.
 type ParallelEvaluator struct {
-	idA, idB string
+	idA, idB schema.EntityID
 	normC    float64
 }
 
 // NewParallelEvaluator creates a new ParallelEvaluator for the given constraint.
-func NewParallelEvaluator(c *schema.Constraint, entities map[string]*schema.Entity) (*ParallelEvaluator, error) {
+func NewParallelEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*ParallelEvaluator, error) {
 	p := c.GetParallel()
-	idA := p.GetLineA()
-	idB := p.GetLineB()
+	idA := schema.EntityID(p.GetLineA())
+	idB := schema.EntityID(p.GetLineB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -60,7 +60,7 @@ func (p *ParallelEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[string]int,
+	paramIndices map[schema.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
@@ -94,7 +94,7 @@ func (p *ParallelEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (p *ParallelEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[string]int) float64 {
+func (p *ParallelEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
 	if !ok1 || !ok2 {

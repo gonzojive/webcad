@@ -20,7 +20,7 @@ func TestCoincidenceEvaluator_PtPt_Jacobian(t *testing.T) {
 			Coincidence: &schema.CoincidenceConstraint{EntityA: "p1", EntityB: "p2"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[string]*schema.Entity{"p1": p1, "p2": p2})
+	eval, err := constraints.NewEvaluator(c, map[schema.EntityID]*schema.Entity{"p1": p1, "p2": p2})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestCoincidenceEvaluator_PtPt_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[string]int{"p1": 0, "p2": 2}
+	paramIndices := map[schema.EntityID]int{"p1": 0, "p2": 2}
 	n := 4
 	m := je.NumEquations()
 
@@ -89,7 +89,7 @@ func TestCoincidenceEvaluator_PtLn_Jacobian(t *testing.T) {
 			Coincidence: &schema.CoincidenceConstraint{EntityA: "p1", EntityB: "l1"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[string]*schema.Entity{"p1": p1, "l1": l1})
+	eval, err := constraints.NewEvaluator(c, map[schema.EntityID]*schema.Entity{"p1": p1, "l1": l1})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestCoincidenceEvaluator_PtLn_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[string]int{"p1": 0, "l1": 2}
+	paramIndices := map[schema.EntityID]int{"p1": 0, "l1": 2}
 	n := 6
 	m := je.NumEquations()
 
@@ -159,7 +159,7 @@ func TestCoincidenceEvaluator_PtCir_Jacobian(t *testing.T) {
 			Coincidence: &schema.CoincidenceConstraint{EntityA: "p1", EntityB: "circ1"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[string]*schema.Entity{"p1": p1, "circ1": circ1})
+	eval, err := constraints.NewEvaluator(c, map[schema.EntityID]*schema.Entity{"p1": p1, "circ1": circ1})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestCoincidenceEvaluator_PtCir_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[string]int{"p1": 0, "circ1": 2}
+	paramIndices := map[schema.EntityID]int{"p1": 0, "circ1": 2}
 	n := 5
 	m := je.NumEquations()
 

@@ -10,15 +10,15 @@ import (
 
 // PerpendicularEvaluator evaluates perpendicular constraints between two line entities.
 type PerpendicularEvaluator struct {
-	idA, idB string
+	idA, idB schema.EntityID
 	normC    float64
 }
 
 // NewPerpendicularEvaluator creates a new PerpendicularEvaluator for the given constraint.
-func NewPerpendicularEvaluator(c *schema.Constraint, entities map[string]*schema.Entity) (*PerpendicularEvaluator, error) {
+func NewPerpendicularEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*PerpendicularEvaluator, error) {
 	p := c.GetPerpendicular()
-	idA := p.GetLineA()
-	idB := p.GetLineB()
+	idA := schema.EntityID(p.GetLineA())
+	idB := schema.EntityID(p.GetLineB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -60,7 +60,7 @@ func (p *PerpendicularEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[string]int,
+	paramIndices map[schema.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
@@ -93,7 +93,7 @@ func (p *PerpendicularEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (p *PerpendicularEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[string]int) float64 {
+func (p *PerpendicularEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[p.idA]
 	idx2, ok2 := paramIndices[p.idB]
 	if !ok1 || !ok2 {

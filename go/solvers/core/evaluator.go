@@ -10,9 +10,11 @@ import (
 )
 
 // CalculateResiduals evaluates all constraints in the sketch against the current
-// entity states and returns a map of constraint ID to its absolute residual error.
-func CalculateResiduals(sketch *schema.Sketch) (map[string]float64, error) {
-	residuals := make(map[string]float64)
+// entity states (as defined by the parameter values stored in the sketch's entities).
+// It returns a map of constraint ID to its absolute residual error.
+// This is used for verifying solver correctness and providing telemetry.
+func CalculateResiduals(sketch *schema.Sketch) (map[schema.ConstraintID]schema.ConstraintResidual, error) {
+	residuals := make(map[schema.ConstraintID]schema.ConstraintResidual)
 	if sketch == nil {
 		return residuals, nil
 	}
@@ -25,19 +27,20 @@ func CalculateResiduals(sketch *schema.Sketch) (map[string]float64, error) {
 
 	for _, ce := range sys.evaluators {
 		valSq := ce.eval.Evaluate(x, nil, sys.paramIndexMap)
-		residuals[ce.id] = math.Sqrt(valSq) // Unified Mathematics Principle
+		residuals[ce.id] = schema.ConstraintResidual(math.Sqrt(valSq))
 	}
 
 	return residuals, nil
 }
 
-// MaxResidual returns the maximum absolute residual error across all constraints in the sketch.
-func MaxResidual(sketch *schema.Sketch) (float64, error) {
+// MaxResidual returns the maximum absolute residual error across all constraints in the sketch,
+// evaluating them at the current entity states.
+func MaxResidual(sketch *schema.Sketch) (schema.ConstraintResidual, error) {
 	residuals, err := CalculateResiduals(sketch)
 	if err != nil {
 		return 0, err
 	}
-	maxRes := 0.0
+	maxRes := schema.ConstraintResidual(0.0)
 	for _, res := range residuals {
 		if res > maxRes {
 			maxRes = res
@@ -46,8 +49,9 @@ func MaxResidual(sketch *schema.Sketch) (float64, error) {
 	return maxRes, nil
 }
 
-// CalculateConstraintResidual computes the absolute residual error for a single constraint.
-func CalculateConstraintResidual(c *schema.Constraint, sketch *schema.Sketch, entityMap map[string]*schema.Entity) (float64, error) {
+// CalculateConstraintResidual computes the absolute residual error for a single constraint,
+// evaluating it at the current states of the entities in the sketch.
+func CalculateConstraintResidual(c *schema.Constraint, sketch *schema.Sketch, entityMap map[schema.EntityID]*schema.Entity) (schema.ConstraintResidual, error) {
 	sys, err := NewConstraintSystem(sketch)
 	if err != nil {
 		return 0, err
@@ -61,21 +65,24 @@ func CalculateConstraintResidual(c *schema.Constraint, sketch *schema.Sketch, en
 		return 0, err
 	}
 	valSq := eval.Evaluate(x, nil, sys.paramIndexMap)
-	return math.Sqrt(valSq), nil // Unified Mathematics Principle
+	return schema.ConstraintResidual(math.Sqrt(valSq)), nil
 }
 
 type constraintEvaluator struct {
-	id   string
+	id   schema.ConstraintID
 	eval constraints.Evaluator
 }
 
-// ConstraintSystem maps a Sketch to a flat optimization vector and
+// ConstraintSystem maps a Sketch to a flat optimization parameter vector x and
 // computes its analytical residuals, Jacobians, and objective gradients.
+//
+// The parameter vector x contains all degrees of freedom of the sketch's entities
+// (e.g. coordinates of points, radii of circles) flattened into a single slice.
 type ConstraintSystem struct {
 	sketch        *schema.Sketch
-	paramIndexMap map[string]int
-	paramCountMap map[string]int
-	entityMap     map[string]*schema.Entity
+	paramIndexMap map[schema.EntityID]int
+	paramCountMap map[schema.EntityID]int
+	entityMap     map[schema.EntityID]*schema.Entity
 	initialX      []float64
 	numVars       int
 	evaluators    []constraintEvaluator
@@ -84,18 +91,19 @@ type ConstraintSystem struct {
 // NewConstraintSystem creates a new ConstraintSystem from a sketch.
 func NewConstraintSystem(sketch *schema.Sketch) (*ConstraintSystem, error) {
 	var initialX []float64
-	paramIndexMap := make(map[string]int)
-	paramCountMap := make(map[string]int)
-	entityMap := make(map[string]*schema.Entity)
+	paramIndexMap := make(map[schema.EntityID]int)
+	paramCountMap := make(map[schema.EntityID]int)
+	entityMap := make(map[schema.EntityID]*schema.Entity)
 
 	for _, entity := range sketch.Entities {
-		entityMap[entity.Id] = entity
+		entID := schema.EntityID(entity.Id)
+		entityMap[entID] = entity
 		params := GetParams(entity)
 		if params == nil {
 			continue
 		}
-		paramIndexMap[entity.Id] = len(initialX)
-		paramCountMap[entity.Id] = len(params)
+		paramIndexMap[entID] = len(initialX)
+		paramCountMap[entID] = len(params)
 		initialX = append(initialX, params...)
 	}
 
@@ -110,7 +118,7 @@ func NewConstraintSystem(sketch *schema.Sketch) (*ConstraintSystem, error) {
 			return nil, fmt.Errorf("failed to create evaluator for constraint %s (%T): %w", c.Id, c.GetConstraintType(), err)
 		}
 		evaluators = append(evaluators, constraintEvaluator{
-			id:   c.Id,
+			id:   schema.ConstraintID(c.Id),
 			eval: eval,
 		})
 	}
@@ -130,30 +138,36 @@ func NewConstraintSystem(sketch *schema.Sketch) (*ConstraintSystem, error) {
 
 // getConstructionEntities returns the initial state entities if available,
 // falling back to the current sketch entities.
-func getConstructionEntities(sketch *schema.Sketch) map[string]*schema.Entity {
+func getConstructionEntities(sketch *schema.Sketch) map[schema.EntityID]*schema.Entity {
 	if sketch.InitialState != nil && len(sketch.InitialState.Entities) > 0 {
-		return sketch.InitialState.Entities
+		m := make(map[schema.EntityID]*schema.Entity)
+		for id, ent := range sketch.InitialState.Entities {
+			m[schema.EntityID(id)] = ent
+		}
+		return m
 	}
-	entityMap := make(map[string]*schema.Entity)
+	entityMap := make(map[schema.EntityID]*schema.Entity)
 	for _, ent := range sketch.Entities {
-		entityMap[ent.Id] = ent
+		entityMap[schema.EntityID(ent.Id)] = ent
 	}
 	return entityMap
 }
 
-// NumVars returns the total number of parameters in the optimization vector.
+// NumVars returns the total number of parameters (variables) in the optimization vector.
 func (sys *ConstraintSystem) NumVars() int {
 	return sys.numVars
 }
 
-// InitialX returns a copy of the initial parameter vector.
+// InitialX returns a copy of the initial parameter vector (the flat vector x representing
+// the initial states of the sketch entities).
 func (sys *ConstraintSystem) InitialX() []float64 {
 	x := make([]float64, len(sys.initialX))
 	copy(x, sys.initialX)
 	return x
 }
 
-// ExtractVariables extracts the current parameters of all entities into a flat slice.
+// ExtractVariables extracts the current parameters of all entities into a flat slice x.
+// This serves as the starting parameter vector (initial guess) for the optimization.
 func (sys *ConstraintSystem) ExtractVariables() []float64 {
 	x := make([]float64, sys.numVars)
 	for id, idx := range sys.paramIndexMap {
@@ -164,7 +178,8 @@ func (sys *ConstraintSystem) ExtractVariables() []float64 {
 	return x
 }
 
-// UpdateSketch updates the sketch entities with the values from a flat parameter vector.
+// UpdateSketch updates the sketch entities with the values from a flat parameter vector x.
+// This writes the optimized values back to the structured sketch.
 func (sys *ConstraintSystem) UpdateSketch(x []float64) {
 	for id, idx := range sys.paramIndexMap {
 		count := sys.paramCountMap[id]
@@ -174,6 +189,8 @@ func (sys *ConstraintSystem) UpdateSketch(x []float64) {
 }
 
 // Objective evaluates the sum of squared residuals: E(x) = sum_i r_i(x)^2.
+//
+// E(x) is the scalar function minimized by the solver.
 func (sys *ConstraintSystem) Objective(x []float64) float64 {
 	return sys.evaluate(x, nil)
 }
@@ -201,7 +218,7 @@ func (sys *ConstraintSystem) evaluate(x []float64, grad []float64) float64 {
 	return totalResidualSq
 }
 
-// NumEquations returns the total number of equations across all constraints.
+// NumEquations returns the total number of independent scalar equations across all constraints.
 func (sys *ConstraintSystem) NumEquations() int {
 	m := 0
 	for _, ce := range sys.evaluators {

@@ -410,9 +410,9 @@ func TestCalculateConstraintResidual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			entityMap := make(map[string]*schema.Entity)
+			entityMap := make(map[schema.EntityID]*schema.Entity)
 			for _, ent := range tt.entities {
-				entityMap[ent.Id] = ent
+				entityMap[schema.EntityID(ent.Id)] = ent
 			}
 
 			// Construct scenario
@@ -435,7 +435,7 @@ func TestCalculateConstraintResidual(t *testing.T) {
 			if err != nil {
 				t.Fatalf("CalculateConstraintResidual failed: %v", err)
 			}
-			if math.Abs(got-tt.want) > tt.tolerance {
+			if math.Abs(float64(got)-tt.want) > tt.tolerance {
 				t.Errorf("CalculateConstraintResidual() = %v, want %v (tolerance %v)", got, tt.want, tt.tolerance)
 			}
 		})
