@@ -7,7 +7,11 @@
     "emitDecoratorMetadata": true,
     "lib": ["es2022", "dom"],
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "declaration": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
