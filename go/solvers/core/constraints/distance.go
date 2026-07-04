@@ -1,8 +1,8 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 
 	"github.com/gonzojive/webcad/proto"
 	"gonum.org/v1/gonum/mat"
@@ -18,10 +18,10 @@ const (
 // DistanceEvaluator evaluates distance constraints between entities (Point-Point, Point-Line).
 type DistanceEvaluator struct {
 	subCase    distanceSubCase
-	idA, idB   gcstypes.EntityID  // idA is always the Point for Pt-Ln. For Pt-Ln, idB is unused.
-	p1ln, p2ln gcstypes.EntityID  // For Pt-Ln case
-	value      float64 // D
-	invC       float64 // 1/C, where C is initial line length squared (for Pt-Ln)
+	idA, idB   gcstypes.EntityID // idA is always the Point for Pt-Ln. For Pt-Ln, idB is unused.
+	p1ln, p2ln gcstypes.EntityID // For Pt-Ln case
+	value      float64           // D
+	invC       float64           // 1/C, where C is initial line length squared (for Pt-Ln)
 }
 
 // NewDistanceEvaluator creates a new DistanceEvaluator for the given constraint.
@@ -60,12 +60,12 @@ func NewDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 			C = 1.0
 		}
 		return &DistanceEvaluator{
-			subCase:  distancePtLn,
-			idA:      resolvedA,
-			p1ln:     p1Id,
-			p2ln:     p2Id,
-			value:    d.GetValue(),
-			invC:     1.0 / C,
+			subCase: distancePtLn,
+			idA:     resolvedA,
+			p1ln:    p1Id,
+			p2ln:    p2Id,
+			value:   d.GetValue(),
+			invC:    1.0 / C,
 		}, nil
 	} else if errB == nil && isLnA {
 		p1Id, p2Id, p1, p2, err := getLinePoints(entA, entities)
@@ -79,12 +79,12 @@ func NewDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 			C = 1.0
 		}
 		return &DistanceEvaluator{
-			subCase:  distancePtLn,
-			idA:      resolvedB, // Store point in idA
-			p1ln:     p1Id,
-			p2ln:     p2Id,
-			value:    d.GetValue(),
-			invC:     1.0 / C,
+			subCase: distancePtLn,
+			idA:     resolvedB, // Store point in idA
+			p1ln:    p1Id,
+			p2ln:    p2Id,
+			value:   d.GetValue(),
+			invC:    1.0 / C,
 		}, nil
 	}
 

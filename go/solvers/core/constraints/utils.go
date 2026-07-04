@@ -2,8 +2,8 @@ package constraints
 
 import (
 	"fmt"
-	"github.com/gonzojive/webcad/proto"
 	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
+	"github.com/gonzojive/webcad/proto"
 )
 
 // getParams extracts the parameters of an entity as a flat float64 slice.
@@ -129,7 +129,7 @@ func getLinePoints(lineEnt *schema.Entity, entities map[gcstypes.EntityID]*schem
 	if !ok || line.Line == nil {
 		return "", "", nil, nil, fmt.Errorf("entity %q is not a line", lineEnt.GetId())
 	}
-	
+
 	p1Id = gcstypes.EntityID(line.Line.P1Id)
 	p1Ent, ok := entities[p1Id]
 	if !ok {
@@ -139,7 +139,7 @@ func getLinePoints(lineEnt *schema.Entity, entities map[gcstypes.EntityID]*schem
 	if !ok || p1Wrapper.Point == nil {
 		return "", "", nil, nil, fmt.Errorf("line %q start point %q is not a point entity", lineEnt.GetId(), p1Id)
 	}
-	
+
 	p2Id = gcstypes.EntityID(line.Line.P2Id)
 	p2Ent, ok := entities[p2Id]
 	if !ok {
@@ -149,6 +149,6 @@ func getLinePoints(lineEnt *schema.Entity, entities map[gcstypes.EntityID]*schem
 	if !ok || p2Wrapper.Point == nil {
 		return "", "", nil, nil, fmt.Errorf("line %q end point %q is not a point entity", lineEnt.GetId(), p2Id)
 	}
-	
+
 	return p1Id, p2Id, p1Wrapper.Point, p2Wrapper.Point, nil
 }

@@ -24,14 +24,14 @@ ts_project(
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         ":toolbar",
+        "//web:node_modules/@angular/compiler",
         "//web:node_modules/@angular/core",
         "//web:node_modules/@angular/platform-browser",
-        "//web:node_modules/@angular/compiler",
+        "//web:node_modules/@types/jsdom",
         "//web:node_modules/@types/node",
         "//web:node_modules/jsdom",
-        "//web:node_modules/@types/jsdom",
-        "//web/poc/ui/app/services",
         "//web:node_modules/zone.js",
+        "//web/poc/ui/app/services",
     ],
 )
 
@@ -42,4 +42,3 @@ js_test(
     ],
     entry_point = "toolbar.component.test.js",
 )
-

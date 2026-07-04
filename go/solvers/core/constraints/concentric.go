@@ -1,8 +1,8 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"github.com/gonzojive/webcad/proto"
 	"gonum.org/v1/gonum/mat"
 )

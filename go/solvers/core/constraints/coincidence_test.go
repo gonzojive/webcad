@@ -85,7 +85,7 @@ func TestCoincidenceEvaluator_PtLn_Jacobian(t *testing.T) {
 	p1 := &schema.Entity{Id: "p1", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 1.0, Y: 2.0}}}
 	p1a := &schema.Entity{Id: "p1a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: 0.0}}}
 	p2a := &schema.Entity{Id: "p2a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 4.0, Y: 0.0}}}
-	
+
 	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "p1a", P2Id: "p2a"}}}
 	c := &schema.Constraint{
 		Id: "c",

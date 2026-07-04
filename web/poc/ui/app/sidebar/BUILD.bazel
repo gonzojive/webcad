@@ -9,9 +9,9 @@ ts_project(
     source_map = True,
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
+        "//ts/gcsapi",
         "//web:node_modules/@angular/common",
         "//web:node_modules/@angular/core",
-        "//ts/gcsapi",
         "//web/poc/geometry",
         "//web/poc/ui/app/services",
     ],

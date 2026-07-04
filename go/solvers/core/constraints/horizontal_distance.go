@@ -1,8 +1,8 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"github.com/gonzojive/webcad/proto"
 	"gonum.org/v1/gonum/mat"
 )
@@ -16,7 +16,7 @@ func NewHorizontalDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.
 	h := c.GetHorizontalDistance()
 	idA := gcstypes.EntityID(h.GetEntityA())
 	idB := gcstypes.EntityID(h.GetEntityB())
-	
+
 	resolvedA, err := resolvePointOrCenter(idA, entities)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve entity A: %w", err)
@@ -43,11 +43,11 @@ func (h *HorizontalDistanceEvaluator) EvaluateJacobian(x []float64, residuals []
 	x1 := x[idx1]
 	x2 := x[idx2]
 
-	residuals[0] = (x1 - x2) * (x1 - x2) - h.value * h.value
+	residuals[0] = (x1-x2)*(x1-x2) - h.value*h.value
 
 	if J != nil {
-		J.Set(rowOffset, idx1, 2.0 * (x1 - x2))
-		J.Set(rowOffset, idx2, -2.0 * (x1 - x2))
+		J.Set(rowOffset, idx1, 2.0*(x1-x2))
+		J.Set(rowOffset, idx2, -2.0*(x1-x2))
 	}
 }
 
@@ -61,7 +61,7 @@ func (h *HorizontalDistanceEvaluator) Evaluate(x []float64, grad []float64, para
 	x1 := x[idx1]
 	x2 := x[idx2]
 
-	r := (x1 - x2) * (x1 - x2) - h.value * h.value
+	r := (x1-x2)*(x1-x2) - h.value*h.value
 	if grad != nil {
 		factor := 4.0 * r * (x1 - x2)
 		grad[idx1] += factor

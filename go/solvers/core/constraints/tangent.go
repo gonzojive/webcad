@@ -1,8 +1,8 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 
 	"github.com/gonzojive/webcad/proto"
@@ -18,12 +18,12 @@ const (
 
 // TangentEvaluator evaluates tangent constraints between entities (Circle-Circle, Circle-Line).
 type TangentEvaluator struct {
-	subCase    tangentSubCase
-	idA, idB   gcstypes.EntityID // Circle/Arc entity IDs
+	subCase              tangentSubCase
+	idA, idB             gcstypes.EntityID // Circle/Arc entity IDs
 	centerIdA, centerIdB gcstypes.EntityID // Resolved center point IDs
-	p1ln, p2ln gcstypes.EntityID // For Cir-Ln case
-	isInternal bool   // For Cir-Cir
-	invC       float64
+	p1ln, p2ln           gcstypes.EntityID // For Cir-Ln case
+	isInternal           bool              // For Cir-Cir
+	invC                 float64
 }
 
 // NewTangentEvaluator creates a new TangentEvaluator for the given constraint.

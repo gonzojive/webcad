@@ -57,7 +57,7 @@ func parseAlgorithm(args []js.Value) string {
 // Go geometric constraint solver, and serializes the result back to JSON.
 func processSolveRequest(inputJSON string, algo string) string {
 	var sketch schema.Sketch
-	
+
 	unmarshaler := protojson.UnmarshalOptions{
 		DiscardUnknown: true,
 	}
@@ -83,7 +83,7 @@ func processSolveRequest(inputJSON string, algo string) string {
 	marshaler := protojson.MarshalOptions{
 		EmitUnpopulated: true,
 	}
-	
+
 	output, err := marshaler.Marshal(result)
 	if err != nil {
 		return encodeError(fmt.Sprintf("Failed to serialize result: %v", err))
@@ -95,8 +95,8 @@ func processSolveRequest(inputJSON string, algo string) string {
 // encodeError creates a JSON error response string.
 func encodeError(msg string) string {
 	errResp := map[string]interface{}{
-		"success":       false,
-		"error_message": msg,
+		"success":      false,
+		"errorMessage": msg,
 	}
 	b, _ := json.Marshal(errResp)
 	return string(b)

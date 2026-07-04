@@ -1,12 +1,12 @@
 package bfgs
- 
+
 import (
 	"math"
 	"testing"
- 
+
 	"github.com/gonzojive/webcad/proto"
 )
- 
+
 func TestBFGSSolver(t *testing.T) {
 
 	tests := []struct {

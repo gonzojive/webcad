@@ -25,7 +25,7 @@ ts_project(
 
 genrule(
     name = "copy_wasm_solver",
-    srcs = ["//go/cmd/wasm_solver:wasm_solver"],
+    srcs = ["//go/cmd/wasm_solver"],
     outs = ["wasm_solver.wasm"],
     cmd = "cp $< $@",
 )
@@ -52,8 +52,8 @@ filegroup(
     name = "assets",
     srcs = [
         "index.html",
-        ":wasm_solver.wasm",
         ":wasm_exec.js",
+        ":wasm_solver.wasm",
     ],
 )
 

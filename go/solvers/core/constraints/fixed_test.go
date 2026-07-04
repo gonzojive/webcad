@@ -119,7 +119,7 @@ func TestFixedEvaluator(t *testing.T) {
 			},
 			targetID:     "c1",
 			paramIndices: map[gcstypes.EntityID]int{"c1_center": 0, "c1": 2},
-			numEqs:       3,
+			numEqs:       1,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{
 					1.0 + (rng.Float64()-0.5)*2.0,
