@@ -11,8 +11,8 @@ go_library(
 go_binary(
     name = "hello_world",
     data = [
-        "//frontend:assets",
-        "//frontend:bundle",
+        "//web/angular_hello_world:assets",
+        "//web/angular_hello_world:bundle",
     ],
     embed = [":hello_world_lib"],
     visibility = ["//visibility:public"],

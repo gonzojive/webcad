@@ -1,6 +1,6 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
-load("@npm//:@angular/compiler-cli/package_json.bzl", compiler_cli = "bin")
+load("@npm//web:@angular/compiler-cli/package_json.bzl", compiler_cli = "bin")
 
 compiler_cli.ngc_binary(name = "ngc")
 
@@ -14,13 +14,13 @@ ts_project(
     tsc = ":ngc",
     transpiler = "tsc",
     deps = [
-        "//:node_modules/@angular/core",
-        "//:node_modules/@angular/common",
-        "//:node_modules/@angular/platform-browser",
-        "//:node_modules/@angular/platform-browser-dynamic",
-        "//:node_modules/rxjs",
-        "//:node_modules/tslib",
-        "//:node_modules/zone.js",
+        "//web:node_modules/@angular/core",
+        "//web:node_modules/@angular/common",
+        "//web:node_modules/@angular/platform-browser",
+        "//web:node_modules/@angular/platform-browser-dynamic",
+        "//web:node_modules/rxjs",
+        "//web:node_modules/tslib",
+        "//web:node_modules/zone.js",
     ],
 )
 

@@ -42,13 +42,13 @@ func newMux(indexPath, bundlePath string) *http.ServeMux {
 func main() {
 	// Find index.html using runfiles.
 	// Note: Runfile paths use the workspace name ("webcad") as the root directory prefix.
-	indexPath, err := runfiles.Rlocation("webcad/frontend/src/index.html")
+	indexPath, err := runfiles.Rlocation("webcad/web/angular_hello_world/src/index.html")
 	if err != nil {
 		log.Fatalf("could not find index.html: %v", err)
 	}
 
 	// Find bundle.js using runfiles
-	bundlePath, err := runfiles.Rlocation("webcad/frontend/bundle.js")
+	bundlePath, err := runfiles.Rlocation("webcad/web/angular_hello_world/bundle.js")
 	if err != nil {
 		log.Fatalf("could not find bundle.js: %v", err)
 	}
