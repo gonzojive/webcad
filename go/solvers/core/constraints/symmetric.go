@@ -10,15 +10,15 @@ import (
 
 // SymmetricEvaluator evaluates symmetry constraints between two entities about a line.
 type SymmetricEvaluator struct {
-	idA, idB, idSym string
+	idA, idB, idSym schema.EntityID
 }
 
 // NewSymmetricEvaluator creates a new SymmetricEvaluator for the given constraint.
-func NewSymmetricEvaluator(c *schema.Constraint, entities map[string]*schema.Entity) (*SymmetricEvaluator, error) {
+func NewSymmetricEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*SymmetricEvaluator, error) {
 	s := c.GetSymmetric()
-	idA := s.GetEntityA()
-	idB := s.GetEntityB()
-	idSym := s.GetSymmetryLine()
+	idA := schema.EntityID(s.GetEntityA())
+	idB := schema.EntityID(s.GetEntityB())
+	idSym := schema.EntityID(s.GetSymmetryLine())
 	if _, ok := entities[idA]; !ok {
 		return nil, fmt.Errorf("entity A %s not found", idA)
 	}
@@ -46,7 +46,7 @@ func (s *SymmetricEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[string]int,
+	paramIndices map[schema.EntityID]int,
 ) {
 	idxA, ok1 := paramIndices[s.idA]
 	idxB, ok2 := paramIndices[s.idB]
@@ -145,7 +145,7 @@ func (s *SymmetricEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (s *SymmetricEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[string]int) float64 {
+func (s *SymmetricEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
 	idxA, ok1 := paramIndices[s.idA]
 	idxB, ok2 := paramIndices[s.idB]
 	idxSym, ok3 := paramIndices[s.idSym]

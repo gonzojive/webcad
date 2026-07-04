@@ -99,71 +99,12 @@ func (s *LMSolver) solve(sys *core.ConstraintSystem, x []float64) ([]float64, so
 			}
 		}
 
-		// Compute symmetric outer product (Approximate Hessian)
-		// Primal: H = Jᵀ * J
-		// Dual:   H_dual = J * Jᵀ
-		if useDual {
-			blas64.Syrk(blas.NoTrans, 1.0, w.J.RawMatrix(), 0.0, w.Jjt.RawSymmetric())
-		} else {
-			blas64.Syrk(blas.Trans, 1.0, w.J.RawMatrix(), 0.0, w.Hres.RawSymmetric())
-		}
+		// Compute approximate Hessian (JᵀJ or JJᵀ)
+		computeHessian(w, useDual)
 
 		stepAccepted := false
 		for !stepAccepted {
-			choleskyOK := false
-
-			if useDual {
-				// Solve dual system: (J*Jᵀ + μI) * z = -f(x)
-				w.JjtDamped.CopySym(w.Jjt)
-				jjtDampedRaw := w.JjtDamped.RawSymmetric()
-				for i := 0; i < m; i++ {
-					jjtDampedRaw.Data[i*jjtDampedRaw.Stride+i] += mu
-				}
-
-				// Try solving via Cholesky decomposition
-				t, ok := lapack64.Potrf(jjtDampedRaw)
-				if ok {
-					w.Z.ScaleVec(-1.0, w.F)
-					zMat := blas64.General{
-						Rows:   m,
-						Cols:   1,
-						Stride: 1,
-						Data:   w.Z.RawVector().Data,
-					}
-					lapack64.Potrs(t, zMat)
-					// Compute step: dx = Jᵀ * z
-					blas64.Gemv(blas.Trans, 1.0, w.J.RawMatrix(), w.Z.RawVector(), 0.0, w.Dx.RawVector())
-					choleskyOK = true
-				}
-			} else {
-				// Solve primal system: (Jᵀ*J + μI) * dx = -g
-				w.HresDamped.CopySym(w.Hres)
-				hresDampedRaw := w.HresDamped.RawSymmetric()
-				for i := 0; i < n; i++ {
-					hresDampedRaw.Data[i*hresDampedRaw.Stride+i] += mu
-				}
-
-				// Try solving via Cholesky decomposition
-				t, ok := lapack64.Potrf(hresDampedRaw)
-				if ok {
-					w.Dx.ScaleVec(-1.0, w.G)
-					dxMat := blas64.General{
-						Rows:   n,
-						Cols:   1,
-						Stride: 1,
-						Data:   w.Dx.RawVector().Data,
-					}
-					lapack64.Potrs(t, dxMat)
-					choleskyOK = true
-				}
-			}
-
-			// Fallback to QR decomposition of augmented matrix if Cholesky failed.
-			// Augmented QR is numerically much more stable than normal equations, especially
-			// near singular states (common in CAD when constraints conflict).
-			if !choleskyOK {
-				solveQRAugmented(w.J, w.F, mu, w.AAug, w.BAug, w.Dx, w.Tau, w.Work)
-			}
+			solveDampedSystem(w, useDual, mu, n, m)
 
 			// Step Tolerance Check: if step size is too small, solver has stalled.
 			// ||dx||∞ < ε_step * (1 + ||x||∞)
@@ -178,23 +119,9 @@ func (s *LMSolver) solve(sys *core.ConstraintSystem, x []float64) ([]float64, so
 				}
 			}
 
-			// Evaluate candidate state: x_new = x + dx
-			for i := 0; i < n; i++ {
-				w.XNew[i] = w.X[i] + w.Dx.AtVec(i)
-			}
-			sys.EvaluateJacobian(w.XNew, w.FNew.RawVector().Data, nil)
+			// Evaluate candidate state and compute gain ratio (ρ)
+			rho := evaluateCandidateStep(sys, w, mu, n)
 			funcEvals++
-
-			// Compute Gain Ratio (ρ) to determine if step should be accepted.
-			// ρ = (actual reduction) / (predicted reduction)
-			dxRaw := w.Dx.RawVector()
-			actualRed := 0.5 * (blas64.Dot(w.F.RawVector(), w.F.RawVector()) - blas64.Dot(w.FNew.RawVector(), w.FNew.RawVector()))
-			predRed := 0.5 * (mu*blas64.Dot(dxRaw, dxRaw) - blas64.Dot(dxRaw, w.G.RawVector()))
-
-			rho := 0.0
-			if predRed > 0 {
-				rho = actualRed / predRed
-			}
 
 			// Step acceptance logic
 			if rho > 0 {
@@ -223,6 +150,93 @@ func (s *LMSolver) solve(sys *core.ConstraintSystem, x []float64) ([]float64, so
 		gradEvaluations: gradEvals,
 		finalResidual:   blas64.Dot(w.F.RawVector(), w.F.RawVector()),
 	}
+}
+
+// computeHessian computes the approximate Hessian matrix JᵀJ (primal) or JJᵀ (dual).
+func computeHessian(w *SolverWorkspace, useDual bool) {
+	if useDual {
+		blas64.Syrk(blas.NoTrans, 1.0, w.J.RawMatrix(), 0.0, w.Jjt.RawSymmetric())
+	} else {
+		blas64.Syrk(blas.Trans, 1.0, w.J.RawMatrix(), 0.0, w.Hres.RawSymmetric())
+	}
+}
+
+// solveDampedSystem solves the linear system (H + μI) dx = -g (primal) or (JJᵀ + μI) z = -f
+// to find the step vector dx. It uses Cholesky decomposition by default and falls back
+// to QR decomposition of the augmented matrix if Cholesky fails.
+func solveDampedSystem(w *SolverWorkspace, useDual bool, mu float64, n, m int) {
+	choleskyOK := false
+
+	if useDual {
+		// Solve dual system: (J*Jᵀ + μI) * z = -f(x)
+		w.JjtDamped.CopySym(w.Jjt)
+		jjtDampedRaw := w.JjtDamped.RawSymmetric()
+		for i := 0; i < m; i++ {
+			jjtDampedRaw.Data[i*jjtDampedRaw.Stride+i] += mu
+		}
+
+		// Try solving via Cholesky decomposition
+		t, ok := lapack64.Potrf(jjtDampedRaw)
+		if ok {
+			w.Z.ScaleVec(-1.0, w.F)
+			zMat := blas64.General{
+				Rows:   m,
+				Cols:   1,
+				Stride: 1,
+				Data:   w.Z.RawVector().Data,
+			}
+			lapack64.Potrs(t, zMat)
+			// Compute step: dx = Jᵀ * z
+			blas64.Gemv(blas.Trans, 1.0, w.J.RawMatrix(), w.Z.RawVector(), 0.0, w.Dx.RawVector())
+			choleskyOK = true
+		}
+	} else {
+		// Solve primal system: (Jᵀ*J + μI) * dx = -g
+		w.HresDamped.CopySym(w.Hres)
+		hresDampedRaw := w.HresDamped.RawSymmetric()
+		for i := 0; i < n; i++ {
+			hresDampedRaw.Data[i*hresDampedRaw.Stride+i] += mu
+		}
+
+		// Try solving via Cholesky decomposition
+		t, ok := lapack64.Potrf(hresDampedRaw)
+		if ok {
+			w.Dx.ScaleVec(-1.0, w.G)
+			dxMat := blas64.General{
+				Rows:   n,
+				Cols:   1,
+				Stride: 1,
+				Data:   w.Dx.RawVector().Data,
+			}
+			lapack64.Potrs(t, dxMat)
+			choleskyOK = true
+		}
+	}
+
+	// Fallback to QR decomposition of augmented matrix if Cholesky failed.
+	if !choleskyOK {
+		solveQRAugmented(w.J, w.F, mu, w.AAug, w.BAug, w.Dx, w.Tau, w.Work)
+	}
+}
+
+// evaluateCandidateStep evaluates the residuals at the candidate state (x + dx)
+// and computes the gain ratio ρ (ratio of actual reduction to predicted reduction).
+func evaluateCandidateStep(sys *core.ConstraintSystem, w *SolverWorkspace, mu float64, n int) float64 {
+	// Evaluate candidate state: x_new = x + dx
+	for i := 0; i < n; i++ {
+		w.XNew[i] = w.X[i] + w.Dx.AtVec(i)
+	}
+	sys.EvaluateJacobian(w.XNew, w.FNew.RawVector().Data, nil)
+
+	// Compute Gain Ratio (ρ)
+	dxRaw := w.Dx.RawVector()
+	actualRed := 0.5 * (blas64.Dot(w.F.RawVector(), w.F.RawVector()) - blas64.Dot(w.FNew.RawVector(), w.FNew.RawVector()))
+	predRed := 0.5 * (mu*blas64.Dot(dxRaw, dxRaw) - blas64.Dot(dxRaw, w.G.RawVector()))
+
+	if predRed > 0 {
+		return actualRed / predRed
+	}
+	return 0.0
 }
 
 // normInf returns the L-infinity norm of a Vector (maximum absolute value).

@@ -17,8 +17,8 @@ func TestFixedEvaluator(t *testing.T) {
 		name         string
 		entities     []*schema.Entity
 		constraint   *schema.Constraint
-		targetID     string
-		paramIndices map[string]int
+		targetID     schema.EntityID
+		paramIndices map[schema.EntityID]int
 		numEqs       int
 		perturb      func(rng *rand.Rand) []float64
 	}{
@@ -41,7 +41,7 @@ func TestFixedEvaluator(t *testing.T) {
 				},
 			},
 			targetID:     "p1",
-			paramIndices: map[string]int{"p1": 0},
+			paramIndices: map[schema.EntityID]int{"p1": 0},
 			numEqs:       2,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{
@@ -69,7 +69,7 @@ func TestFixedEvaluator(t *testing.T) {
 				},
 			},
 			targetID:     "l1",
-			paramIndices: map[string]int{"l1": 0},
+			paramIndices: map[schema.EntityID]int{"l1": 0},
 			numEqs:       4,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{
@@ -94,9 +94,9 @@ func TestFixedEvaluator(t *testing.T) {
 				t.Fatalf("NewConstraintSystem failed: %v", err)
 			}
 
-			entityMap := make(map[string]*schema.Entity)
+			entityMap := make(map[schema.EntityID]*schema.Entity)
 			for _, ent := range tt.entities {
-				entityMap[ent.Id] = ent
+				entityMap[schema.EntityID(ent.Id)] = ent
 			}
 
 			eval, err := constraints.NewEvaluator(tt.constraint, entityMap)

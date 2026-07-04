@@ -8,14 +8,14 @@ import (
 
 // ConcentricEvaluator evaluates concentric constraints between circles, arcs, ellipses, or points.
 type ConcentricEvaluator struct {
-	idA, idB string
+	idA, idB schema.EntityID
 }
 
 // NewConcentricEvaluator creates a new ConcentricEvaluator for the given constraint.
-func NewConcentricEvaluator(c *schema.Constraint, entities map[string]*schema.Entity) (*ConcentricEvaluator, error) {
+func NewConcentricEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*ConcentricEvaluator, error) {
 	cc := c.GetConcentric()
-	idA := cc.GetEntityA()
-	idB := cc.GetEntityB()
+	idA := schema.EntityID(cc.GetEntityA())
+	idB := schema.EntityID(cc.GetEntityB())
 	if idA == idB {
 		return nil, fmt.Errorf("concentric constraint cannot be applied to the same entity %s", idA)
 	}
@@ -40,7 +40,7 @@ func NewConcentricEvaluator(c *schema.Constraint, entities map[string]*schema.En
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (c *ConcentricEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[string]int) float64 {
+func (c *ConcentricEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[c.idA]
 	idx2, ok2 := paramIndices[c.idB]
 	if !ok1 || !ok2 {
@@ -67,7 +67,7 @@ func (c *ConcentricEvaluator) NumEquations() int {
 }
 
 // EvaluateJacobian evaluates the unsquared residuals and writes them to J.
-func (c *ConcentricEvaluator) EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[string]int) {
+func (c *ConcentricEvaluator) EvaluateJacobian(x []float64, residuals []float64, J *mat.Dense, rowOffset int, paramIndices map[schema.EntityID]int) {
 	idx1, ok1 := paramIndices[c.idA]
 	idx2, ok2 := paramIndices[c.idB]
 	if !ok1 || !ok2 {

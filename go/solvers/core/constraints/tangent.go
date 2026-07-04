@@ -18,16 +18,16 @@ const (
 // TangentEvaluator evaluates tangent constraints between entities (Circle-Circle, Circle-Line).
 type TangentEvaluator struct {
 	subCase    tangentSubCase
-	idA, idB   string // idA is always the Circle for Cir-Ln
+	idA, idB   schema.EntityID // idA is always the Circle for Cir-Ln
 	isInternal bool   // For Cir-Cir
 	invC       float64
 }
 
 // NewTangentEvaluator creates a new TangentEvaluator for the given constraint.
-func NewTangentEvaluator(c *schema.Constraint, entities map[string]*schema.Entity) (*TangentEvaluator, error) {
+func NewTangentEvaluator(c *schema.Constraint, entities map[schema.EntityID]*schema.Entity) (*TangentEvaluator, error) {
 	t := c.GetTangent()
-	idA := t.GetEntityA()
-	idB := t.GetEntityB()
+	idA := schema.EntityID(t.GetEntityA())
+	idB := schema.EntityID(t.GetEntityB())
 	entA, okA := entities[idA]
 	entB, okB := entities[idB]
 	if !okA || !okB {
@@ -108,7 +108,7 @@ func (t *TangentEvaluator) EvaluateJacobian(
 	residuals []float64,
 	J *mat.Dense,
 	rowOffset int,
-	paramIndices map[string]int,
+	paramIndices map[schema.EntityID]int,
 ) {
 	idx1, ok1 := paramIndices[t.idA]
 	idx2, ok2 := paramIndices[t.idB]
@@ -181,7 +181,7 @@ func (t *TangentEvaluator) EvaluateJacobian(
 }
 
 // Evaluate computes the squared residual and accumulates the gradient.
-func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[string]int) float64 {
+func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[schema.EntityID]int) float64 {
 	idx1, ok1 := paramIndices[t.idA]
 	idx2, ok2 := paramIndices[t.idB]
 	if !ok1 || !ok2 {
