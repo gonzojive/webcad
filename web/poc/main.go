@@ -1,3 +1,4 @@
+// Program poc is a web server that serves WebCAD frontend assets and hosts API endpoints.
 package main
 
 import (
