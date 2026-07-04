@@ -5,5 +5,5 @@ go_library(
     srcs = ["server.go"],
     importpath = "github.com/gonzojive/webcad/web/server",
     visibility = ["//visibility:public"],
-    deps = ["@rules_go//go/runfiles"],
+    deps = ["//web/runfilesserver"],
 )

@@ -1,4 +1,6 @@
-// Package server provides a generic web server for serving WebCAD frontend assets.
+// Package server provides a generic web server for serving WebCAD frontend assets,
+// wrapping the [runfilesserver.RunfilesServer] with command-line flag configuration
+// and local workspace source tree fallback.
 package server
 
 import (
@@ -10,110 +12,107 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/rules_go/go/runfiles"
+	"github.com/gonzojive/webcad/web/runfilesserver"
 )
 
-// Options configures the WebCAD web server.
+// Options configures the [Server] instance.
 type Options struct {
 	// DefaultAddr is the default address to listen on (e.g. ":8080").
 	// Can be overridden by the -addr flag if registered.
 	DefaultAddr string
 
-	// RunfilesMarker is a runfile path used to locate the assets directory in runfiles
-	// (e.g., "webcad/web/poc/ui/main.js").
-	RunfilesMarker string
+	// WorkspaceName is the apparent name of the Bazel workspace (e.g. "webcad").
+	WorkspaceName string
 
 	// WorkspaceSubpath is the path relative to the workspace root where the assets are located
 	// (e.g., "web/poc").
 	WorkspaceSubpath string
+
+	// IndexHTML is the path relative to WorkspaceSubpath to serve at "/" (e.g., "ui/index.html").
+	IndexHTML string
 }
 
-// Server wraps the http server and handles asset resolution.
+// Server is a helper that wraps the http server, parses command line flags,
+// and delegates request handling to [runfilesserver.RunfilesServer] with local fallback.
 type Server struct {
-	opts      Options
-	assetsDir string
-	addr      string
+	addr    string
+	handler http.Handler
 }
 
-// New creates a new Server instance.
-// It defines and parses flags: -addr and -assets_dir.
+// New creates a new [Server] instance configured with [Options].
+// It defines and parses command-line flags: -addr and -assets_dir.
+//
+// If running locally in a workspace (non-runfiles environment), it automatically
+// configures a fallback handler pointing to the local workspace source files.
 func New(opts Options) *Server {
 	addrFlag := flag.String("addr", opts.DefaultAddr, "Address to listen on")
-	assetsDirFlag := flag.String("assets_dir", "", "Path to the assets directory (optional override)")
+	assetsDirFlag := flag.String("assets_dir", "", "Path to the assets directory (optional override, bypasses runfiles)")
 	
-	// Check if flags are already parsed (e.g. by the caller)
 	if !flag.Parsed() {
 		flag.Parse()
 	}
 
-	s := &Server{
-		opts: opts,
-		addr: *addrFlag,
+	var fallback http.Handler
+	// Try to locate workspace root via filesystem walk-up for fallback
+	if wd, err := os.Getwd(); err == nil {
+		if root, err := findWorkspaceRoot(wd); err == nil {
+			fallbackDir := filepath.Clean(filepath.Join(root, opts.WorkspaceSubpath))
+			fallback = &localSafeFileServer{
+				dir:          fallbackDir,
+				fileServer:   http.FileServer(http.Dir(fallbackDir)),
+				indexHTML:    opts.IndexHTML,
+			}
+			log.Printf("Configured local workspace fallback serving from: %s", fallbackDir)
+		}
 	}
 
-	s.assetsDir = s.resolveAssetDir(*assetsDirFlag)
-	return s
+	rs := runfilesserver.New(opts.WorkspaceName, opts.WorkspaceSubpath, opts.IndexHTML, fallback)
+	if *assetsDirFlag != "" {
+		rs.SetLocalOverrideDir(*assetsDirFlag)
+	}
+
+	return &Server{
+		addr:    *addrFlag,
+		handler: rs,
+	}
 }
 
-// Start starts the HTTP server.
+// Start starts the HTTP listener and serves requests using the configured handler.
 func (s *Server) Start() error {
-	fs := http.FileServer(http.Dir(s.assetsDir))
-	http.Handle("/", fs)
-
-	log.Printf("WebCAD Server starting on http://localhost%s (serving %s)", s.addr, s.assetsDir)
+	http.Handle("/", s.handler)
+	log.Printf("WebCAD Server starting on http://localhost%s (serving via RunfilesServer)", s.addr)
 	return http.ListenAndServe(s.addr, nil)
 }
 
-// AssetsDir returns the resolved assets directory.
-func (s *Server) AssetsDir() string {
-	return s.assetsDir
+// localSafeFileServer wraps http.FileServer to enforce security boundaries
+// (directory traversal protection) when serving from the local filesystem fallback.
+type localSafeFileServer struct {
+	dir          string
+	fileServer   http.Handler
+	indexHTML    string
 }
 
-func (s *Server) resolveAssetDir(flagValue string) string {
-	// 1. Flag override
-	if flagValue != "" {
-		log.Printf("Using assets directory from flag: %s", flagValue)
-		return flagValue
+func (h *localSafeFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// The path in r.URL.Path has already been cleaned and resolved (including indexHTML)
+	// by RunfilesServer before it delegates here.
+	relPath := strings.TrimPrefix(r.URL.Path, "/")
+	
+	localPath := filepath.Clean(filepath.Join(h.dir, relPath))
+	expectedPrefix := filepath.Clean(h.dir)
+	
+	// Enforce directory traversal protection
+	if !strings.HasPrefix(localPath, expectedPrefix) {
+		log.Printf("Security warning: attempted directory traversal in fallback? path=%s, localPath=%s, expectedPrefix=%s", r.URL.Path, localPath, expectedPrefix)
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
 	}
 
-	// 2. Try Bazel runfiles
-	if s.opts.RunfilesMarker != "" && s.opts.WorkspaceSubpath != "" {
-		if jsPath, err := runfiles.Rlocation(s.opts.RunfilesMarker); err == nil {
-			// jsPath: /path/to/runfiles/webcad/web/poc/ui/main.js
-			// RunfilesMarker: webcad/web/poc/ui/main.js
-			// We want to find the root and append WorkspaceSubpath.
-			
-			// Normalize paths for comparison
-			jsPathClean := filepath.Clean(jsPath)
-			markerClean := filepath.Clean(s.opts.RunfilesMarker)
-			
-			// Strip the marker from the end of the resolved path
-			if strings.HasSuffix(jsPathClean, markerClean) {
-				runfilesRoot := jsPathClean[:len(jsPathClean)-len(markerClean)]
-				// Workspace name is the first segment of the marker (e.g., "webcad")
-				parts := strings.Split(markerClean, string(filepath.Separator))
-				workspaceName := parts[0]
-				
-				assetDir := filepath.Join(runfilesRoot, workspaceName, s.opts.WorkspaceSubpath)
-				log.Printf("Serving assets from Bazel runfiles: %s", assetDir)
-				return assetDir
-			}
-		}
+	// Add JS MIME type helper for local fallback serving (some platforms don't register it)
+	if filepath.Ext(localPath) == ".js" {
+		w.Header().Set("Content-Type", "application/javascript")
 	}
 
-	// 3. Try to locate workspace root via filesystem walk-up
-	if wd, err := os.Getwd(); err == nil {
-		if root, err := findWorkspaceRoot(wd); err == nil {
-			assetDir := filepath.Join(root, s.opts.WorkspaceSubpath)
-			log.Printf("Located workspace root, serving assets from: %s", assetDir)
-			return assetDir
-		}
-	}
-
-	// 4. Fallback to current working directory
-	wd, _ := os.Getwd()
-	log.Printf("Fallback: serving assets from current working directory: %s", wd)
-	return wd
+	h.fileServer.ServeHTTP(w, r)
 }
 
 func findWorkspaceRoot(startDir string) (string, error) {
