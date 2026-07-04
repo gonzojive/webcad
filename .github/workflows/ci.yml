@@ -43,6 +43,11 @@ jobs:
         echo "build --disk_cache=~/.cache/bazel-disk" >> ~/.bazelrc
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
+    - name: Check Workspace Tidy
+      run: |
+        ./devtools/tidy
+        git diff --exit-code
+
     - name: Bazel Build and Test
       run: |
         bazel build //...
