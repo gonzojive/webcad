@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@webcad/gcsapi':
-        specifier: workspace:*
-        version: link:web/poc/gcsapi
       '@webcad/ui':
         specifier: workspace:*
         version: link:web/poc/ui
@@ -22,13 +19,7 @@ importers:
         specifier: 5.3.3
         version: 5.3.3
 
-  web/poc/gcsapi: {}
-
-  web/poc/ui:
-    dependencies:
-      '@webcad/gcsapi':
-        specifier: workspace:*
-        version: link:../gcsapi
+  web/poc/ui: {}
 
 packages:
 

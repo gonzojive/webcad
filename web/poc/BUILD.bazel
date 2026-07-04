@@ -15,7 +15,7 @@ go_library(
 go_binary(
     name = "poc",
     data = [
-        "//web/poc/gcsapi:gcsapi_lib",
+        "//web/poc/gcsapi",
         "//web/poc/ui:index.html",
         "//web/poc/ui:ui_lib",
     ],

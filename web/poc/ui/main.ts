@@ -1,4 +1,4 @@
-import { GCSapi } from '@webcad/gcsapi';
+import { GCSapi } from '../gcsapi/gcsapi.js';
 
 const gcs = new GCSapi();
 const result = gcs.solve();

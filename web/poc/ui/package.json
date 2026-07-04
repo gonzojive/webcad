@@ -1,9 +1,6 @@
 {
-  "//": "Defines the UI application package and its dependency on the @webcad/gcsapi workspace package.",
+  "//": "Defines the UI application package.",
   "name": "@webcad/ui",
   "version": "0.0.1",
-  "type": "module",
-  "dependencies": {
-    "@webcad/gcsapi": "workspace:*"
-  }
+  "type": "module"
 }

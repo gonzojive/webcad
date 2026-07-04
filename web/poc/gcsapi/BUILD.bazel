@@ -1,8 +1,14 @@
-load("@aspect_rules_js//npm:defs.bzl", "npm_package")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
-load("@npm//:defs.bzl", "npm_link_all_packages")
 
 package(default_visibility = ["//visibility:public"])
+
+js_library(
+    name = "package_json",
+    srcs = ["package.json"],
+)
+
+exports_files(["package.json"])
 
 ts_config(
     name = "tsconfig",
@@ -10,23 +16,11 @@ ts_config(
     visibility = ["//visibility:public"],
 )
 
-npm_link_all_packages(name = "node_modules")
-
 # Managed by Gazelle
 ts_project(
-    name = "gcsapi_lib",
+    name = "gcsapi",
     srcs = ["gcsapi.ts"],
     declaration = True,
     source_map = True,
     tsconfig = ":tsconfig",
-)
-
-# Managed by Gazelle
-npm_package(
-    name = "gcsapi",
-    srcs = [
-        "package.json",
-        ":gcsapi_lib",
-    ],
-    visibility = ["//:__pkg__"],
 )
