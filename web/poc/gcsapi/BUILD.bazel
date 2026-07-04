@@ -1,12 +1,6 @@
-load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
-
-ts_config(
-    name = "tsconfig",
-    src = "tsconfig.json",
-    visibility = ["//visibility:public"],
-)
 
 # Managed by Gazelle
 ts_project(
@@ -14,5 +8,5 @@ ts_project(
     srcs = ["gcsapi.ts"],
     declaration = True,
     source_map = True,
-    tsconfig = ":tsconfig",
+    tsconfig = "//:tsconfig",
 )
