@@ -74,5 +74,26 @@ If you add new source files, rename files, or add/remove dependencies in `packag
 ```
 This keeps your Bazel build files in sync with your source code and npm configurations automatically.
 
+## ES Modules (ESM) and Marker package.json Files
+
+We use modern ES Modules (`import`/`export` syntax) in our TypeScript/JavaScript code. 
+
+When Node.js executes JavaScript files (for example, when running tests via `js_test`), it needs to know whether to interpret them as ES Modules or legacy CommonJS modules. 
+
+Node.js determines this by looking for the nearest `package.json` file walking up from the file being executed.
+*   **Applications (e.g. `web/poc/ui`)**: Have a full `package.json` that declares `"type": "module"`. All files inside this directory are automatically treated as ESM.
+*   **Shared Libraries (e.g. `web/poc/gcsapi`)**: Do not need a full `package.json` because they are not distinct npm workspace packages. However, because they are located outside the `ui/` directory, Node.js cannot find `ui/package.json` when executing library code in isolation.
+
+To solve this, we place a minimal **marker `package.json`** in the library directory (e.g. `web/poc/gcsapi/package.json`) containing only:
+```json
+{
+  "type": "module"
+}
+```
+This serves solely to instruct Node.js to treat the compiled files in that library directory as ES Modules. It is ignored by npm/pnpm workspaces.
+
+---
+
 ## Adding Comments in `package.json`
 Since JSON does not support comments, we use the `"//"` key convention to document the purpose of dependencies or metadata fields in `package.json` files. Bazel and pnpm will safely ignore these keys.
+
