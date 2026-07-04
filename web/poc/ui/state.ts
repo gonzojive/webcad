@@ -125,7 +125,7 @@ export class SketchStateModel {
         this.circles = this.circles.filter(c => c.id !== id);
 
         // 2. Cascade delete lines/circles linked to deleted points
-        if (id.startsWith('P_')) {
+        if (/^P\d+$/.test(id)) {
             this.lines = this.lines.filter(l => l.p1Id !== id && l.p2Id !== id);
             this.circles = this.circles.filter(c => c.centerId !== id);
         }

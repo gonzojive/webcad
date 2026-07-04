@@ -412,7 +412,7 @@ export class SketchController {
             e.cancelBubble = true;
             const selectedIds = this.model.getSelectedEntityIds();
             
-            if (id.startsWith('P_') && !selectedIds.includes(id)) {
+            if (/^P\d+$/.test(id) && !selectedIds.includes(id)) {
                 selectedIds.push(id);
                 this.model.setSelectedEntityIds(selectedIds);
                 
@@ -478,7 +478,7 @@ export class SketchController {
     }
 
     private applyCoincident() {
-        const selectedPoints = this.model.getSelectedEntityIds().filter(id => id.startsWith('P_'));
+        const selectedPoints = this.model.getSelectedEntityIds().filter(id => /^P\d+$/.test(id));
         if (selectedPoints.length !== 2) {
             alert("Select exactly 2 points to make coincident.");
             return;
@@ -497,7 +497,7 @@ export class SketchController {
     }
 
     private applyDistance() {
-        const selectedPoints = this.model.getSelectedEntityIds().filter(id => id.startsWith('P_'));
+        const selectedPoints = this.model.getSelectedEntityIds().filter(id => /^P\d+$/.test(id));
         
         if (selectedPoints.length === 2) {
             const p1 = this.model.getPoint(selectedPoints[0]);
@@ -524,7 +524,7 @@ export class SketchController {
         }
         
         if (this.dimensionFirstEntityId === null) {
-            if (id.startsWith('L_')) {
+            if (/^L\d+$/.test(id)) {
                 const line = this.model.getLine(id);
                 if (line) {
                     this.placingDimension = {
@@ -535,7 +535,7 @@ export class SketchController {
                     const hud = document.getElementById('help-hud');
                     if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place dimension.`;
                 }
-            } else if (id.startsWith('P_')) {
+            } else if (/^P\d+$/.test(id)) {
                 this.dimensionFirstEntityId = id;
                 this.model.setSelectedEntityIds([id]);
                 const hud = document.getElementById('help-hud');
@@ -551,7 +551,7 @@ export class SketchController {
     private startTwoEntityDimensionPlacement(firstId: string, secondId: string) {
         if (firstId === secondId) return;
 
-        if (firstId.startsWith('P_') && secondId.startsWith('P_')) {
+        if (/^P\d+$/.test(firstId) && /^P\d+$/.test(secondId)) {
             this.placingDimension = {
                 type: 'distance',
                 entityIds: [firstId, secondId]
@@ -561,10 +561,10 @@ export class SketchController {
             const hud = document.getElementById('help-hud');
             if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place point-to-point dimension.`;
 
-        } else if ((firstId.startsWith('P_') && secondId.startsWith('L_')) || 
-                   (firstId.startsWith('L_') && secondId.startsWith('P_'))) {
-            const pointId = firstId.startsWith('P_') ? firstId : secondId;
-            const lineId = firstId.startsWith('L_') ? firstId : secondId;
+        } else if ((/^P\d+$/.test(firstId) && /^L\d+$/.test(secondId)) || 
+                   (/^L\d+$/.test(firstId) && /^P\d+$/.test(secondId))) {
+            const pointId = /^P\d+$/.test(firstId) ? firstId : secondId;
+            const lineId = /^L\d+$/.test(firstId) ? firstId : secondId;
 
             this.placingDimension = {
                 type: 'point_line_distance',
@@ -739,7 +739,7 @@ export class SketchController {
         if (selectedIds.length === 0) return;
 
         selectedIds.forEach(id => {
-            if (id.startsWith('CON_')) {
+            if (this.model.getConstraints().some(c => c.id === id)) {
                 this.model.deleteConstraint(id);
             } else {
                 this.model.deleteEntity(id);
@@ -751,7 +751,7 @@ export class SketchController {
     }
 
     private applyHorizontal() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => /^L\d+$/.test(id));
         if (selectedLines.length !== 1) {
             alert("Select exactly 1 line to make horizontal.");
             return;
@@ -769,7 +769,7 @@ export class SketchController {
     }
 
     private applyVertical() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => /^L\d+$/.test(id));
         if (selectedLines.length !== 1) {
             alert("Select exactly 1 line to make vertical.");
             return;
@@ -787,7 +787,7 @@ export class SketchController {
     }
 
     private applyParallel() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => /^L\d+$/.test(id));
         if (selectedLines.length !== 2) {
             alert("Select exactly 2 lines to make parallel.");
             return;
@@ -806,7 +806,7 @@ export class SketchController {
     }
 
     private applyPerpendicular() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => /^L\d+$/.test(id));
         if (selectedLines.length !== 2) {
             alert("Select exactly 2 lines to make perpendicular.");
             return;
@@ -825,7 +825,7 @@ export class SketchController {
     }
 
     private togglePointFixed() {
-        const selectedPoints = this.model.getSelectedEntityIds().filter(id => id.startsWith('P_'));
+        const selectedPoints = this.model.getSelectedEntityIds().filter(id => /^P\d+$/.test(id));
         if (selectedPoints.length === 0) {
             alert("Select one or more points to toggle position lock.");
             return;

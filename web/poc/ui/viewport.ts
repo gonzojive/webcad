@@ -437,6 +437,7 @@ export class CanvasViewport {
                 if (this.model.getTool() === 'select') {
                     this.model.setHoveredConstraintId(con.id);
                     this.stage.container().style.cursor = 'pointer';
+                    this.updateEntityVisuals();
                 }
             });
 
@@ -445,6 +446,7 @@ export class CanvasViewport {
                     this.model.setHoveredConstraintId(null);
                     this.stage.container().style.cursor = 
                         this.model.getTool() === 'select' ? 'default' : 'crosshair';
+                    this.updateEntityVisuals();
                 }
             });
 
