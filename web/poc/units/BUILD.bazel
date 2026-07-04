@@ -5,7 +5,10 @@ package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "units",
-    srcs = ["units.ts"],
+    srcs = [
+        "expression.ts",
+        "units.ts",
+    ],
     declaration = True,
     source_map = True,
     tsconfig = "//web:tsconfig",

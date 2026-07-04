@@ -1,3 +1,5 @@
+import { parse, evaluate } from './expression.js';
+
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'ft' | 'ft-in';
 
 const UNIT_TO_MM: { [key: string]: number } = {
@@ -24,43 +26,22 @@ export function parseLength(str: string, defaultUnit: Unit = 'mm'): number {
     throw new Error('Empty input');
   }
 
-  // Regex to match value and unit groups. Supports signs, decimals (including leading dot).
-  // Order of units matters! Longer prefixes must be placed first to prevent partial match (e.g., 'in' matching inside 'inch').
-  const regex = /([+-]?\s*(?:\d+(?:\.\d+)?|\.\d+))\s*(mm|cm|m|inches|inch|in|feet|foot|ft|'|")?/gi;
-  let totalMm = 0;
-  let matchCount = 0;
-  let lastIndex = 0;
-
-  let match;
-  while ((match = regex.exec(normalized)) !== null) {
-    matchCount++;
-    
-    // Check gap between matches to ensure no invalid characters are skipped
-    const gap = normalized.substring(lastIndex, match.index);
-    if (/[^+\s]/.test(gap)) {
-      throw new Error(`Invalid characters in expression: "${gap}"`);
-    }
-
-    const valueStr = match[1].replace(/\s+/g, ''); // strip spaces in case of "+ 3"
-    const value = parseFloat(valueStr);
-    const unit = match[2];
-
-    const resolvedDefault = defaultUnit.toLowerCase() === 'ft-in' ? 'in' : defaultUnit.toLowerCase();
-    const conversion = unit ? UNIT_TO_MM[unit.toLowerCase()] : UNIT_TO_MM[resolvedDefault];
-    if (conversion === undefined) {
-      throw new Error(`Unknown unit: ${unit}`);
-    }
-
-    totalMm += value * conversion;
-    lastIndex = regex.lastIndex;
+  const resolvedDefault = defaultUnit.toLowerCase() === 'ft-in' ? 'in' : defaultUnit.toLowerCase();
+  const defaultUnitValue = UNIT_TO_MM[resolvedDefault];
+  if (defaultUnitValue === undefined) {
+    throw new Error(`Unknown default unit: ${defaultUnit}`);
   }
 
-  // If we couldn't parse anything, or there are dangling unparsed chars, throw error.
-  if (matchCount === 0 || normalized.substring(lastIndex).trim() !== '') {
-    throw new Error(`Invalid length expression: "${str}"`);
+  try {
+    const ast = parse(normalized);
+    const result = evaluate(ast, UNIT_TO_MM, defaultUnitValue);
+    if (result.dim !== 1) {
+      throw new Error(`Expression does not evaluate to a length (dimension ${result.dim})`);
+    }
+    return result.value;
+  } catch (e: any) {
+    throw new Error(`Invalid length expression: "${str}". Detail: ${e.message}`);
   }
-
-  return totalMm;
 }
 
 /**
