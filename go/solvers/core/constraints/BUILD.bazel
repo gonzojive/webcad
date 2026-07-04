@@ -7,6 +7,7 @@ go_library(
         "coincidence.go",
         "concentric.go",
         "distance.go",
+        "doc.go",
         "evaluator.go",
         "fixed.go",
         "midpoint.go",
