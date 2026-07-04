@@ -117,6 +117,11 @@ export class SketchController {
             this.sidebar.render();
         });
 
+        this.model.on('selection-change', () => {
+            this.viewport.updateEntityVisuals();
+            this.sidebar.render();
+        });
+
         this.model.on('tool-change', () => {
             this.resetDrawingState();
             this.updateToolbarUI();
@@ -281,12 +286,12 @@ export class SketchController {
                 this.runGCSSolver();
             }
         } else if (currentTool === 'select') {
-            const clickedOnEmpty = e.target === this.viewport['stage'] || e.target === this.viewport['gridLayer'];
+            const clickedOnEmpty = this.viewport.isStageOrGrid(e.target);
             if (clickedOnEmpty) {
                 this.model.clearSelection();
             }
         } else if (currentTool === 'dimension') {
-            const clickedOnEmpty = e.target === this.viewport['stage'] || e.target === this.viewport['gridLayer'];
+            const clickedOnEmpty = this.viewport.isStageOrGrid(e.target);
             if (clickedOnEmpty && this.placingDimension) {
                 e.cancelBubble = true;
                 const { type, entityIds } = this.placingDimension;
@@ -591,9 +596,9 @@ export class SketchController {
         const input = document.getElementById('inline-distance-input') as HTMLInputElement;
         if (!input) return;
 
-        const stage = this.viewport['stage'];
-        const screenX = stage.x() + spawnPos.x * stage.scaleX();
-        const screenY = stage.y() + spawnPos.y * stage.scaleY();
+        const screenPos = this.viewport.canvasToScreen(spawnPos.x, spawnPos.y);
+        const screenX = screenPos.x;
+        const screenY = screenPos.y;
 
         input.value = defaultValue.toFixed(1);
         input.style.left = `${screenX + 15}px`;
@@ -692,9 +697,9 @@ export class SketchController {
         const input = document.getElementById('inline-distance-input') as HTMLInputElement;
         if (!input) return;
 
-        const stage = this.viewport['stage'];
-        const screenX = stage.x() + spawnPos.x * stage.scaleX();
-        const screenY = stage.y() + spawnPos.y * stage.scaleY();
+        const screenPos = this.viewport.canvasToScreen(spawnPos.x, spawnPos.y);
+        const screenX = screenPos.x;
+        const screenY = screenPos.y;
 
         input.value = con.value!.toFixed(1);
         input.style.left = `${screenX + 15}px`;

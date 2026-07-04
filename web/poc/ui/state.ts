@@ -197,7 +197,7 @@ export class SketchStateModel {
 
     setSelectedEntityIds(ids: string[]) {
         this.selectedEntityIds = [...ids];
-        this.emit('change');
+        this.emit('selection-change');
     }
 
     toggleSelect(id: string) {
@@ -207,13 +207,13 @@ export class SketchStateModel {
         } else {
             this.selectedEntityIds.push(id);
         }
-        this.emit('change');
+        this.emit('selection-change');
     }
 
     clearSelection() {
         if (this.selectedEntityIds.length > 0) {
             this.selectedEntityIds = [];
-            this.emit('change');
+            this.emit('selection-change');
         }
     }
 

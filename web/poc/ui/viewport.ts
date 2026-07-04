@@ -148,6 +148,18 @@ export class CanvasViewport {
         return transform.point(pos);
     }
 
+    public canvasToScreen(x: number, y: number): { x: number; y: number } {
+        if (!this.stage) return { x, y };
+        return {
+            x: this.stage.x() + x * this.stage.scaleX(),
+            y: this.stage.y() + y * this.stage.scaleY()
+        };
+    }
+
+    public isStageOrGrid(target: any): boolean {
+        return target === this.stage || target === this.gridLayer;
+    }
+
     // --- Previews & Snap controls ---
 
     updateSnapIndicator(x: number, y: number, visible: boolean) {
