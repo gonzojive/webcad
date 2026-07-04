@@ -5,5 +5,3 @@ common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc=true
 build --@aspect_rules_ts//ts:default_to_tsc_transpiler
 build --@aspect_rules_ts//ts:skipLibCheck=always
 
-# Force Node.js to use ES Modules by default for all tests
-test --test_env=NODE_OPTIONS=--experimental-default-type=module
