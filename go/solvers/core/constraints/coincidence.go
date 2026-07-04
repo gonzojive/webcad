@@ -20,8 +20,9 @@ const (
 // CoincidenceEvaluator evaluates coincidence constraints (Point-Point, Point-Line, Point-Circle).
 type CoincidenceEvaluator struct {
 	subCase    coincidenceSubCase
-	idA, idB   gcstypes.EntityID // idA is always the Point for Pt-Ln and Pt-Cir. For Pt-Ln, idB is unused.
+	idA, idB   gcstypes.EntityID // idA is always the Point for Pt-Ln and Pt-Cir.
 	p1ln, p2ln gcstypes.EntityID // For Pt-Ln case
+	centerId   gcstypes.EntityID // For Pt-Cir case (resolved center of idB)
 	invC       float64
 	sqrtInvC   float64 // Precomputed sqrt(1/C) for Pt-Ln
 }
@@ -89,16 +90,26 @@ func NewCoincidenceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityI
 			sqrtInvC: math.Sqrt(1.0 / C),
 		}, nil
 	} else if isPtA && isCirB {
+		centerId, err := resolvePointOrCenter(idB, entities)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve circle B center: %w", err)
+		}
 		return &CoincidenceEvaluator{
-			subCase: coincidencePtCir,
-			idA:     idA,
-			idB:     idB,
+			subCase:  coincidencePtCir,
+			idA:      idA,
+			idB:      idB,
+			centerId: centerId,
 		}, nil
 	} else if isPtB && isCirA {
+		centerId, err := resolvePointOrCenter(idA, entities)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve circle A center: %w", err)
+		}
 		return &CoincidenceEvaluator{
-			subCase: coincidencePtCir,
-			idA:     idB, // Store point in idA
-			idB:     idA, // Store circle in idB
+			subCase:  coincidencePtCir,
+			idA:      idB, // Store point in idA
+			idB:      idA, // Store circle in idB
+			centerId: centerId,
 		}, nil
 	}
 
@@ -172,12 +183,14 @@ func (c *CoincidenceEvaluator) EvaluateJacobian(
 
 	case coincidencePtCir:
 		idx1, ok1 := paramIndices[c.idA]
-		idx2, ok2 := paramIndices[c.idB]
-		if !ok1 || !ok2 {
+		idxCenter, okCenter := paramIndices[c.centerId]
+		idxCir, okCir := paramIndices[c.idB]
+		if !ok1 || !okCenter || !okCir {
 			return
 		}
 		px, py := x[idx1], x[idx1+1]
-		cx, cy, R := x[idx2], x[idx2+1], x[idx2+2]
+		cx, cy := x[idxCenter], x[idxCenter+1]
+		R := x[idxCir]
 		dx := cx - px
 		dy := cy - py
 		dSq := dx*dx + dy*dy
@@ -188,9 +201,9 @@ func (c *CoincidenceEvaluator) EvaluateJacobian(
 		if J != nil {
 			J.Set(rowOffset, idx1, -2.0*dx)
 			J.Set(rowOffset, idx1+1, -2.0*dy)
-			J.Set(rowOffset, idx2, 2.0*dx)
-			J.Set(rowOffset, idx2+1, 2.0*dy)
-			J.Set(rowOffset, idx2+2, -2.0*R)
+			J.Set(rowOffset, idxCenter, 2.0*dx)
+			J.Set(rowOffset, idxCenter+1, 2.0*dy)
+			J.Set(rowOffset, idxCir, -2.0*R)
 		}
 	}
 }
@@ -246,12 +259,14 @@ func (c *CoincidenceEvaluator) Evaluate(x []float64, grad []float64, paramIndice
 
 	case coincidencePtCir:
 		idx1, ok1 := paramIndices[c.idA]
-		idx2, ok2 := paramIndices[c.idB]
-		if !ok1 || !ok2 {
+		idxCenter, okCenter := paramIndices[c.centerId]
+		idxCir, okCir := paramIndices[c.idB]
+		if !ok1 || !okCenter || !okCir {
 			return 0.0
 		}
 		px, py := x[idx1], x[idx1+1]
-		cx, cy, R := x[idx2], x[idx2+1], x[idx2+2]
+		cx, cy := x[idxCenter], x[idxCenter+1]
+		R := x[idxCir]
 		dx := cx - px
 		dy := cy - py
 		dSq := dx*dx + dy*dy
@@ -264,9 +279,9 @@ func (c *CoincidenceEvaluator) Evaluate(x []float64, grad []float64, paramIndice
 			factor := 4.0 * r
 			grad[idx1] -= factor * dx
 			grad[idx1+1] -= factor * dy
-			grad[idx2] += factor * dx
-			grad[idx2+1] += factor * dy
-			grad[idx2+2] -= factor * R
+			grad[idxCenter] += factor * dx
+			grad[idxCenter+1] += factor * dy
+			grad[idxCir] -= factor * R
 		}
 		return valSq
 	}

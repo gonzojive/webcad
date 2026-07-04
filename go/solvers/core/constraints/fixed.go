@@ -29,6 +29,26 @@ func NewFixedEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*sch
 	}
 
 	var targets []fixedTarget
+	var centerID gcstypes.EntityID
+	var isCirArcEll bool
+	switch e := ent.GetEntityType().(type) {
+	case *schema.Entity_Circle:
+		if e.Circle != nil {
+			centerID = gcstypes.EntityID(e.Circle.CenterId)
+			isCirArcEll = true
+		}
+	case *schema.Entity_Arc:
+		if e.Arc != nil {
+			centerID = gcstypes.EntityID(e.Arc.CenterId)
+			isCirArcEll = true
+		}
+	case *schema.Entity_Ellipse:
+		if e.Ellipse != nil {
+			centerID = gcstypes.EntityID(e.Ellipse.CenterId)
+			isCirArcEll = true
+		}
+	}
+
 	if isLine(ent) {
 		p1Id, p2Id, p1, p2, err := getLinePoints(ent, entities)
 		if err != nil {
@@ -36,6 +56,24 @@ func NewFixedEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*sch
 		}
 		targets = append(targets, fixedTarget{id: p1Id, initialValues: []float64{p1.X, p1.Y}})
 		targets = append(targets, fixedTarget{id: p2Id, initialValues: []float64{p2.X, p2.Y}})
+	} else if isCirArcEll {
+		centerEnt, ok := entities[centerID]
+		if !ok {
+			return nil, fmt.Errorf("center point %s not found for entity %s", centerID, entID)
+		}
+		centerPt := centerEnt.GetPoint()
+		if centerPt == nil {
+			return nil, fmt.Errorf("center point %s is not a point entity", centerID)
+		}
+		targets = append(targets, fixedTarget{id: centerID, initialValues: []float64{centerPt.X, centerPt.Y}})
+
+		params := getParams(ent)
+		if params == nil {
+			return nil, fmt.Errorf("failed to get params for entity %s", entID)
+		}
+		initialValues := make([]float64, len(params))
+		copy(initialValues, params)
+		targets = append(targets, fixedTarget{id: entID, initialValues: initialValues})
 	} else {
 		params := getParams(ent)
 		if params == nil {

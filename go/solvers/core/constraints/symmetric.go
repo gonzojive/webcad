@@ -21,11 +21,13 @@ func NewSymmetricEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]
 	idA := gcstypes.EntityID(s.GetEntityA())
 	idB := gcstypes.EntityID(s.GetEntityB())
 	idSym := gcstypes.EntityID(s.GetSymmetryLine())
-	if _, ok := entities[idA]; !ok {
-		return nil, fmt.Errorf("entity A %s not found", idA)
+	resolvedA, err := resolvePointOrCenter(idA, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity A: %w", err)
 	}
-	if _, ok := entities[idB]; !ok {
-		return nil, fmt.Errorf("entity B %s not found", idB)
+	resolvedB, err := resolvePointOrCenter(idB, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity B: %w", err)
 	}
 	entSym, ok := entities[idSym]
 	if !ok {
@@ -36,8 +38,8 @@ func NewSymmetricEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]
 		return nil, fmt.Errorf("symmetry line endpoints unresolved: %w", err)
 	}
 	return &SymmetricEvaluator{
-		idA:   idA,
-		idB:   idB,
+		idA:   resolvedA,
+		idB:   resolvedB,
 		p1sym: p1Id,
 		p2sym: p2Id,
 	}, nil

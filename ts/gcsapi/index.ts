@@ -378,6 +378,27 @@ export class GCSSolver {
                     break;
             }
         }
+
+        // Map fixed points to FixedConstraints
+        for (const p of state.points) {
+            if (p.fixed) {
+                goConstraints.push({
+                    id: `fixed-${p.id}`,
+                    fixed: { entityId: p.id }
+                });
+            }
+        }
+
+        // Map fixed radius circles to FixedConstraints
+        for (const c of state.circles) {
+            if (c.fixedRadius) {
+                goConstraints.push({
+                    id: `fixed-${c.id}`,
+                    fixed: { entityId: c.id }
+                });
+            }
+        }
+
         return goConstraints;
     }
 

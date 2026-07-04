@@ -17,14 +17,16 @@ func NewHorizontalDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.
 	idA := gcstypes.EntityID(h.GetEntityA())
 	idB := gcstypes.EntityID(h.GetEntityB())
 	
-	if _, ok := entities[idA]; !ok {
-		return nil, fmt.Errorf("entity A %s not found", idA)
+	resolvedA, err := resolvePointOrCenter(idA, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity A: %w", err)
 	}
-	if _, ok := entities[idB]; !ok {
-		return nil, fmt.Errorf("entity B %s not found", idB)
+	resolvedB, err := resolvePointOrCenter(idB, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity B: %w", err)
 	}
 
-	return &HorizontalDistanceEvaluator{p1: idA, p2: idB, value: h.GetValue()}, nil
+	return &HorizontalDistanceEvaluator{p1: resolvedA, p2: resolvedB, value: h.GetValue()}, nil
 }
 
 func (h *HorizontalDistanceEvaluator) NumEquations() int {

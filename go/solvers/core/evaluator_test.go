@@ -28,11 +28,11 @@ func Line(id string, p1Id, p2Id string) *schema.Entity {
 	}
 }
 
-func Circle(id string, cx, cy, r float64) *schema.Entity {
+func Circle(id string, centerId string, r float64) *schema.Entity {
 	return &schema.Entity{
 		Id: id,
 		EntityType: &schema.Entity_Circle{
-			Circle: &schema.CircleEntity{Cx: cx, Cy: cy, R: r},
+			Circle: &schema.CircleEntity{CenterId: centerId, R: r},
 		},
 	}
 }
@@ -201,14 +201,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Coincidence Pt-Circ Pass",
 			constraint: Coincidence("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 1, 0), Circle("circ1", 0, 0, 1)},
+			entities:   []*schema.Entity{Point("p1", 1, 0), Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Coincidence Pt-Circ Fail",
 			constraint: Coincidence("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 2, 0), Circle("circ1", 0, 0, 1)},
+			entities:   []*schema.Entity{Point("p1", 2, 0), Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1)},
 			want:       3, // Polynomial: dSq - R^2 = 4 - 1 = 3
 			tolerance:  1e-9,
 		},
@@ -295,35 +295,35 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Tangent Circ-Circ Ext Pass",
 			constraint: Tangent("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 0, 1), Circle("circ2", 3, 0, 2)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1), Point("circ2_center", 3, 0), Circle("circ2", "circ2_center", 2)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Circ Int Pass",
 			constraint: Tangent("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 0, 3), Circle("circ2", 1, 0, 2)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 3), Point("circ2_center", 1, 0), Circle("circ2", "circ2_center", 2)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Ln Pass",
 			constraint: Tangent("c1", "circ1", "l1"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 1, 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 1), Circle("circ1", "circ1_center", 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Circ Fail",
 			constraint: Tangent("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 0, 1), Circle("circ2", 4, 0, 2)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1), Point("circ2_center", 4, 0), Circle("circ2", "circ2_center", 2)},
 			want:       7, // Polynomial: dSq - (r1+r2)^2 = 16 - 9 = 7
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Ln Fail",
 			constraint: Tangent("c1", "circ1", "l1"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 2, 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 2), Circle("circ1", "circ1_center", 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			want:       3, // Polynomial: dSq - R^2 = 4 - 1 = 3
 			tolerance:  1e-9,
 		},
@@ -332,28 +332,28 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Concentric Circ-Circ Pass",
 			constraint: Concentric("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 1, 2, 3), Circle("circ2", 1, 2, 5)},
+			entities:   []*schema.Entity{Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3), Point("circ2_center", 1, 2), Circle("circ2", "circ2_center", 5)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Concentric Pt-Circ Pass",
 			constraint: Concentric("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 1, 2), Circle("circ1", 1, 2, 3)},
+			entities:   []*schema.Entity{Point("p1", 1, 2), Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Concentric Circ-Circ Fail",
 			constraint: Concentric("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 1, 2, 3), Circle("circ2", 2, 2, 5)},
+			entities:   []*schema.Entity{Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3), Point("circ2_center", 2, 2), Circle("circ2", "circ2_center", 5)},
 			want:       1,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Concentric Pt-Circ Fail",
 			constraint: Concentric("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 1, 3), Circle("circ1", 1, 2, 3)},
+			entities:   []*schema.Entity{Point("p1", 1, 3), Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3)},
 			want:       1,
 			tolerance:  1e-9,
 		},
@@ -462,7 +462,7 @@ func TestAnalyticalGradients(t *testing.T) {
 		},
 		{
 			name:        "Coincidence Pt-Circ",
-			entities:    []*schema.Entity{Point("p1", 2, 0), Circle("circ1", 0, 0, 1)},
+			entities:    []*schema.Entity{Point("p1", 2, 0), Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1)},
 			constraints: []*schema.Constraint{Coincidence("c1", "p1", "circ1")},
 		},
 		{
@@ -492,22 +492,22 @@ func TestAnalyticalGradients(t *testing.T) {
 		},
 		{
 			name:        "Tangent Circ-Circ",
-			entities:    []*schema.Entity{Circle("circ1", 0, 0, 1), Circle("circ2", 4, 0, 2)},
+			entities:    []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1), Point("circ2_center", 4, 0), Circle("circ2", "circ2_center", 2)},
 			constraints: []*schema.Constraint{Tangent("c1", "circ1", "circ2")},
 		},
 		{
 			name:        "Tangent Circ-Ln",
-			entities:    []*schema.Entity{Circle("circ1", 0, 2, 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
+			entities:    []*schema.Entity{Point("circ1_center", 0, 2), Circle("circ1", "circ1_center", 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Tangent("c1", "circ1", "l1")},
 		},
 		{
 			name:        "Concentric Circ-Circ",
-			entities:    []*schema.Entity{Circle("circ1", 1, 2, 3), Circle("circ2", 2, 2, 5)},
+			entities:    []*schema.Entity{Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3), Point("circ2_center", 2, 2), Circle("circ2", "circ2_center", 5)},
 			constraints: []*schema.Constraint{Concentric("c1", "circ1", "circ2")},
 		},
 		{
 			name:        "Concentric Pt-Circ",
-			entities:    []*schema.Entity{Point("p1", 1, 3), Circle("circ1", 1, 2, 3)},
+			entities:    []*schema.Entity{Point("p1", 1, 3), Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3)},
 			constraints: []*schema.Constraint{Concentric("c1", "p1", "circ1")},
 		},
 		{

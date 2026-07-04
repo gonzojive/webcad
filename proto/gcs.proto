@@ -52,40 +52,34 @@ message LineEntity {
 
 // A circle entity defined by its center and radius.
 message CircleEntity {
-  // The X coordinate of the center.
-  double cx = 1;
-  // The Y coordinate of the center.
-  double cy = 2;
+  // ID of center point
+  string center_id = 1;
   // The radius of the circle.
-  double r = 3;
+  double r = 2;
 }
 
 // An arc entity defined by its center, radius, and angular span.
 message ArcEntity {
-  // The X coordinate of the center.
-  double cx = 1;
-  // The Y coordinate of the center.
-  double cy = 2;
+  // ID of center point
+  string center_id = 1;
   // The radius of the arc.
-  double r = 3;
+  double r = 2;
   // The start angle of the arc, in radians.
-  double start_angle = 4;
+  double start_angle = 3;
   // The end angle of the arc, in radians.
-  double end_angle = 5;
+  double end_angle = 4;
 }
 
 // An ellipse entity defined by its center, major/minor radii, and rotation.
 message EllipseEntity {
-  // The X coordinate of the center.
-  double cx = 1;
-  // The Y coordinate of the center.
-  double cy = 2;
+  // ID of center point
+  string center_id = 1;
   // The major radius (semi-major axis).
-  double rx = 3;
+  double rx = 2;
   // The minor radius (semi-minor axis).
-  double ry = 4;
+  double ry = 3;
   // The rotation angle of the major axis, in radians.
-  double theta = 5;
+  double theta = 4;
 }
 
 // A B-spline curve entity (placeholder for future implementation).

@@ -38,17 +38,17 @@ func GetParams(ent *schema.Entity) []float64 {
 		if e.Circle == nil {
 			return nil
 		}
-		return []float64{e.Circle.Cx, e.Circle.Cy, e.Circle.R}
+		return []float64{e.Circle.R}
 	case *schema.Entity_Arc:
 		if e.Arc == nil {
 			return nil
 		}
-		return []float64{e.Arc.Cx, e.Arc.Cy, e.Arc.R, e.Arc.StartAngle, e.Arc.EndAngle}
+		return []float64{e.Arc.R, e.Arc.StartAngle, e.Arc.EndAngle}
 	case *schema.Entity_Ellipse:
 		if e.Ellipse == nil {
 			return nil
 		}
-		return []float64{e.Ellipse.Cx, e.Ellipse.Cy, e.Ellipse.Rx, e.Ellipse.Ry, e.Ellipse.Theta}
+		return []float64{e.Ellipse.Rx, e.Ellipse.Ry, e.Ellipse.Theta}
 	case *schema.Entity_Spline:
 		if e.Spline == nil {
 			return nil
@@ -73,26 +73,20 @@ func SetParams(ent *schema.Entity, params []float64) {
 	case *schema.Entity_Line:
 		// Line has no parameters of its own to set.
 	case *schema.Entity_Circle:
-		if e.Circle != nil && len(params) >= 3 {
-			e.Circle.Cx = params[0]
-			e.Circle.Cy = params[1]
-			e.Circle.R = params[2]
+		if e.Circle != nil && len(params) >= 1 {
+			e.Circle.R = params[0]
 		}
 	case *schema.Entity_Arc:
-		if e.Arc != nil && len(params) >= 5 {
-			e.Arc.Cx = params[0]
-			e.Arc.Cy = params[1]
-			e.Arc.R = params[2]
-			e.Arc.StartAngle = params[3]
-			e.Arc.EndAngle = params[4]
+		if e.Arc != nil && len(params) >= 3 {
+			e.Arc.R = params[0]
+			e.Arc.StartAngle = params[1]
+			e.Arc.EndAngle = params[2]
 		}
 	case *schema.Entity_Ellipse:
-		if e.Ellipse != nil && len(params) >= 5 {
-			e.Ellipse.Cx = params[0]
-			e.Ellipse.Cy = params[1]
-			e.Ellipse.Rx = params[2]
-			e.Ellipse.Ry = params[3]
-			e.Ellipse.Theta = params[4]
+		if e.Ellipse != nil && len(params) >= 3 {
+			e.Ellipse.Rx = params[0]
+			e.Ellipse.Ry = params[1]
+			e.Ellipse.Theta = params[2]
 		}
 	case *schema.Entity_Spline:
 		if e.Spline != nil {

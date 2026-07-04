@@ -19,7 +19,8 @@ const (
 // TangentEvaluator evaluates tangent constraints between entities (Circle-Circle, Circle-Line).
 type TangentEvaluator struct {
 	subCase    tangentSubCase
-	idA, idB   gcstypes.EntityID // idA is always the Circle for Cir-Ln. For Cir-Ln, idB is unused.
+	idA, idB   gcstypes.EntityID // Circle/Arc entity IDs
+	centerIdA, centerIdB gcstypes.EntityID // Resolved center point IDs
 	p1ln, p2ln gcstypes.EntityID // For Cir-Ln case
 	isInternal bool   // For Cir-Cir
 	invC       float64
@@ -42,17 +43,44 @@ func NewTangentEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*s
 	isLnB := isLine(entB)
 
 	if isCirA && isCirB {
-		// Determine and lock chirality based on initial state
-		paramsA := getParams(entA)
-		paramsB := getParams(entB)
-		if len(paramsA) < 3 || len(paramsB) < 3 {
-			return nil, fmt.Errorf("invalid circle parameters")
+		resolvedA, errA := resolvePointOrCenter(idA, entities)
+		if errA != nil {
+			return nil, fmt.Errorf("failed to resolve circle A center: %w", errA)
 		}
-		cxA, cyA, rA := paramsA[0], paramsA[1], paramsA[2]
-		cxB, cyB, rB := paramsB[0], paramsB[1], paramsB[2]
+		resolvedB, errB := resolvePointOrCenter(idB, entities)
+		if errB != nil {
+			return nil, fmt.Errorf("failed to resolve circle B center: %w", errB)
+		}
 
-		dx := cxA - cxB
-		dy := cyA - cyB
+		rA, err := getRadius(entA)
+		if err != nil {
+			return nil, err
+		}
+		rB, err := getRadius(entB)
+		if err != nil {
+			return nil, err
+		}
+
+		centerEntA, ok := entities[resolvedA]
+		if !ok {
+			return nil, fmt.Errorf("resolved center A %q not found", resolvedA)
+		}
+		centerA := centerEntA.GetPoint()
+		if centerA == nil {
+			return nil, fmt.Errorf("resolved center A %q is not a point", resolvedA)
+		}
+
+		centerEntB, ok := entities[resolvedB]
+		if !ok {
+			return nil, fmt.Errorf("resolved center B %q not found", resolvedB)
+		}
+		centerB := centerEntB.GetPoint()
+		if centerB == nil {
+			return nil, fmt.Errorf("resolved center B %q is not a point", resolvedB)
+		}
+
+		dx := centerA.X - centerB.X
+		dy := centerA.Y - centerB.Y
 		d := math.Sqrt(dx*dx + dy*dy)
 
 		extErr := math.Abs(d - (rA + rB))
@@ -64,9 +92,15 @@ func NewTangentEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*s
 			subCase:    tangentCirCir,
 			idA:        idA,
 			idB:        idB,
+			centerIdA:  resolvedA,
+			centerIdB:  resolvedB,
 			isInternal: isInternal,
 		}, nil
 	} else if isCirA && isLnB {
+		resolvedA, errA := resolvePointOrCenter(idA, entities)
+		if errA != nil {
+			return nil, fmt.Errorf("failed to resolve circle A center: %w", errA)
+		}
 		p1Id, p2Id, p1, p2, err := getLinePoints(entB, entities)
 		if err != nil {
 			return nil, fmt.Errorf("line B endpoints unresolved: %w", err)
@@ -78,13 +112,18 @@ func NewTangentEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*s
 			C = 1.0
 		}
 		return &TangentEvaluator{
-			subCase:  tangentCirLn,
-			idA:      idA,
-			p1ln:     p1Id,
-			p2ln:     p2Id,
-			invC:     1.0 / C,
+			subCase:   tangentCirLn,
+			idA:       idA,
+			centerIdA: resolvedA,
+			p1ln:      p1Id,
+			p2ln:      p2Id,
+			invC:      1.0 / C,
 		}, nil
 	} else if isCirB && isLnA {
+		resolvedB, errB := resolvePointOrCenter(idB, entities)
+		if errB != nil {
+			return nil, fmt.Errorf("failed to resolve circle B center: %w", errB)
+		}
 		p1Id, p2Id, p1, p2, err := getLinePoints(entA, entities)
 		if err != nil {
 			return nil, fmt.Errorf("line A endpoints unresolved: %w", err)
@@ -96,11 +135,12 @@ func NewTangentEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*s
 			C = 1.0
 		}
 		return &TangentEvaluator{
-			subCase:  tangentCirLn,
-			idA:      idB, // Store circle in idA
-			p1ln:     p1Id,
-			p2ln:     p2Id,
-			invC:     1.0 / C,
+			subCase:   tangentCirLn,
+			idA:       idB, // Store circle in idA
+			centerIdA: resolvedB,
+			p1ln:      p1Id,
+			p2ln:      p2Id,
+			invC:      1.0 / C,
 		}, nil
 	}
 
@@ -122,13 +162,17 @@ func (t *TangentEvaluator) EvaluateJacobian(
 ) {
 	switch t.subCase {
 	case tangentCirCir:
-		idx1, ok1 := paramIndices[t.idA]
-		idx2, ok2 := paramIndices[t.idB]
-		if !ok1 || !ok2 {
+		idx1, ok1 := paramIndices[t.centerIdA]
+		idx2, ok2 := paramIndices[t.centerIdB]
+		idxCirA, okCirA := paramIndices[t.idA]
+		idxCirB, okCirB := paramIndices[t.idB]
+		if !ok1 || !ok2 || !okCirA || !okCirB {
 			return
 		}
-		cx1, cy1, r1 := x[idx1], x[idx1+1], x[idx1+2]
-		cx2, cy2, r2 := x[idx2], x[idx2+1], x[idx2+2]
+		cx1, cy1 := x[idx1], x[idx1+1]
+		cx2, cy2 := x[idx2], x[idx2+1]
+		r1 := x[idxCirA]
+		r2 := x[idxCirB]
 		dx := cx1 - cx2
 		dy := cy1 - cy2
 		dSq := dx*dx + dy*dy
@@ -150,22 +194,24 @@ func (t *TangentEvaluator) EvaluateJacobian(
 			J.Set(rowOffset, idx2, -2.0*dx)
 			J.Set(rowOffset, idx2+1, -2.0*dy)
 
-			J.Set(rowOffset, idx1+2, -2.0*s)
+			J.Set(rowOffset, idxCirA, -2.0*s)
 			if t.isInternal {
-				J.Set(rowOffset, idx2+2, 2.0*s)
+				J.Set(rowOffset, idxCirB, 2.0*s)
 			} else {
-				J.Set(rowOffset, idx2+2, -2.0*s)
+				J.Set(rowOffset, idxCirB, -2.0*s)
 			}
 		}
 
 	case tangentCirLn:
-		idx1, ok1 := paramIndices[t.idA]
+		idx1, ok1 := paramIndices[t.centerIdA]
+		idxCirA, okCirA := paramIndices[t.idA]
 		idxP1, okP1 := paramIndices[t.p1ln]
 		idxP2, okP2 := paramIndices[t.p2ln]
-		if !ok1 || !okP1 || !okP2 {
+		if !ok1 || !okCirA || !okP1 || !okP2 {
 			return
 		}
-		cx, cy, R := x[idx1], x[idx1+1], x[idx1+2]
+		cx, cy := x[idx1], x[idx1+1]
+		R := x[idxCirA]
 		x1, y1 := x[idxP1], x[idxP1+1]
 		x2, y2 := x[idxP2], x[idxP2+1]
 		dxL := x2 - x1
@@ -191,7 +237,7 @@ func (t *TangentEvaluator) EvaluateJacobian(
 			J.Set(rowOffset, idxP2, factor*(y1-cy)-factorK*dxL)
 			J.Set(rowOffset, idxP2+1, factor*(cx-x1)-factorK*dyL)
 
-			J.Set(rowOffset, idx1+2, -2.0*R)
+			J.Set(rowOffset, idxCirA, -2.0*R)
 		}
 	}
 }
@@ -200,13 +246,17 @@ func (t *TangentEvaluator) EvaluateJacobian(
 func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	switch t.subCase {
 	case tangentCirCir:
-		idx1, ok1 := paramIndices[t.idA]
-		idx2, ok2 := paramIndices[t.idB]
-		if !ok1 || !ok2 {
+		idx1, ok1 := paramIndices[t.centerIdA]
+		idx2, ok2 := paramIndices[t.centerIdB]
+		idxCirA, okCirA := paramIndices[t.idA]
+		idxCirB, okCirB := paramIndices[t.idB]
+		if !ok1 || !ok2 || !okCirA || !okCirB {
 			return 0.0
 		}
-		cx1, cy1, r1 := x[idx1], x[idx1+1], x[idx1+2]
-		cx2, cy2, r2 := x[idx2], x[idx2+1], x[idx2+2]
+		cx1, cy1 := x[idx1], x[idx1+1]
+		cx2, cy2 := x[idx2], x[idx2+1]
+		r1 := x[idxCirA]
+		r2 := x[idxCirB]
 		dx := cx1 - cx2
 		dy := cy1 - cy2
 		dSq := dx*dx + dy*dy
@@ -226,8 +276,6 @@ func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices ma
 		if grad != nil {
 			factor := 2.0 * r
 
-			// dr/dcx1 = 2*dx, dr/dcy1 = 2*dy
-			// dr/dcx2 = -2*dx, dr/dcy2 = -2*dy
 			dr_dcx1 := 2.0 * dx
 			dr_dcy1 := 2.0 * dy
 
@@ -236,8 +284,6 @@ func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices ma
 			grad[idx2] -= factor * dr_dcx1
 			grad[idx2+1] -= factor * dr_dcy1
 
-			// dr/dr1 = -2*s
-			// dr/dr2 = -2*s (external) or 2*s (internal)
 			dr_dr1 := -2.0 * s
 			var dr_dr2 float64
 			if t.isInternal {
@@ -246,19 +292,21 @@ func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices ma
 				dr_dr2 = -2.0 * s
 			}
 
-			grad[idx1+2] += factor * dr_dr1
-			grad[idx2+2] += factor * dr_dr2
+			grad[idxCirA] += factor * dr_dr1
+			grad[idxCirB] += factor * dr_dr2
 		}
 		return totalResidualSq
 
 	case tangentCirLn:
-		idx1, ok1 := paramIndices[t.idA]
+		idx1, ok1 := paramIndices[t.centerIdA]
+		idxCirA, okCirA := paramIndices[t.idA]
 		idxP1, okP1 := paramIndices[t.p1ln]
 		idxP2, okP2 := paramIndices[t.p2ln]
-		if !ok1 || !okP1 || !okP2 {
+		if !ok1 || !okCirA || !okP1 || !okP2 {
 			return 0.0
 		}
-		cx, cy, R := x[idx1], x[idx1+1], x[idx1+2]
+		cx, cy := x[idx1], x[idx1+1]
+		R := x[idxCirA]
 		x1, y1 := x[idxP1], x[idxP1+1]
 		x2, y2 := x[idxP2], x[idxP2+1]
 		dxL := x2 - x1
@@ -286,7 +334,7 @@ func (t *TangentEvaluator) Evaluate(x []float64, grad []float64, paramIndices ma
 			grad[idxP2] += factor*(y1-cy) - 2.0*factorK*dxL
 			grad[idxP2+1] += factor*(cx-x1) - 2.0*factorK*dyL
 
-			grad[idx1+2] -= 4.0 * r * R
+			grad[idxCirA] -= 4.0 * r * R
 		}
 		return valSq
 	}

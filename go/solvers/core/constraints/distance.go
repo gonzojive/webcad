@@ -35,19 +35,20 @@ func NewDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 		return nil, fmt.Errorf("entities not found: %s, %s", idA, idB)
 	}
 
-	isPtA := isPointOrCenter(entA)
-	isPtB := isPointOrCenter(entB)
 	isLnA := isLine(entA)
 	isLnB := isLine(entB)
 
-	if isPtA && isPtB {
+	resolvedA, errA := resolvePointOrCenter(idA, entities)
+	resolvedB, errB := resolvePointOrCenter(idB, entities)
+
+	if errA == nil && errB == nil {
 		return &DistanceEvaluator{
 			subCase: distancePtPt,
-			idA:     idA,
-			idB:     idB,
+			idA:     resolvedA,
+			idB:     resolvedB,
 			value:   d.GetValue(),
 		}, nil
-	} else if isPtA && isLnB {
+	} else if errA == nil && isLnB {
 		p1Id, p2Id, p1, p2, err := getLinePoints(entB, entities)
 		if err != nil {
 			return nil, fmt.Errorf("line B endpoints unresolved: %w", err)
@@ -60,13 +61,13 @@ func NewDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 		}
 		return &DistanceEvaluator{
 			subCase:  distancePtLn,
-			idA:      idA,
+			idA:      resolvedA,
 			p1ln:     p1Id,
 			p2ln:     p2Id,
 			value:    d.GetValue(),
 			invC:     1.0 / C,
 		}, nil
-	} else if isPtB && isLnA {
+	} else if errB == nil && isLnA {
 		p1Id, p2Id, p1, p2, err := getLinePoints(entA, entities)
 		if err != nil {
 			return nil, fmt.Errorf("line A endpoints unresolved: %w", err)
@@ -79,7 +80,7 @@ func NewDistanceEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]*
 		}
 		return &DistanceEvaluator{
 			subCase:  distancePtLn,
-			idA:      idB, // Store point in idA
+			idA:      resolvedB, // Store point in idA
 			p1ln:     p1Id,
 			p2ln:     p2Id,
 			value:    d.GetValue(),

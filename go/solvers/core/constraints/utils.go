@@ -24,17 +24,17 @@ func getParams(ent *schema.Entity) []float64 {
 		if e.Circle == nil {
 			return nil
 		}
-		return []float64{e.Circle.Cx, e.Circle.Cy, e.Circle.R}
+		return []float64{e.Circle.R}
 	case *schema.Entity_Arc:
 		if e.Arc == nil {
 			return nil
 		}
-		return []float64{e.Arc.Cx, e.Arc.Cy, e.Arc.R, e.Arc.StartAngle, e.Arc.EndAngle}
+		return []float64{e.Arc.R, e.Arc.StartAngle, e.Arc.EndAngle}
 	case *schema.Entity_Ellipse:
 		if e.Ellipse == nil {
 			return nil
 		}
-		return []float64{e.Ellipse.Cx, e.Ellipse.Cy, e.Ellipse.Rx, e.Ellipse.Ry, e.Ellipse.Theta}
+		return []float64{e.Ellipse.Rx, e.Ellipse.Ry, e.Ellipse.Theta}
 	case *schema.Entity_Spline:
 		if e.Spline == nil {
 			return nil
@@ -64,12 +64,63 @@ func isPoint(ent *schema.Entity) bool {
 	return ok
 }
 
-func isPointOrCenter(ent *schema.Entity) bool {
-	switch ent.GetEntityType().(type) {
-	case *schema.Entity_Point, *schema.Entity_Circle, *schema.Entity_Arc, *schema.Entity_Ellipse:
-		return true
+func resolvePointOrCenter(id gcstypes.EntityID, entities map[gcstypes.EntityID]*schema.Entity) (gcstypes.EntityID, error) {
+	ent, ok := entities[id]
+	if !ok {
+		return "", fmt.Errorf("entity %q not found", id)
 	}
-	return false
+	var targetID gcstypes.EntityID
+	switch e := ent.GetEntityType().(type) {
+	case *schema.Entity_Point:
+		return id, nil
+	case *schema.Entity_Circle:
+		if e.Circle == nil {
+			return "", fmt.Errorf("circle entity %q is nil", id)
+		}
+		targetID = gcstypes.EntityID(e.Circle.CenterId)
+	case *schema.Entity_Arc:
+		if e.Arc == nil {
+			return "", fmt.Errorf("arc entity %q is nil", id)
+		}
+		targetID = gcstypes.EntityID(e.Arc.CenterId)
+	case *schema.Entity_Ellipse:
+		if e.Ellipse == nil {
+			return "", fmt.Errorf("ellipse entity %q is nil", id)
+		}
+		targetID = gcstypes.EntityID(e.Ellipse.CenterId)
+	default:
+		return "", fmt.Errorf("entity %q is not a point, circle, arc, or ellipse", id)
+	}
+
+	// Verify targetID is a point
+	targetEnt, ok := entities[targetID]
+	if !ok {
+		return "", fmt.Errorf("entity %q references missing center point %q", id, targetID)
+	}
+	if _, ok := targetEnt.GetEntityType().(*schema.Entity_Point); !ok {
+		return "", fmt.Errorf("entity %q references center point %q which is not a point", id, targetID)
+	}
+	return targetID, nil
+}
+
+func getRadius(ent *schema.Entity) (float64, error) {
+	if ent == nil {
+		return 0, fmt.Errorf("entity is nil")
+	}
+	switch e := ent.GetEntityType().(type) {
+	case *schema.Entity_Circle:
+		if e.Circle == nil {
+			return 0, fmt.Errorf("circle entity is nil")
+		}
+		return e.Circle.R, nil
+	case *schema.Entity_Arc:
+		if e.Arc == nil {
+			return 0, fmt.Errorf("arc entity is nil")
+		}
+		return e.Arc.R, nil
+	default:
+		return 0, fmt.Errorf("entity %q does not have a radius", ent.GetId())
+	}
 }
 
 // getLinePoints retrieves the start and end point IDs and entities for a line entity from the entities map.

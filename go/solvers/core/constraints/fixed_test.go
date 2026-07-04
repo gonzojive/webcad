@@ -93,6 +93,41 @@ func TestFixedEvaluator(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "FixedCircle",
+			entities: []*schema.Entity{
+				{
+					Id: "c1_center",
+					EntityType: &schema.Entity_Point{
+						Point: &schema.PointEntity{X: 1.0, Y: 2.0},
+					},
+				},
+				{
+					Id: "c1",
+					EntityType: &schema.Entity_Circle{
+						Circle: &schema.CircleEntity{CenterId: "c1_center", R: 3.0},
+					},
+				},
+			},
+			constraint: &schema.Constraint{
+				Id: "c1",
+				ConstraintType: &schema.Constraint_Fixed{
+					Fixed: &schema.FixedConstraint{
+						EntityId: "c1",
+					},
+				},
+			},
+			targetID:     "c1",
+			paramIndices: map[gcstypes.EntityID]int{"c1_center": 0, "c1": 2},
+			numEqs:       3,
+			perturb: func(rng *rand.Rand) []float64 {
+				return []float64{
+					1.0 + (rng.Float64()-0.5)*2.0,
+					2.0 + (rng.Float64()-0.5)*2.0,
+					3.0 + (rng.Float64()-0.5)*2.0,
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

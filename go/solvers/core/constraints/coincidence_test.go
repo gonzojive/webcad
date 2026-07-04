@@ -161,14 +161,19 @@ func TestCoincidenceEvaluator_PtLn_Jacobian(t *testing.T) {
 
 func TestCoincidenceEvaluator_PtCir_Jacobian(t *testing.T) {
 	p1 := &schema.Entity{Id: "p1", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 1.0, Y: 2.0}}}
-	circ1 := &schema.Entity{Id: "circ1", EntityType: &schema.Entity_Circle{Circle: &schema.CircleEntity{Cx: 0.0, Cy: 0.0, R: 2.0}}}
+	circ1_center := &schema.Entity{Id: "circ1_center", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: 0.0}}}
+	circ1 := &schema.Entity{Id: "circ1", EntityType: &schema.Entity_Circle{Circle: &schema.CircleEntity{CenterId: "circ1_center", R: 2.0}}}
 	c := &schema.Constraint{
 		Id: "c",
 		ConstraintType: &schema.Constraint_Coincidence{
 			Coincidence: &schema.CoincidenceConstraint{EntityA: "p1", EntityB: "circ1"},
 		},
 	}
-	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"p1": p1, "circ1": circ1})
+	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{
+		"p1":           p1,
+		"circ1_center": circ1_center,
+		"circ1":        circ1,
+	})
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -179,7 +184,11 @@ func TestCoincidenceEvaluator_PtCir_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[gcstypes.EntityID]int{"p1": 0, "circ1": 2}
+	paramIndices := map[gcstypes.EntityID]int{
+		"p1":           0,
+		"circ1_center": 2,
+		"circ1":        4,
+	}
 	n := 5
 	m := je.NumEquations()
 
