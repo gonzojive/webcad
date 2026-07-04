@@ -2,18 +2,553 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WebCAD Scaffolding POC</title>
-    <script type="importmap">
-        {
-            "imports": {
-                "@webcad/gcsapi": "/gcsapi/gcsapi.js"
-            }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCAD 2D Sketcher POC</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Sleek CSS Styling -->
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --sidebar-bg: #f1f5f9;
+            --canvas-bg: #ffffff;
+            --border-color: #cbd5e1;
+            --text-color: #0f172a;
+            --text-muted: #64748b;
+            --accent-color: #1a73e8;
+            --accent-hover: #1557b0;
+            --success-color: #16a34a;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --grid-color: rgba(203, 213, 225, 0.4);
+            --glass-bg: rgba(241, 245, 249, 0.85);
+            --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-    </script>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Navigation Header */
+        header {
+            background-color: #e2e8f0;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, #1a73e8 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo span {
+            font-weight: 300;
+            color: var(--text-muted);
+            -webkit-text-fill-color: var(--text-muted);
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            background-color: rgba(22, 163, 74, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(22, 163, 74, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .status-badge::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-color);
+            box-shadow: 0 0 6px var(--success-color);
+        }
+
+        /* Main Workspace Layout */
+        .workspace {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Drawing Canvas Area */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background-color: var(--canvas-bg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            z-index: 5;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.5rem 0.85rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn:hover {
+            color: var(--text-color);
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .tool-btn.active {
+            color: white;
+            background-color: var(--accent-color);
+            box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+        }
+
+        /* Canvas element container */
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* RHS Sidebar */
+        .sidebar {
+            width: 320px;
+            background-color: var(--sidebar-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .tabs-header {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 1rem;
+            font-family: var(--font-family);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            background-color: white;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* Entity and Constraint List Items */
+        .list-section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .list-item {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .list-item:hover {
+            border-color: var(--accent-color);
+            background-color: rgba(26, 115, 232, 0.02);
+            transform: translateY(-1px);
+        }
+
+        .list-item.highlighted {
+            border-color: var(--success-color);
+            background-color: rgba(22, 163, 74, 0.02);
+        }
+
+        .list-item.selected {
+            border-color: var(--accent-color);
+            background-color: rgba(26, 115, 232, 0.06);
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .item-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.35rem;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            color: var(--danger-color);
+            background-color: rgba(220, 38, 38, 0.08);
+        }
+
+        /* Constraint Control Panel (Bottom of Sidebar) */
+        .controls-panel {
+            border-top: 1px solid var(--border-color);
+            padding: 1rem;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .panel-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .action-btn-primary {
+            background: var(--accent-color);
+            border: none;
+            color: white;
+            padding: 0.65rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-family);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(26, 115, 232, 0.2);
+        }
+
+        .action-btn-primary:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .action-btn-secondary {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.65rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-family);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
+
+        .action-btn-secondary:hover {
+            background-color: rgba(0, 0, 0, 0.03);
+            border-color: var(--text-muted);
+        }
+
+        /* Custom dialog / inline inputs */
+        .dialog-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dialog {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .dialog-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .dialog-input {
+            width: 100%;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 0.65rem;
+            font-family: var(--font-family);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .dialog-input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        /* Instruction overlay */
+        .help-overlay {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            z-index: 5;
+            pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .help-overlay span {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-    <h1>WebCAD Scaffolding POC</h1>
-    <div id="output">Initializing...</div>
+
+    <!-- Top Header -->
+    <header>
+        <div class="logo">
+            WebCAD <span>2D Sketcher</span>
+        </div>
+        <div class="status-badge" id="status-text">
+            GCS Solver Ready
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+        <!-- Canvas Viewport -->
+        <div class="canvas-area">
+            <!-- Floating Toolbar -->
+            <div class="toolbar">
+                <button class="tool-btn active" id="btn-select" data-tool="select">
+                    Select
+                </button>
+                <button class="tool-btn" id="btn-point" data-tool="point">
+                    Point
+                </button>
+                <button class="tool-btn" id="btn-line" data-tool="line">
+                    Line
+                </button>
+                <button class="tool-btn" id="btn-circle" data-tool="circle">
+                    Circle
+                </button>
+            </div>
+
+            <!-- Help / Status HUD -->
+            <div class="help-overlay" id="help-hud">
+                Mode: <span>Select</span>. Click canvas to select or drag entities.
+            </div>
+
+            <!-- Konva Container -->
+            <div id="canvas-container"></div>
+
+            <!-- Floating Inline Distance Input -->
+            <input type="number" id="inline-distance-input" style="position: absolute; display: none; z-index: 1000; width: 90px; padding: 5px 8px; border: 1.5px solid var(--accent-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); font-family: var(--font-family); font-size: 0.9rem; outline: none; background-color: white; color: var(--text-color);">
+        </div>
+
+        <!-- Right Hand Sidebar (RHS) -->
+        <div class="sidebar">
+            <!-- Sidebar Tabs -->
+            <div class="tabs-header">
+                <button class="tab-btn active" id="tab-entities">Entities</button>
+                <button class="tab-btn" id="tab-constraints">Constraints</button>
+            </div>
+
+            <!-- Entities Content -->
+            <div class="tab-content active" id="content-entities">
+                <div class="list-section-title">Points</div>
+                <div class="list-container" id="list-points">
+                    <!-- Point items will be populated here -->
+                </div>
+
+                <div class="list-section-title">Lines</div>
+                <div class="list-container" id="list-lines">
+                    <!-- Line items will be populated here -->
+                </div>
+
+                <div class="list-section-title">Circles</div>
+                <div class="list-container" id="list-circles">
+                    <!-- Circle items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Constraints Content -->
+            <div class="tab-content" id="content-constraints">
+                <div class="list-section-title">Active Constraints</div>
+                <div class="list-container" id="list-constraints">
+                    <!-- Constraint items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Bottom Constraint Control Panel -->
+            <div class="controls-panel">
+                <div class="panel-title">Apply Constraints</div>
+                <div class="btn-grid">
+                    <button class="action-btn-secondary" id="cbtn-coincident" title="Constrain two points to share the same position">Coincident</button>
+                    <button class="action-btn-secondary" id="cbtn-distance" title="Constrain distance between two points">Distance</button>
+                    <button class="action-btn-secondary" id="cbtn-horizontal" title="Constrain a line to be horizontal">Horizontal</button>
+                    <button class="action-btn-secondary" id="cbtn-vertical" title="Constrain a line to be vertical">Vertical</button>
+                    <button class="action-btn-secondary" id="cbtn-parallel" title="Constrain two lines to be parallel">Parallel</button>
+                    <button class="action-btn-secondary" id="cbtn-perpendicular" title="Constrain two lines to be perpendicular">Perpendicular</button>
+                </div>
+                <button class="action-btn-primary" id="btn-fix-point" style="margin-top: 0.25rem;">Toggle Lock Position</button>
+                <button class="action-btn-secondary" id="btn-clear-all" style="color: var(--danger-color); border-color: rgba(239,68,68,0.3);">Clear Workspace</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dialog Modal for Value Entry -->
+    <div class="dialog-overlay" id="dialog-overlay">
+        <div class="dialog">
+            <div class="dialog-title" id="dialog-title">Enter Value</div>
+            <input type="number" step="any" class="dialog-input" id="dialog-input" placeholder="0.0">
+            <div class="dialog-actions">
+                <button class="action-btn-secondary" id="dialog-cancel">Cancel</button>
+                <button class="action-btn-primary" id="dialog-submit">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Konva.js via CDN -->
+    <script src="https://unpkg.com/konva@9.3.15/konva.min.js"></script>
+    <!-- Entry Module script -->
     <script type="module" src="/ui/main.js"></script>
 </body>
 </html>

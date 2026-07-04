@@ -22,14 +22,21 @@ ts_project(
     source_map = True,
     tsconfig = "//web:tsconfig",
     deps = [
+        ":ui",
         "//web:node_modules/@types/node",
-        "//web/poc/gcsapi",
     ],
 )
 
 ts_project(
     name = "ui",
-    srcs = ["main.ts"],
+    srcs = [
+        "main.ts",
+        "sidebar.ts",
+        "solver.ts",
+        "state.ts",
+        "store.ts",
+        "viewport.ts",
+    ],
     declaration = True,
     source_map = True,
     tsconfig = "//web:tsconfig",

@@ -2,6 +2,7 @@ load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
+# gazelle:resolve js web/poc/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js //web/poc/solver-wasm:solver_wasm_bindgen
 # Managed by Gazelle
 ts_project(
     name = "gcsapi",
@@ -9,4 +10,5 @@ ts_project(
     declaration = True,
     source_map = True,
     tsconfig = "//web:tsconfig",
+    deps = ["//web/poc/solver-wasm:solver_wasm_bindgen"],
 )
