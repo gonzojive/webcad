@@ -218,6 +218,12 @@ export class SidebarController {
                 detail = `Coincident: ${con.p1Id} & ${con.p2Id}`;
             } else if (con.type === 'distance') {
                 detail = `Distance: ${con.p1Id} & ${con.p2Id} = ${con.value?.toFixed(1)}`;
+            } else if (con.type === 'horizontal_distance') {
+                detail = `Horizontal Dist: ${con.p1Id} & ${con.p2Id} = ${con.value?.toFixed(1)}`;
+            } else if (con.type === 'vertical_distance') {
+                detail = `Vertical Dist: ${con.p1Id} & ${con.p2Id} = ${con.value?.toFixed(1)}`;
+            } else if (con.type === 'point_line_distance') {
+                detail = `Point-Line Dist: ${con.pointId} & ${con.lineId} = ${con.value?.toFixed(1)}`;
             } else if (con.type === 'horizontal' || con.type === 'vertical') {
                 detail = `${con.type.charAt(0).toUpperCase() + con.type.slice(1)}: ${con.lineId}`;
             } else if (con.type === 'parallel' || con.type === 'perpendicular') {

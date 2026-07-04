@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint, GCSValueConstraint } from '../gcsapi/gcsapi.js';
 import { SketchStateModel, ToolMode } from './state.js';
 import { SketchStore } from './store.js';
 import { SolverService } from './solver.js';
@@ -19,6 +19,41 @@ function distance(x1: number, y1: number, x2: number, y2: number): number {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
+
+
+function getImpliedDimensionType(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    mouse: { x: number; y: number }
+): 'distance' | 'horizontal_distance' | 'vertical_distance' {
+    const cx = (p1.x + p2.x) / 2;
+    const cy = (p1.y + p2.y) / 2;
+
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const segLen = Math.hypot(dx, dy);
+    if (segLen === 0) return 'distance';
+
+    const mx = mouse.x - cx;
+    const my = mouse.y - cy;
+
+    const nx = -dy / segLen;
+    const ny = dx / segLen;
+
+    const dotPerp = mx * nx + my * ny;
+    const dotSeg = (mx * dx + my * dy) / segLen;
+
+    if (Math.abs(dotSeg) < Math.abs(dotPerp) * 0.414) {
+        return 'distance';
+    }
+
+    if (Math.abs(my) > Math.abs(mx)) {
+        return 'horizontal_distance';
+    } else {
+        return 'vertical_distance';
+    }
+}
+
 /**
  * Coordinates all modules (state, storage, solver, viewport, sidebar)
  * and manages interactive tool actions, drawing, and constraint bindings.
@@ -34,6 +69,12 @@ export class SketchController {
     private lineStartPointId: string | null = null;
     private circleCenterPointId: string | null = null;
     private isDistanceSelectionActive = false;
+    private dimensionFirstEntityId: string | null = null;
+    private placingDimension: {
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance';
+        entityIds: string[];
+    } | null = null;
+    private currentPreviewDimensionType: 'distance' | 'horizontal_distance' | 'vertical_distance' = 'distance';
 
     constructor() {
         this.model = new SketchStateModel();
@@ -56,6 +97,7 @@ export class SketchController {
         this.viewport.setDragMoveCallback((id, x, y) => this.handleDragMove(id, x, y));
         this.viewport.setDragEndCallback(() => this.handleDragEnd());
         this.viewport.setEntityClickCallback((id, e) => this.handleEntityClick(id, e));
+        this.viewport.setConstraintDblClickCallback((id: string) => this.handleConstraintDblClick(id));
         this.viewport.setStageMouseDownCallback((pos, e) => this.handleStageMouseDown(pos, e));
         this.viewport.setStageMouseMoveCallback((pos) => this.handleStageMouseMove(pos));
 
@@ -72,6 +114,11 @@ export class SketchController {
         // Bind Model changes to UI renders
         this.model.on('change', () => {
             this.viewport.redrawAll();
+            this.sidebar.render();
+        });
+
+        this.model.on('selection-change', () => {
+            this.viewport.updateEntityVisuals();
             this.sidebar.render();
         });
 
@@ -108,12 +155,20 @@ export class SketchController {
         this.lineStartPointId = null;
         this.circleCenterPointId = null;
         this.isDistanceSelectionActive = false;
+        this.dimensionFirstEntityId = null;
+        this.placingDimension = null;
         this.viewport.clearPreviews();
+        this.viewport.clearDimensionPreview();
+    }
+
+    public cancelActiveOperation() {
+        this.resetDrawingState();
+        this.model.setTool('select');
     }
 
     private updateToolbarUI() {
         const activeTool = this.model.getTool();
-        const tools: ToolMode[] = ['select', 'point', 'line', 'circle'];
+        const tools: ToolMode[] = ['select', 'point', 'line', 'circle', 'dimension'];
         tools.forEach(t => {
             const btn = document.getElementById(`btn-${t}`);
             if (btn) {
@@ -136,6 +191,8 @@ export class SketchController {
                 helpText = 'Mode: <span>Line</span>. Click canvas or snap to points to draw lines.';
             } else if (activeTool === 'circle') {
                 helpText = 'Mode: <span>Circle</span>. Click center point then drag/click radius.';
+            } else if (activeTool === 'dimension') {
+                helpText = 'Mode: <span>Dimension</span>. Click point/line to place dimensions.';
             }
             hud.innerHTML = helpText;
         }
@@ -167,7 +224,7 @@ export class SketchController {
 
         if (currentTool === 'point') {
             if (!snap) {
-                const pId = generateId('P');
+                const pId = this.model.generateNextId('P');
                 this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                 this.runGCSSolver();
             }
@@ -177,7 +234,7 @@ export class SketchController {
                 if (snap) {
                     this.lineStartPointId = snap.id;
                 } else {
-                    const pId = generateId('P');
+                    const pId = this.model.generateNextId('P');
                     this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                     this.lineStartPointId = pId;
                 }
@@ -188,14 +245,14 @@ export class SketchController {
                 if (snap) {
                     endPointId = snap.id;
                 } else {
-                    const pId = generateId('P');
+                    const pId = this.model.generateNextId('P');
                     this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                     endPointId = pId;
                 }
 
                 if (this.lineStartPointId !== endPointId) {
                     this.model.addLine({
-                        id: generateId('L'),
+                        id: this.model.generateNextId('L'),
                         p1Id: this.lineStartPointId,
                         p2Id: endPointId
                     });
@@ -209,7 +266,7 @@ export class SketchController {
                 if (snap) {
                     this.circleCenterPointId = snap.id;
                 } else {
-                    const pId = generateId('P');
+                    const pId = this.model.generateNextId('P');
                     this.model.addPoint({ id: pId, x: pos.x, y: pos.y });
                     this.circleCenterPointId = pId;
                 }
@@ -220,7 +277,7 @@ export class SketchController {
                 if (center) {
                     const rad = distance(center.x, center.y, pos.x, pos.y);
                     this.model.addCircle({
-                        id: generateId('C'),
+                        id: this.model.generateNextId('C'),
                         centerId: this.circleCenterPointId,
                         radius: Math.max(5, rad)
                     });
@@ -229,9 +286,79 @@ export class SketchController {
                 this.runGCSSolver();
             }
         } else if (currentTool === 'select') {
-            const clickedOnEmpty = e.target === this.viewport['stage'] || e.target === this.viewport['gridLayer'];
+            const clickedOnEmpty = this.viewport.isStageOrGrid(e.target);
             if (clickedOnEmpty) {
                 this.model.clearSelection();
+            }
+        } else if (currentTool === 'dimension') {
+            const clickedOnEmpty = this.viewport.isStageOrGrid(e.target);
+            if (clickedOnEmpty && this.placingDimension) {
+                e.cancelBubble = true;
+                const { type, entityIds } = this.placingDimension;
+                const finalType = (type === 'point_line_distance') ? 'point_line_distance' : this.currentPreviewDimensionType;
+
+                this.placingDimension = null;
+                this.viewport.clearDimensionPreview();
+
+                const layoutProps: { offset?: number; offsetX?: number; offsetY?: number } = {};
+
+                if (finalType === 'point_line_distance') {
+                    const p = this.model.getPoint(entityIds[0]);
+                    const l = this.model.getLine(entityIds[1]);
+                    if (p && l) {
+                        const lp1 = this.model.getPoint(l.p1Id);
+                        const lp2 = this.model.getPoint(l.p2Id);
+                        if (lp1 && lp2) {
+                            const ux = lp2.x - lp1.x;
+                            const uy = lp2.y - lp1.y;
+                            const len2 = ux*ux + uy*uy;
+                            let projX = lp1.x;
+                            let projY = lp1.y;
+                            if (len2 > 0) {
+                                const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+                                projX = lp1.x + t * ux;
+                                projY = lp1.y + t * uy;
+                            }
+                            const val = distance(p.x, p.y, projX, projY);
+                            
+                            const cx = (p.x + projX) / 2;
+                            const cy = (p.y + projY) / 2;
+                            layoutProps.offsetX = pos.x - cx;
+                            layoutProps.offsetY = pos.y - cy;
+
+                            this.showInlineDimensionInput('point_line_distance', entityIds, val, pos, layoutProps);
+                        }
+                    }
+                } else {
+                    const p1 = this.model.getPoint(entityIds[0]);
+                    const p2 = this.model.getPoint(entityIds[1]);
+                    if (p1 && p2) {
+                        const val = (finalType === 'horizontal_distance') ? Math.abs(p2.x - p1.x)
+                                  : (finalType === 'vertical_distance') ? Math.abs(p2.y - p1.y)
+                                  : distance(p1.x, p1.y, p2.x, p2.y);
+                        
+                        if (finalType === 'distance') {
+                            const dx = p2.x - p1.x;
+                            const dy = p2.y - p1.y;
+                            const len = Math.hypot(dx, dy);
+                            if (len > 0) {
+                                const nx = -dy / len;
+                                const ny = dx / len;
+                                const cx = (p1.x + p2.x) / 2;
+                                const cy = (p1.y + p2.y) / 2;
+                                layoutProps.offset = (pos.x - cx) * nx + (pos.y - cy) * ny;
+                            }
+                        } else if (finalType === 'horizontal_distance') {
+                            const minY = Math.min(p1.y, p2.y);
+                            layoutProps.offset = pos.y - minY;
+                        } else if (finalType === 'vertical_distance') {
+                            const maxX = Math.max(p1.x, p2.x);
+                            layoutProps.offset = pos.x - maxX;
+                        }
+
+                        this.showInlineDimensionInput(finalType, entityIds, val, pos, layoutProps);
+                    }
+                }
             }
         }
     }
@@ -241,6 +368,7 @@ export class SketchController {
         
         if (snap) {
             this.viewport.updateSnapIndicator(snap.x, snap.y, true);
+            this.viewport.clearPointPreview();
         } else {
             this.viewport.updateSnapIndicator(0, 0, false);
         }
@@ -248,6 +376,14 @@ export class SketchController {
         const targetX = snap ? snap.x : pos.x;
         const targetY = snap ? snap.y : pos.y;
         const currentTool = this.model.getTool();
+
+        if (!snap) {
+            if (currentTool === 'point' || currentTool === 'line' || currentTool === 'circle') {
+                this.viewport.setPointPreview(pos.x, pos.y);
+            } else {
+                this.viewport.clearPointPreview();
+            }
+        }
 
         if (currentTool === 'line' && this.lineStartPointId) {
             const start = this.model.getPoint(this.lineStartPointId);
@@ -260,15 +396,47 @@ export class SketchController {
                 const rad = distance(center.x, center.y, targetX, targetY);
                 this.viewport.updateCirclePreview(center.x, center.y, rad);
             }
+        } else if (currentTool === 'dimension' && this.placingDimension) {
+            const { type, entityIds } = this.placingDimension;
+            if (type !== 'point_line_distance') {
+                const p1 = this.model.getPoint(entityIds[0]);
+                const p2 = this.model.getPoint(entityIds[1]);
+                if (p1 && p2) {
+                    const impliedType = getImpliedDimensionType(p1, p2, pos);
+                    this.currentPreviewDimensionType = impliedType;
+                    this.viewport.setDimensionPreview(impliedType, entityIds, pos);
+                }
+            } else {
+                this.viewport.setDimensionPreview('point_line_distance', entityIds, pos);
+            }
         }
     }
 
+    private lastClickTime = 0;
+    private lastClickEntityId: string | null = null;
+
     private handleEntityClick(id: string, e: any) {
+        const now = Date.now();
+        if (id === this.lastClickEntityId && (now - this.lastClickTime) < 300) {
+            this.lastClickTime = 0;
+            this.lastClickEntityId = null;
+            
+            const con = this.model.getConstraint(id);
+            if (con) {
+                e.cancelBubble = true;
+                this.editConstraintValue(con);
+                return;
+            }
+        }
+        
+        this.lastClickTime = now;
+        this.lastClickEntityId = id;
+
         if (this.isDistanceSelectionActive) {
             e.cancelBubble = true;
             const selectedIds = this.model.getSelectedEntityIds();
             
-            if (id.startsWith('P_') && !selectedIds.includes(id)) {
+            if (this.model.getPoint(id) && !selectedIds.includes(id)) {
                 selectedIds.push(id);
                 this.model.setSelectedEntityIds(selectedIds);
                 
@@ -279,6 +447,8 @@ export class SketchController {
                     this.applyDistance();
                 }
             }
+        } else if (this.model.getTool() === 'dimension') {
+            this.handleDimensionEntityClick(id, e);
         } else if (this.model.getTool() === 'select') {
             e.cancelBubble = true;
             this.model.toggleSelect(id);
@@ -332,14 +502,15 @@ export class SketchController {
     }
 
     private applyCoincident() {
-        const selectedPoints = this.model.getSelectedEntityIds().filter(id => id.startsWith('P_'));
+        const selectedPoints = this.model.getSelectedEntityIds().filter(id => this.model.getPoint(id) !== null);
         if (selectedPoints.length !== 2) {
             alert("Select exactly 2 points to make coincident.");
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Coincident_${selectedPoints[0]}_${selectedPoints[1]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'coincident',
             p1Id: selectedPoints[0],
             p2Id: selectedPoints[1]
@@ -350,13 +521,15 @@ export class SketchController {
     }
 
     private applyDistance() {
-        const selectedPoints = this.model.getSelectedEntityIds().filter(id => id.startsWith('P_'));
+        const selectedPoints = this.model.getSelectedEntityIds().filter(id => this.model.getPoint(id) !== null);
         
         if (selectedPoints.length === 2) {
             const p1 = this.model.getPoint(selectedPoints[0]);
             const p2 = this.model.getPoint(selectedPoints[1]);
             if (p1 && p2) {
-                this.showInlineDistanceInput(p1, p2);
+                const currentVal = distance(p1.x, p1.y, p2.x, p2.y);
+                const spawnPos = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                this.showInlineDimensionInput('distance', [p1.id, p2.id], currentVal, spawnPos);
             }
         } else {
             this.isDistanceSelectionActive = true;
@@ -367,33 +540,124 @@ export class SketchController {
         }
     }
 
-    private showInlineDistanceInput(p1: GCSPoint, p2: GCSPoint) {
+    private handleDimensionEntityClick(id: string, e: any) {
+        e.cancelBubble = true;
+
+        if (this.placingDimension) {
+            return;
+        }
+        
+        if (this.dimensionFirstEntityId === null) {
+            if (this.model.getLine(id)) {
+                const line = this.model.getLine(id);
+                if (line) {
+                    this.placingDimension = {
+                        type: 'distance',
+                        entityIds: [line.p1Id, line.p2Id]
+                    };
+                    this.model.setSelectedEntityIds([id]);
+                    const hud = document.getElementById('help-hud');
+                    if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place dimension.`;
+                }
+            } else if (this.model.getPoint(id)) {
+                this.dimensionFirstEntityId = id;
+                this.model.setSelectedEntityIds([id]);
+                const hud = document.getElementById('help-hud');
+                if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Select second Point or Line.`;
+            }
+        } else {
+            const firstId = this.dimensionFirstEntityId;
+            const secondId = id;
+            this.startTwoEntityDimensionPlacement(firstId, secondId);
+        }
+    }
+
+    private startTwoEntityDimensionPlacement(firstId: string, secondId: string) {
+        if (firstId === secondId) return;
+
+        const isFirstPoint = this.model.getPoint(firstId) !== null;
+        const isSecondPoint = this.model.getPoint(secondId) !== null;
+        const isFirstLine = this.model.getLine(firstId) !== null;
+        const isSecondLine = this.model.getLine(secondId) !== null;
+
+        if (isFirstPoint && isSecondPoint) {
+            this.placingDimension = {
+                type: 'distance',
+                entityIds: [firstId, secondId]
+            };
+            this.dimensionFirstEntityId = null;
+            this.model.setSelectedEntityIds([firstId, secondId]);
+            const hud = document.getElementById('help-hud');
+            if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place point-to-point dimension.`;
+
+        } else if ((isFirstPoint && isSecondLine) || (isFirstLine && isSecondPoint)) {
+            const pointId = isFirstPoint ? firstId : secondId;
+            const lineId = isFirstLine ? firstId : secondId;
+
+            this.placingDimension = {
+                type: 'point_line_distance',
+                entityIds: [pointId, lineId]
+            };
+            this.dimensionFirstEntityId = null;
+            this.model.setSelectedEntityIds([pointId, lineId]);
+            const hud = document.getElementById('help-hud');
+            if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place point-to-line dimension.`;
+        } else {
+            alert("Dimension between these entities not supported yet.");
+            this.model.setSelectedEntityIds([]);
+            this.dimensionFirstEntityId = null;
+        }
+    }
+
+    private showInlineDimensionInput(
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance',
+        entityIds: string[],
+        defaultValue: number,
+        spawnPos: { x: number; y: number },
+        layoutProps?: { offset?: number; offsetX?: number; offsetY?: number }
+    ) {
         const input = document.getElementById('inline-distance-input') as HTMLInputElement;
         if (!input) return;
 
-        const currentDist = distance(p1.x, p1.y, p2.x, p2.y);
-        const stage = this.viewport['stage'];
-        
-        const screenX = stage.x() + p2.x * stage.scaleX();
-        const screenY = stage.y() + p2.y * stage.scaleY();
+        const screenPos = this.viewport.canvasToScreen(spawnPos.x, spawnPos.y);
+        const screenX = screenPos.x;
+        const screenY = screenPos.y;
 
-        input.value = currentDist.toFixed(1);
+        input.value = defaultValue.toFixed(1);
         input.style.left = `${screenX + 15}px`;
         input.style.top = `${screenY - 15}px`;
         input.style.display = 'block';
-        input.focus();
-        input.select();
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 50);
 
         const applyInput = () => {
             const val = parseFloat(input.value);
             if (!isNaN(val) && val > 0) {
-                this.model.addConstraint({
-                    id: generateId('CON'),
-                    type: 'distance',
-                    p1Id: p1.id,
-                    p2Id: p2.id,
-                    value: val
-                });
+                if (type === 'distance' || type === 'horizontal_distance' || type === 'vertical_distance') {
+                    const prefix = type === 'distance' ? 'Distance' : type === 'horizontal_distance' ? 'HorizDist' : 'VertDist';
+                    const conId = this.model.makeUniqueConstraintId(`${prefix}_${entityIds[0]}_${entityIds[1]}`);
+                    this.model.addConstraint({
+                        id: conId,
+                        type: type,
+                        p1Id: entityIds[0],
+                        p2Id: entityIds[1],
+                        value: val,
+                        layoutOffset: layoutProps?.offset
+                    });
+                } else if (type === 'point_line_distance') {
+                    const conId = this.model.makeUniqueConstraintId(`Dist_${entityIds[0]}_${entityIds[1]}`);
+                    this.model.addConstraint({
+                        id: conId,
+                        type: 'point_line_distance',
+                        pointId: entityIds[0],
+                        lineId: entityIds[1],
+                        value: val,
+                        layoutOffsetX: layoutProps?.offsetX,
+                        layoutOffsetY: layoutProps?.offsetY
+                    });
+                }
                 this.runGCSSolver();
             }
             this.hideInlineDistanceInput();
@@ -424,6 +688,7 @@ export class SketchController {
         const input = document.getElementById('inline-distance-input') as HTMLInputElement;
         if (!input) return;
 
+        input.blur();
         input.style.display = 'none';
         if ((input as any)._cleanup) {
             (input as any)._cleanup();
@@ -431,19 +696,103 @@ export class SketchController {
         }
 
         this.model.setSelectedEntityIds([]);
-        this.isDistanceSelectionActive = false;
-        this.model.setTool('select');
+        this.dimensionFirstEntityId = null;
+        if (this.isDistanceSelectionActive) {
+            this.isDistanceSelectionActive = false;
+            this.model.setTool('select');
+        }
+    }
+
+    private handleConstraintDblClick(id: string) {
+        const con = this.model.getConstraint(id);
+        if (con) {
+            this.editConstraintValue(con);
+        }
+    }
+
+    private editConstraintValue(con: GCSConstraint) {
+        if (con.type === 'distance' || con.type === 'horizontal_distance' || con.type === 'vertical_distance' || con.type === 'point_line_distance') {
+            const labelPos = this.viewport.getConstraintLabelPosition(con);
+            if (labelPos) {
+                this.showInlineDimensionInputForEdit(con as GCSValueConstraint, labelPos);
+            }
+        }
+    }
+
+    private showInlineDimensionInputForEdit(con: GCSValueConstraint, spawnPos: { x: number; y: number }) {
+        const input = document.getElementById('inline-distance-input') as HTMLInputElement;
+        if (!input) return;
+
+        const screenPos = this.viewport.canvasToScreen(spawnPos.x, spawnPos.y);
+        const screenX = screenPos.x;
+        const screenY = screenPos.y;
+
+        input.value = con.value!.toFixed(1);
+        input.style.left = `${screenX + 15}px`;
+        input.style.top = `${screenY - 15}px`;
+        input.style.display = 'block';
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 50);
+
+        const applyInput = () => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val) && val > 0) {
+                con.value = val;
+                this.model.updateConstraint(con);
+                this.runGCSSolver();
+            }
+            this.hideInlineDistanceInput();
+        };
+
+        const keyHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                applyInput();
+            } else if (e.key === 'Escape') {
+                this.hideInlineDistanceInput();
+            }
+        };
+
+        const blurHandler = () => {
+            applyInput();
+        };
+
+        input.addEventListener('keydown', keyHandler);
+        input.addEventListener('blur', blurHandler);
+
+        (input as any)._cleanup = () => {
+            input.removeEventListener('keydown', keyHandler);
+            input.removeEventListener('blur', blurHandler);
+        };
+    }
+
+    public deleteSelected() {
+        const selectedIds = this.model.getSelectedEntityIds();
+        if (selectedIds.length === 0) return;
+
+        selectedIds.forEach(id => {
+            if (this.model.getConstraints().some(c => c.id === id)) {
+                this.model.deleteConstraint(id);
+            } else {
+                this.model.deleteEntity(id);
+            }
+        });
+
+        this.model.setSelectedEntityIds([]);
+        this.runGCSSolver();
     }
 
     private applyHorizontal() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => this.model.getLine(id) !== null);
         if (selectedLines.length !== 1) {
             alert("Select exactly 1 line to make horizontal.");
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Horizontal_${selectedLines[0]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'horizontal',
             lineId: selectedLines[0]
         });
@@ -453,14 +802,15 @@ export class SketchController {
     }
 
     private applyVertical() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => this.model.getLine(id) !== null);
         if (selectedLines.length !== 1) {
             alert("Select exactly 1 line to make vertical.");
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Vertical_${selectedLines[0]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'vertical',
             lineId: selectedLines[0]
         });
@@ -470,14 +820,15 @@ export class SketchController {
     }
 
     private applyParallel() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => this.model.getLine(id) !== null);
         if (selectedLines.length !== 2) {
             alert("Select exactly 2 lines to make parallel.");
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Parallel_${selectedLines[0]}_${selectedLines[1]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'parallel',
             line1Id: selectedLines[0],
             line2Id: selectedLines[1]
@@ -488,14 +839,15 @@ export class SketchController {
     }
 
     private applyPerpendicular() {
-        const selectedLines = this.model.getSelectedEntityIds().filter(id => id.startsWith('L_'));
+        const selectedLines = this.model.getSelectedEntityIds().filter(id => this.model.getLine(id) !== null);
         if (selectedLines.length !== 2) {
             alert("Select exactly 2 lines to make perpendicular.");
             return;
         }
 
+        const conId = this.model.makeUniqueConstraintId(`Perp_${selectedLines[0]}_${selectedLines[1]}`);
         this.model.addConstraint({
-            id: generateId('CON'),
+            id: conId,
             type: 'perpendicular',
             line1Id: selectedLines[0],
             line2Id: selectedLines[1]
@@ -506,7 +858,7 @@ export class SketchController {
     }
 
     private togglePointFixed() {
-        const selectedPoints = this.model.getSelectedEntityIds().filter(id => id.startsWith('P_'));
+        const selectedPoints = this.model.getSelectedEntityIds().filter(id => this.model.getPoint(id) !== null);
         if (selectedPoints.length === 0) {
             alert("Select one or more points to toggle position lock.");
             return;
@@ -541,7 +893,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await controller.init();
 
     // Bind toolbar button selections
-    const tools: ToolMode[] = ['select', 'point', 'line', 'circle'];
+    const tools: ToolMode[] = ['select', 'point', 'line', 'circle', 'dimension'];
     tools.forEach(tool => {
         document.getElementById(`btn-${tool}`)?.addEventListener('click', () => {
             controller.model.setTool(tool);
@@ -554,8 +906,14 @@ window.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (e.key === 'd' || e.key === 'D') {
+        if (e.key === 'Escape') {
+            controller.cancelActiveOperation();
+        } else if (e.key === 'd' || e.key === 'D') {
+            controller.model.setTool('dimension');
+        } else if (e.key === 'f' || e.key === 'F') {
             controller.viewport.zoomToFit();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            controller.deleteSelected();
         }
     });
 

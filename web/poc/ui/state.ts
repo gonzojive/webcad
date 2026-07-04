@@ -1,6 +1,6 @@
 import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
 
-export type ToolMode = 'select' | 'point' | 'line' | 'circle';
+export type ToolMode = 'select' | 'point' | 'line' | 'circle' | 'dimension';
 
 export type StateCallback = () => void;
 
@@ -110,14 +110,24 @@ export class SketchStateModel {
         this.emit('change');
     }
 
+    updateConstraint(c: GCSConstraint) {
+        const idx = this.constraints.findIndex(x => x.id === c.id);
+        if (idx > -1) {
+            this.constraints[idx] = c;
+            this.emit('change');
+        }
+    }
+
     deleteEntity(id: string) {
+        const isPoint = this.points.some(p => p.id === id);
+
         // 1. Remove entity
         this.points = this.points.filter(p => p.id !== id);
         this.lines = this.lines.filter(l => l.id !== id);
         this.circles = this.circles.filter(c => c.id !== id);
 
         // 2. Cascade delete lines/circles linked to deleted points
-        if (id.startsWith('P_')) {
+        if (isPoint) {
             this.lines = this.lines.filter(l => l.p1Id !== id && l.p2Id !== id);
             this.circles = this.circles.filter(c => c.centerId !== id);
         }
@@ -127,7 +137,11 @@ export class SketchStateModel {
             switch (con.type) {
                 case 'coincident':
                 case 'distance':
+                case 'horizontal_distance':
+                case 'vertical_distance':
                     return con.p1Id !== id && con.p2Id !== id;
+                case 'point_line_distance':
+                    return con.pointId !== id && con.lineId !== id;
                 case 'vertical':
                 case 'horizontal':
                     return con.lineId !== id;
@@ -185,7 +199,7 @@ export class SketchStateModel {
 
     setSelectedEntityIds(ids: string[]) {
         this.selectedEntityIds = [...ids];
-        this.emit('change');
+        this.emit('selection-change');
     }
 
     toggleSelect(id: string) {
@@ -195,13 +209,13 @@ export class SketchStateModel {
         } else {
             this.selectedEntityIds.push(id);
         }
-        this.emit('change');
+        this.emit('selection-change');
     }
 
     clearSelection() {
         if (this.selectedEntityIds.length > 0) {
             this.selectedEntityIds = [];
-            this.emit('change');
+            this.emit('selection-change');
         }
     }
 
@@ -227,5 +241,32 @@ export class SketchStateModel {
             this.hoveredConstraintId = id;
             this.emit('hover-change');
         }
+    }
+
+    generateNextId(prefix: string): string {
+        let maxNum = 0;
+        const regex = new RegExp(`^${prefix}(\\d+)$`);
+        const checkId = (id: string) => {
+            const match = id.match(regex);
+            if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
+            }
+        };
+        this.points.forEach(p => checkId(p.id));
+        this.lines.forEach(l => checkId(l.id));
+        this.circles.forEach(c => checkId(c.id));
+        this.constraints.forEach(con => checkId(con.id));
+        return `${prefix}${maxNum + 1}`;
+    }
+
+    makeUniqueConstraintId(baseId: string): string {
+        let candidate = baseId;
+        let counter = 1;
+        while (this.constraints.some(c => c.id === candidate)) {
+            candidate = `${baseId}_${counter}`;
+            counter++;
+        }
+        return candidate;
     }
 }

@@ -39,6 +39,32 @@ export interface DistanceConstraint extends BaseConstraint {
     p1Id: string;
     p2Id: string;
     value: number;
+    layoutOffset?: number;
+}
+
+export interface HorizontalDistanceConstraint extends BaseConstraint {
+    type: 'horizontal_distance';
+    p1Id: string;
+    p2Id: string;
+    value: number;
+    layoutOffset?: number;
+}
+
+export interface VerticalDistanceConstraint extends BaseConstraint {
+    type: 'vertical_distance';
+    p1Id: string;
+    p2Id: string;
+    value: number;
+    layoutOffset?: number;
+}
+
+export interface PointLineDistanceConstraint extends BaseConstraint {
+    type: 'point_line_distance';
+    pointId: string;
+    lineId: string;
+    value: number;
+    layoutOffsetX?: number;
+    layoutOffsetY?: number;
 }
 
 export interface VerticalConstraint extends BaseConstraint {
@@ -66,10 +92,19 @@ export interface PerpendicularConstraint extends BaseConstraint {
 export type GCSConstraint =
     | CoincidentConstraint
     | DistanceConstraint
+    | HorizontalDistanceConstraint
+    | VerticalDistanceConstraint
+    | PointLineDistanceConstraint
     | VerticalConstraint
     | HorizontalConstraint
     | ParallelConstraint
     | PerpendicularConstraint;
+
+export type GCSValueConstraint =
+    | DistanceConstraint
+    | HorizontalDistanceConstraint
+    | VerticalDistanceConstraint
+    | PointLineDistanceConstraint;
 
 export interface GCSSketchState {
     points: GCSPoint[];
@@ -120,6 +155,27 @@ export class GCSapi {
                         id: c.id,
                         type: 'distance',
                         entityIds: [c.p1Id, c.p2Id],
+                        value: c.value
+                    };
+                case 'horizontal_distance':
+                    return {
+                        id: c.id,
+                        type: 'horizontalDistance',
+                        entityIds: [c.p1Id, c.p2Id],
+                        value: c.value
+                    };
+                case 'vertical_distance':
+                    return {
+                        id: c.id,
+                        type: 'verticalDistance',
+                        entityIds: [c.p1Id, c.p2Id],
+                        value: c.value
+                    };
+                case 'point_line_distance':
+                    return {
+                        id: c.id,
+                        type: 'pointLineDistance',
+                        entityIds: [c.pointId, c.lineId],
                         value: c.value
                     };
                 case 'vertical':

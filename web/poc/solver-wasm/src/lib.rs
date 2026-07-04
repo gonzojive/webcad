@@ -193,6 +193,58 @@ pub fn solve_gcs(input_json: &str) -> String {
                     }
                 }
             }
+            "horizontalDistance" => {
+                if req.entity_ids.len() == 2 {
+                    if let (Some(&idx1), Some(&idx2)) = (
+                        point_id_map.get(&req.entity_ids[0]),
+                        point_id_map.get(&req.entity_ids[1]),
+                    ) {
+                        let p0 = DatumPoint::new_xy(2 * idx1 as Id, 2 * idx1 as Id + 1);
+                        let p1 = DatumPoint::new_xy(2 * idx2 as Id, 2 * idx2 as Id + 1);
+                        let val = req.value.unwrap_or(0.0);
+                        constraints.push(ConstraintRequest::highest_priority(
+                            Constraint::HorizontalDistance(p0, p1, val),
+                        ));
+                    }
+                }
+            }
+            "verticalDistance" => {
+                if req.entity_ids.len() == 2 {
+                    if let (Some(&idx1), Some(&idx2)) = (
+                        point_id_map.get(&req.entity_ids[0]),
+                        point_id_map.get(&req.entity_ids[1]),
+                    ) {
+                        let p0 = DatumPoint::new_xy(2 * idx1 as Id, 2 * idx1 as Id + 1);
+                        let p1 = DatumPoint::new_xy(2 * idx2 as Id, 2 * idx2 as Id + 1);
+                        let val = req.value.unwrap_or(0.0);
+                        constraints.push(ConstraintRequest::highest_priority(
+                            Constraint::VerticalDistance(p0, p1, val),
+                        ));
+                    }
+                }
+            }
+            "pointLineDistance" => {
+                if req.entity_ids.len() == 2 {
+                    if let (Some(&p_idx), Some(&line_idx)) = (
+                        point_id_map.get(&req.entity_ids[0]),
+                        line_id_map.get(&req.entity_ids[1]),
+                    ) {
+                        let p = DatumPoint::new_xy(2 * p_idx as Id, 2 * p_idx as Id + 1);
+                        let line = &input.lines[line_idx];
+                        if let (Some(&lp1_idx), Some(&lp2_idx)) = (
+                            point_id_map.get(&line.p1_id),
+                            point_id_map.get(&line.p2_id),
+                        ) {
+                            let lp0 = DatumPoint::new_xy(2 * lp1_idx as Id, 2 * lp1_idx as Id + 1);
+                            let lp1 = DatumPoint::new_xy(2 * lp2_idx as Id, 2 * lp2_idx as Id + 1);
+                            let val = req.value.unwrap_or(0.0);
+                            constraints.push(ConstraintRequest::highest_priority(
+                                Constraint::PointLineDistance(p, DatumLineSegment::new(lp0, lp1), val),
+                            ));
+                        }
+                    }
+                }
+            }
             "vertical" => {
                 if req.entity_ids.len() == 1 {
                     if let Some(&line_idx) = line_id_map.get(&req.entity_ids[0]) {
