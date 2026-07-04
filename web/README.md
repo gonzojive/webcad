@@ -39,12 +39,40 @@ env PATH=$(bazel info output_base)/external/rules_nodejs++node+nodejs_linux_amd6
 ```
 Open `http://localhost:8080` in your browser. Any changes to `.ts` files under `web/poc` will be automatically compiled and updated in the server's runfiles.
 
-### Syncing BUILD Files (Gazelle)
-We use the **Aspect Gazelle plugin** to automatically generate and maintain `BUILD.bazel` files for TypeScript targets. If you add new source files, rename files, or add/remove dependencies in `package.json`, run:
+## TypeScript Compilation and Target Granularity
+
+### What is `ts_project`?
+The `ts_project` rule (from `aspect_rules_ts`) is a Bazel wrapper around the standard TypeScript compiler (`tsc`). It compiles a set of `.ts` source files into `.js` outputs and generates `.d.ts` type declarations.
+
+### Granularity: Why One Target Per Package?
+Instead of compiling the entire frontend as a single monolithic block, we split it into granular targets (typically **one `ts_project` per directory/package** that contains a `package.json`):
+*   **Incremental Compilation**: If you modify a file in `web/poc/ui`, Bazel only recompiles the `ui` target. The `gcsapi` target remains cached, saving build time.
+*   **Encapsulation**: Sandboxing ensures that a package can only import files that are explicitly declared in its `deps`. This prevents accidental circular dependencies and spaghetti imports.
+*   **Alignment with npm**: Each `ts_project` corresponds to a local npm package, making the Bazel dependency graph match the npm workspace graph.
+
+---
+
+## Syncing BUILD Files (Gazelle)
+
+We use the **Aspect Gazelle plugin** to automatically generate and maintain `BUILD.bazel` files for Go and TypeScript targets. 
+
+### How Gazelle Automation Works
+When you run `./devtools/gaz`, Gazelle scans the source tree and performs the following mapping:
+
+1.  **Target Generation**: For each directory containing TS files and a `package.json`, Gazelle defines:
+    *   A `ts_project` named `{dirname}_lib` to compile the TypeScript files.
+    *   An `npm_package` named `{dirname}` to package the outputs for workspace consumption.
+    *   An `npm_link_all_packages` call to link local dependencies.
+2.  **Source Discovery**: Gazelle automatically adds all `.ts` files in the directory to the `srcs` attribute of the `ts_project`. You don't need to list files manually.
+3.  **Dependency Resolution**: Gazelle parses `import` statements in your TS files:
+    *   If `ui/main.ts` imports `@webcad/gcsapi`, Gazelle detects this, resolves it to the local workspace package, and automatically adds `:node_modules/@webcad/gcsapi` to the `deps` of `ui_lib`.
+    *   If you import a third-party package (e.g. `import assert from 'node:assert'`), Gazelle detects that it needs node types and adds `//:node_modules/@types/node` to `deps`.
+
+If you add new source files, rename files, or add/remove dependencies in `package.json`, simply run:
 ```bash
 ./devtools/gaz
 ```
-This will automatically update the `ts_project` and `npm_package` rules.
+This keeps your Bazel build files in sync with your source code and npm configurations automatically.
 
 ## Adding Comments in `package.json`
 Since JSON does not support comments, we use the `"//"` key convention to document the purpose of dependencies or metadata fields in `package.json` files. Bazel and pnpm will safely ignore these keys.
