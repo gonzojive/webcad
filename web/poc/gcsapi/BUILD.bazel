@@ -1,0 +1,29 @@
+load("@aspect_rules_js//npm:defs.bzl", "npm_package")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    visibility = ["//visibility:public"],
+)
+
+ts_project(
+    name = "gcsapi_ts",
+    srcs = ["gcsapi.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = ":tsconfig",
+    deps = [
+        "//web/poc/solver-wasm:solver_wasm_bindgen",
+    ],
+)
+
+npm_package(
+    name = "pkg",
+    srcs = [
+        "package.json",
+        ":gcsapi_ts",
+    ],
+)

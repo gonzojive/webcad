@@ -1,0 +1,7 @@
+{
+  "name": "@webcad/gcsapi",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./gcsapi.js",
+  "types": "./gcsapi.d.ts"
+}

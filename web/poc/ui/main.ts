@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '@webcad/gcsapi';
 import { SketchStateModel, ToolMode } from './state.js';
 import { SketchStore } from './store.js';
 import { SolverService } from './solver.js';

@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle } from '@webcad/gcsapi';
 import { SketchStateModel } from './state.js';
 
 declare const Konva: any;

@@ -1,4 +1,4 @@
-import { GCSSketchState } from '../gcsapi/gcsapi.js';
+import { GCSSketchState } from '@webcad/gcsapi';
 import { SketchStateModel } from './state.js';
 
 /**

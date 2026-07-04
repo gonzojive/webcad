@@ -1,4 +1,4 @@
-import { GCSapi, GCSPoint, GCSSketchState } from '../gcsapi/gcsapi.js';
+import { GCSapi, GCSPoint, GCSSketchState } from '@webcad/gcsapi';
 import { SketchStateModel } from './state.js';
 
 /**
@@ -20,7 +20,7 @@ export class SolverService {
         
         try {
             // Path relative to web root
-            await this.gcs.init('/dist/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen_bg.wasm');
+            await this.gcs.init('/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen_bg.wasm');
             this.isInitialized = true;
             
             if (statusText) {

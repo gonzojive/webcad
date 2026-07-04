@@ -1,4 +1,4 @@
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../gcsapi/gcsapi.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '@webcad/gcsapi';
 
 export type ToolMode = 'select' | 'point' | 'line' | 'circle';
 
