@@ -65,3 +65,36 @@ graph TD
     *   **Simplicity**: Keeps the solver code clean and focused on geometry.
     *   **Performance**: Avoids the $O(N \times M)$ overhead of computing numerical derivatives for complex arbitrary formula strings inside the solver loop.
     *   **Consistency**: Aligns with how major commercial CAD tools handle parametric modeling.
+
+---
+
+## Alternative Approach: Implicit Solving of Expressions in GCS
+
+While commercial CAD systems favor a decoupled DAG-first pipeline, it is mathematically possible to solve algebraic expressions and geometric constraints **simultaneously** within the GCS engine. This would enable advanced features like **driven (reference) dimensions** participating in feedback loops.
+
+### 1. Implementation via Measurement Constraints
+To allow a dimension (e.g., the distance between two points) to act as a variable in an expression that drives other geometry, we can extend the GCS system:
+
+*   **Introduce Algebraic Variables**: Add non-geometric variables to the optimization vector $x$ (e.g., $x_{\text{chord}}$, $x_{\text{scale}}$, $x_{\text{width}}$).
+*   **Measurement Constraints**: Add constraints that "measure" geometry and bind the value to an algebraic variable.
+    $$C_{\text{measure}}(p_1, p_2, x_{\text{chord}}) = \text{distance}(p_1, p_2) - x_{\text{chord}} = 0$$
+*   **Algebraic Relation Constraints**: Add the user's expression as a mathematical constraint linking the variables.
+    $$C_{\text{algebraic}}(x_{\text{chord}}, x_{\text{scale}}, x_{\text{width}}) = x_{\text{width}} - (x_{\text{chord}} \times x_{\text{scale}}) = 0$$
+*   **Driving Constraints**: Use the driven variable $x_{\text{width}}$ to drive another geometric constraint.
+
+The solver (LM/BFGS) will solve all geometric coordinates and algebraic variables simultaneously in one optimization pass.
+
+### 2. Supporting Expressions with Analytical Derivatives
+To maintain high performance and avoid numerical Jacobian approximation, we can support a set of mathematical expressions by predefining their analytical derivatives:
+
+*   **Supported Operators**: Limit expressions to basic operations (e.g., $+$, $-$, $\times$, $/$, $x^n$).
+*   **Chain Rule Evaluation**: Implement the chain rule in the constraint evaluator. For example, if a constraint is $C(x, y) = f(g(x, y)) = 0$:
+    $$\frac{\partial C}{\partial x} = f'(g(x,y)) \times \frac{\partial g}{\partial x}$$
+*   **Precomputed Gradients**: Write explicit Go evaluators for common parametric templates:
+    *   Linear combination: $w = a \cdot u + b \cdot v$ (derivatives are constants $a$ and $b$).
+    *   Proportional scaling: $w = u \cdot v$ (derivatives are $v$ and $u$).
+
+### Trade-offs
+*   **Pros**: Enables bidirectional relationships (geometry driving expressions, which in turn drive other geometry).
+*   **Cons**: Increases solver dimensionality and complexity. Stiff algebraic constraints can degrade solver convergence compared to a clean DAG pre-evaluation.
+
