@@ -2,14 +2,7 @@ load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 package(default_visibility = ["//visibility:public"])
 
-# gazelle:resolve js ../solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js //web/poc/solver-wasm:solver_wasm_bindgen
-# gazelle:resolve ts ../solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js //web/poc/solver-wasm:solver_wasm_bindgen
-# gazelle:resolve js ../solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen //web/poc/solver-wasm:solver_wasm_bindgen
-# gazelle:resolve ts ../solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen //web/poc/solver-wasm:solver_wasm_bindgen
 # gazelle:resolve js web/poc/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js //web/poc/solver-wasm:solver_wasm_bindgen
-# gazelle:resolve ts web/poc/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js //web/poc/solver-wasm:solver_wasm_bindgen
-# gazelle:resolve js web/poc/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen //web/poc/solver-wasm:solver_wasm_bindgen
-# gazelle:resolve ts web/poc/solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen //web/poc/solver-wasm:solver_wasm_bindgen
 # Managed by Gazelle
 ts_project(
     name = "gcsapi",
