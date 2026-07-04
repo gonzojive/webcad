@@ -2,7 +2,6 @@
 package runfilesserver
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,14 +11,14 @@ import (
 	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
-// RunfilesServer implements [net/http.Handler] to serve files from Bazel runfiles,
-// with fallbacks for local workspace source trees.
+// RunfilesServer implements [net/http.Handler] to serve files from Bazel runfiles.
+// If a file is not found in runfiles, it can delegate to a fallback handler.
 type RunfilesServer struct {
-	workspaceName      string
-	workspaceSubpath   string
-	indexHTML          string
-	localWorkspaceRoot string
-	localOverrideDir   string
+	workspaceName    string
+	workspaceSubpath string
+	indexHTML        string
+	fallback         http.Handler
+	localOverrideDir string
 }
 
 // New creates a new [RunfilesServer] handler.
@@ -27,25 +26,18 @@ type RunfilesServer struct {
 // The workspaceName is the apparent name of the Bazel workspace (e.g. "webcad").
 // The workspaceSubpath is the path relative to the workspace root containing the assets (e.g. "web/poc").
 // The indexHTML is the path relative to workspaceSubpath to serve at "/" (defaults to "ui/index.html").
-func New(workspaceName, workspaceSubpath, indexHTML string) *RunfilesServer {
+// The fallback handler is called when a file is not found in runfiles (can be nil).
+func New(workspaceName, workspaceSubpath, indexHTML string, fallback http.Handler) *RunfilesServer {
 	if indexHTML == "" {
 		indexHTML = "ui/index.html"
 	}
 
-	s := &RunfilesServer{
+	return &RunfilesServer{
 		workspaceName:    workspaceName,
 		workspaceSubpath: workspaceSubpath,
 		indexHTML:        indexHTML,
+		fallback:         fallback,
 	}
-
-	// Try to locate workspace root via filesystem walk-up for fallback
-	if wd, err := os.Getwd(); err == nil {
-		if root, err := findWorkspaceRoot(wd); err == nil {
-			s.localWorkspaceRoot = root
-		}
-	}
-
-	return s
 }
 
 // SetLocalOverrideDir sets a local directory to serve from directly, bypassing runfiles.
@@ -55,6 +47,9 @@ func (s *RunfilesServer) SetLocalOverrideDir(dir string) {
 }
 
 // ServeHTTP implements the [net/http.Handler] interface.
+//
+// It mutates r.URL.Path in-place to clean it and apply the indexHTML fallback
+// before attempting to resolve it or delegating to the fallback handler.
 func (s *RunfilesServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Enforce that path starts with "/" to prevent relative path escaping during Clean.
 	if !strings.HasPrefix(r.URL.Path, "/") {
@@ -62,12 +57,14 @@ func (s *RunfilesServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origPath := r.URL.Path
+
 	// Clean the path to resolve ".." and "." segments.
-	path := filepath.Clean(r.URL.Path)
-	if path == "/" {
-		path = "/" + s.indexHTML
+	r.URL.Path = filepath.Clean(r.URL.Path)
+	if r.URL.Path == "/" {
+		r.URL.Path = "/" + s.indexHTML
 	}
-	relPath := strings.TrimPrefix(path, "/")
+	relPath := strings.TrimPrefix(r.URL.Path, "/")
 
 	// 1. Manual local override (highest priority if set)
 	if s.localOverrideDir != "" {
@@ -101,56 +98,30 @@ func (s *RunfilesServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		
 		resolvedPath, err := runfiles.Rlocation(runfilesPath)
 		if err == nil {
-			// Ensure JavaScript module files have the correct MIME type
-			if filepath.Ext(resolvedPath) == ".js" {
-				w.Header().Set("Content-Type", "application/javascript")
-			} else if filepath.Ext(resolvedPath) == ".wasm" {
-				w.Header().Set("Content-Type", "application/wasm")
+			// runfiles.Rlocation might return a path even if the file doesn't exist
+			// (e.g. in directory-based runfiles environments). We must verify existence.
+			if _, err := os.Stat(resolvedPath); err == nil {
+				// Ensure JavaScript module files have the correct MIME type
+				if filepath.Ext(resolvedPath) == ".js" {
+					w.Header().Set("Content-Type", "application/javascript")
+				} else if filepath.Ext(resolvedPath) == ".wasm" {
+					w.Header().Set("Content-Type", "application/wasm")
+				}
+				// Restore original path to prevent http.ServeFile from redirecting
+				// requests that we internally rewrote (like "/" to "/ui/index.html").
+				r.URL.Path = origPath
+				http.ServeFile(w, r, resolvedPath)
+				return
 			}
-			http.ServeFile(w, r, resolvedPath)
-			return
 		}
 	}
 
-	// 3. Fallback to local workspace source tree
-	if s.localWorkspaceRoot != "" && s.workspaceSubpath != "" {
-		localPath := filepath.Clean(filepath.Join(s.localWorkspaceRoot, s.workspaceSubpath, relPath))
-		expectedLocalPrefix := filepath.Clean(filepath.Join(s.localWorkspaceRoot, s.workspaceSubpath))
-		
-		// Ensure it doesn't escape the local workspace subpath
-		if !strings.HasPrefix(localPath, expectedLocalPrefix) {
-			log.Printf("Security warning: attempted directory traversal in fallback? path=%s, localPath=%s, expectedPrefix=%s", r.URL.Path, localPath, expectedLocalPrefix)
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		
-		if _, err := os.Stat(localPath); err == nil {
-			if filepath.Ext(localPath) == ".js" {
-				w.Header().Set("Content-Type", "application/javascript")
-			}
-			http.ServeFile(w, r, localPath)
-			return
-		}
+	// 3. Fallback handler
+	if s.fallback != nil {
+		s.fallback.ServeHTTP(w, r)
+		return
 	}
 
-	log.Printf("File not found: %s", path)
+	log.Printf("File not found: %s", r.URL.Path)
 	http.NotFound(w, r)
-}
-
-func findWorkspaceRoot(startDir string) (string, error) {
-	dir := startDir
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "MODULE.bazel")); err == nil {
-			return dir, nil
-		}
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	return "", fmt.Errorf("workspace root not found")
 }
