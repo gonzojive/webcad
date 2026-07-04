@@ -18,6 +18,11 @@ export class CanvasViewport {
 
     private tempLinePreview: any = null;
     private tempCirclePreview: any = null;
+    private tempDimensionPreview: {
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance';
+        entityIds: string[];
+        mousePos: { x: number; y: number };
+    } | null = null;
 
     // Viewport panning/zooming state
     private isPanning = false;
@@ -105,6 +110,22 @@ export class CanvasViewport {
 
     setStageMouseMoveCallback(cb: (pos: { x: number; y: number }) => void) {
         this.onStageMouseMove = cb;
+    }
+
+    setDimensionPreview(
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance',
+        entityIds: string[],
+        mousePos: { x: number; y: number }
+    ) {
+        this.tempDimensionPreview = { type, entityIds, mousePos };
+        this.redrawAll();
+    }
+
+    clearDimensionPreview() {
+        if (this.tempDimensionPreview) {
+            this.tempDimensionPreview = null;
+            this.redrawAll();
+        }
     }
 
     // --- Viewport State Accessors ---
@@ -861,6 +882,50 @@ export class CanvasViewport {
         // Draw constraints annotations
         this.drawConstraints();
 
+        // Draw active dimension preview
+        if (this.tempDimensionPreview) {
+            const { type, entityIds, mousePos } = this.tempDimensionPreview;
+            if (type === 'point_line_distance') {
+                const p = this.model.getPoint(entityIds[0]);
+                const l = this.model.getLine(entityIds[1]);
+                if (p && l) {
+                    const lp1 = this.model.getPoint(l.p1Id);
+                    const lp2 = this.model.getPoint(l.p2Id);
+                    if (lp1 && lp2) {
+                        const previewColor = 'rgba(100, 116, 139, 0.6)';
+                        const ux = lp2.x - lp1.x;
+                        const uy = lp2.y - lp1.y;
+                        const len2 = ux*ux + uy*uy;
+                        let projX = lp1.x;
+                        let projY = lp1.y;
+                        if (len2 > 0) {
+                            const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+                            projX = lp1.x + t * ux;
+                            projY = lp1.y + t * uy;
+                        }
+                        const val = Math.hypot(p.x - projX, p.y - projY);
+
+                        const previewGroup = new Konva.Group({ listening: false });
+                        this.drawPointLineDistanceConstraintPreview(p, lp1, lp2, val, mousePos, previewColor, previewGroup);
+                        this.mainLayer.add(previewGroup);
+                    }
+                }
+            } else {
+                const p1 = this.model.getPoint(entityIds[0]);
+                const p2 = this.model.getPoint(entityIds[1]);
+                if (p1 && p2) {
+                    const previewColor = 'rgba(100, 116, 139, 0.6)';
+                    const val = (type === 'horizontal_distance') ? Math.abs(p2.x - p1.x)
+                              : (type === 'vertical_distance') ? Math.abs(p2.y - p1.y)
+                              : Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
+                    const previewGroup = new Konva.Group({ listening: false });
+                    this.drawDistanceConstraintPreview(type, p1, p2, val, mousePos, previewColor, previewGroup);
+                    this.mainLayer.add(previewGroup);
+                }
+            }
+        }
+
         // Draw Points
         this.model.getPoints().forEach(p => {
             const isSelected = selectedEntityIds.includes(p.id);
@@ -1146,5 +1211,181 @@ export class CanvasViewport {
             this.stage.position(newPos);
             this.drawGrid();
         });
+    }
+
+    private drawPointLineDistanceConstraintPreview(
+        p: GCSPoint,
+        lp1: GCSPoint,
+        lp2: GCSPoint,
+        val: number,
+        mousePos: { x: number; y: number },
+        color: string,
+        parent: any
+    ) {
+        const ux = lp2.x - lp1.x;
+        const uy = lp2.y - lp1.y;
+        const len2 = ux*ux + uy*uy;
+        let projX = lp1.x;
+        let projY = lp1.y;
+        if (len2 > 0) {
+            const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+            projX = lp1.x + t * ux;
+            projY = lp1.y + t * uy;
+        }
+
+        const perpLine = new Konva.Line({
+            points: [p.x, p.y, projX, projY],
+            stroke: color,
+            strokeWidth: 1,
+            dash: [3, 3],
+            listening: false
+        });
+        parent.add(perpLine);
+
+        const projMidX = (p.x + projX) / 2;
+        const projMidY = (p.y + projY) / 2;
+
+        const leaderLine = new Konva.Line({
+            points: [projMidX, projMidY, mousePos.x, mousePos.y],
+            stroke: 'rgba(148, 163, 184, 0.2)',
+            strokeWidth: 0.8,
+            dash: [2, 2],
+            listening: false
+        });
+        parent.add(leaderLine);
+
+        const text = new Konva.Text({
+            x: mousePos.x,
+            y: mousePos.y,
+            text: val.toFixed(1),
+            fontSize: 9,
+            fontFamily: 'sans-serif',
+            fill: color,
+            listening: false
+        });
+        text.offsetX(text.width() / 2);
+        text.offsetY(text.height() / 2);
+
+        const rect = new Konva.Rect({
+            x: mousePos.x - text.width()/2 - 2,
+            y: mousePos.y - text.height()/2 - 1,
+            width: text.width() + 4,
+            height: text.height() + 2,
+            fill: 'white',
+            listening: false
+        });
+
+        parent.add(rect);
+        parent.add(text);
+    }
+
+    private drawDistanceConstraintPreview(
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance',
+        p1: GCSPoint,
+        p2: GCSPoint,
+        val: number,
+        mousePos: { x: number; y: number },
+        color: string,
+        parent: any
+    ) {
+        let d1x = p1.x, d1y = p1.y;
+        let d2x = p2.x, d2y = p2.y;
+        let ext1StartX = p1.x, ext1StartY = p1.y;
+        let ext2StartX = p2.x, ext2StartY = p2.y;
+
+        if (type === 'distance') {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = Math.hypot(dx, dy);
+            if (len === 0) return;
+            const nx = -dy / len;
+            const ny = dx / len;
+
+            const cx = (p1.x + p2.x) / 2;
+            const cy = (p1.y + p2.y) / 2;
+            const mx = mousePos.x - cx;
+            const my = mousePos.y - cy;
+            const offset = mx * nx + my * ny;
+
+            d1x = p1.x + nx * offset;
+            d1y = p1.y + ny * offset;
+            d2x = p2.x + nx * offset;
+            d2y = p2.y + ny * offset;
+
+        } else if (type === 'horizontal_distance') {
+            d1x = p1.x;
+            d1y = mousePos.y;
+            d2x = p2.x;
+            d2y = mousePos.y;
+
+        } else if (type === 'vertical_distance') {
+            d1x = mousePos.x;
+            d1y = p1.y;
+            d2x = mousePos.x;
+            d2y = p2.y;
+        }
+
+        const ext1 = new Konva.Line({
+            points: [ext1StartX, ext1StartY, d1x, d1y],
+            stroke: 'rgba(148, 163, 184, 0.2)',
+            strokeWidth: 1,
+            dash: [2, 2],
+            listening: false
+        });
+        const ext2 = new Konva.Line({
+            points: [ext2StartX, ext2StartY, d2x, d2y],
+            stroke: 'rgba(148, 163, 184, 0.2)',
+            strokeWidth: 1,
+            dash: [2, 2],
+            listening: false
+        });
+        parent.add(ext1);
+        parent.add(ext2);
+
+        const mx = (d1x + d2x) / 2;
+        const my = (d1y + d2y) / 2;
+
+        const arrow1 = new Konva.Arrow({
+            points: [mx, my, d1x, d1y],
+            stroke: color,
+            strokeWidth: 1,
+            pointerLength: 5,
+            pointerWidth: 3,
+            listening: false
+        });
+        const arrow2 = new Konva.Arrow({
+            points: [mx, my, d2x, d2y],
+            stroke: color,
+            strokeWidth: 1,
+            pointerLength: 5,
+            pointerWidth: 3,
+            listening: false
+        });
+        parent.add(arrow1);
+        parent.add(arrow2);
+
+        const text = new Konva.Text({
+            x: mx,
+            y: my,
+            text: val.toFixed(1),
+            fontSize: 9,
+            fontFamily: 'sans-serif',
+            fill: color,
+            listening: false
+        });
+        text.offsetX(text.width() / 2);
+        text.offsetY(text.height() / 2);
+
+        const rect = new Konva.Rect({
+            x: mx - text.width()/2 - 2,
+            y: my - text.height()/2 - 1,
+            width: text.width() + 4,
+            height: text.height() + 2,
+            fill: 'white',
+            listening: false
+        });
+
+        parent.add(rect);
+        parent.add(text);
     }
 }

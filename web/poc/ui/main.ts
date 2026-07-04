@@ -19,6 +19,39 @@ function distance(x1: number, y1: number, x2: number, y2: number): number {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
+function getImpliedDimensionType(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    mouse: { x: number; y: number }
+): 'distance' | 'horizontal_distance' | 'vertical_distance' {
+    const cx = (p1.x + p2.x) / 2;
+    const cy = (p1.y + p2.y) / 2;
+
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const segLen = Math.hypot(dx, dy);
+    if (segLen === 0) return 'distance';
+
+    const mx = mouse.x - cx;
+    const my = mouse.y - cy;
+
+    const nx = -dy / segLen;
+    const ny = dx / segLen;
+
+    const dotPerp = mx * nx + my * ny;
+    const dotSeg = (mx * dx + my * dy) / segLen;
+
+    if (Math.abs(dotSeg) < Math.abs(dotPerp) * 0.414) {
+        return 'distance';
+    }
+
+    if (Math.abs(my) > Math.abs(mx)) {
+        return 'horizontal_distance';
+    } else {
+        return 'vertical_distance';
+    }
+}
+
 /**
  * Coordinates all modules (state, storage, solver, viewport, sidebar)
  * and manages interactive tool actions, drawing, and constraint bindings.
@@ -35,6 +68,11 @@ export class SketchController {
     private circleCenterPointId: string | null = null;
     private isDistanceSelectionActive = false;
     private dimensionFirstEntityId: string | null = null;
+    private placingDimension: {
+        type: 'distance' | 'horizontal_distance' | 'vertical_distance' | 'point_line_distance';
+        entityIds: string[];
+    } | null = null;
+    private currentPreviewDimensionType: 'distance' | 'horizontal_distance' | 'vertical_distance' = 'distance';
 
     constructor() {
         this.model = new SketchStateModel();
@@ -110,7 +148,10 @@ export class SketchController {
         this.lineStartPointId = null;
         this.circleCenterPointId = null;
         this.isDistanceSelectionActive = false;
+        this.dimensionFirstEntityId = null;
+        this.placingDimension = null;
         this.viewport.clearPreviews();
+        this.viewport.clearDimensionPreview();
     }
 
     private updateToolbarUI() {
@@ -239,15 +280,45 @@ export class SketchController {
             }
         } else if (currentTool === 'dimension') {
             const clickedOnEmpty = e.target === this.viewport['stage'] || e.target === this.viewport['gridLayer'];
-            if (clickedOnEmpty && this.dimensionFirstEntityId) {
-                if (this.dimensionFirstEntityId.startsWith('L_')) {
-                    const line = this.model.getLine(this.dimensionFirstEntityId);
-                    if (line) {
-                        this.applyLineLengthDimension(line);
+            if (clickedOnEmpty && this.placingDimension) {
+                e.cancelBubble = true;
+                const { type, entityIds } = this.placingDimension;
+                const finalType = (type === 'point_line_distance') ? 'point_line_distance' : this.currentPreviewDimensionType;
+
+                this.placingDimension = null;
+                this.viewport.clearDimensionPreview();
+
+                if (finalType === 'point_line_distance') {
+                    const p = this.model.getPoint(entityIds[0]);
+                    const l = this.model.getLine(entityIds[1]);
+                    if (p && l) {
+                        const lp1 = this.model.getPoint(l.p1Id);
+                        const lp2 = this.model.getPoint(l.p2Id);
+                        if (lp1 && lp2) {
+                            const ux = lp2.x - lp1.x;
+                            const uy = lp2.y - lp1.y;
+                            const len2 = ux*ux + uy*uy;
+                            let projX = lp1.x;
+                            let projY = lp1.y;
+                            if (len2 > 0) {
+                                const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
+                                projX = lp1.x + t * ux;
+                                projY = lp1.y + t * uy;
+                            }
+                            const val = distance(p.x, p.y, projX, projY);
+                            this.showInlineDimensionInput('point_line_distance', entityIds, val, pos);
+                        }
+                    }
+                } else {
+                    const p1 = this.model.getPoint(entityIds[0]);
+                    const p2 = this.model.getPoint(entityIds[1]);
+                    if (p1 && p2) {
+                        const val = (finalType === 'horizontal_distance') ? Math.abs(p2.x - p1.x)
+                                  : (finalType === 'vertical_distance') ? Math.abs(p2.y - p1.y)
+                                  : distance(p1.x, p1.y, p2.x, p2.y);
+                        this.showInlineDimensionInput(finalType, entityIds, val, pos);
                     }
                 }
-                this.dimensionFirstEntityId = null;
-                this.model.setSelectedEntityIds([]);
             }
         }
     }
@@ -275,6 +346,19 @@ export class SketchController {
             if (center) {
                 const rad = distance(center.x, center.y, targetX, targetY);
                 this.viewport.updateCirclePreview(center.x, center.y, rad);
+            }
+        } else if (currentTool === 'dimension' && this.placingDimension) {
+            const { type, entityIds } = this.placingDimension;
+            if (type !== 'point_line_distance') {
+                const p1 = this.model.getPoint(entityIds[0]);
+                const p2 = this.model.getPoint(entityIds[1]);
+                if (p1 && p2) {
+                    const impliedType = getImpliedDimensionType(p1, p2, pos);
+                    this.currentPreviewDimensionType = impliedType;
+                    this.viewport.setDimensionPreview(impliedType, entityIds, pos);
+                }
+            } else {
+                this.viewport.setDimensionPreview('point_line_distance', entityIds, pos);
             }
         }
     }
@@ -389,89 +473,67 @@ export class SketchController {
 
     private handleDimensionEntityClick(id: string, e: any) {
         e.cancelBubble = true;
+
+        if (this.placingDimension) {
+            return;
+        }
         
         if (this.dimensionFirstEntityId === null) {
-            this.dimensionFirstEntityId = id;
-            this.model.setSelectedEntityIds([id]);
-            const hud = document.getElementById('help-hud');
-            if (hud) {
-                if (id.startsWith('P_')) {
-                    hud.innerHTML = `Mode: <span>Dimension</span>. Select second Point or Line.`;
-                } else if (id.startsWith('L_')) {
-                    hud.innerHTML = `Mode: <span>Dimension</span>. Select second Line, or click canvas empty space to dimension length.`;
+            if (id.startsWith('L_')) {
+                const line = this.model.getLine(id);
+                if (line) {
+                    this.placingDimension = {
+                        type: 'distance',
+                        entityIds: [line.p1Id, line.p2Id]
+                    };
+                    this.model.setSelectedEntityIds([id]);
+                    const hud = document.getElementById('help-hud');
+                    if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place dimension.`;
                 }
+            } else if (id.startsWith('P_')) {
+                this.dimensionFirstEntityId = id;
+                this.model.setSelectedEntityIds([id]);
+                const hud = document.getElementById('help-hud');
+                if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Select second Point or Line.`;
             }
         } else {
             const firstId = this.dimensionFirstEntityId;
             const secondId = id;
-            this.applyTwoEntityDimension(firstId, secondId);
+            this.startTwoEntityDimensionPlacement(firstId, secondId);
         }
     }
 
-    private applyTwoEntityDimension(firstId: string, secondId: string) {
+    private startTwoEntityDimensionPlacement(firstId: string, secondId: string) {
         if (firstId === secondId) return;
 
         if (firstId.startsWith('P_') && secondId.startsWith('P_')) {
-            const p1 = this.model.getPoint(firstId);
-            const p2 = this.model.getPoint(secondId);
-            if (!p1 || !p2) return;
-
-            const dx = Math.abs(p1.x - p2.x);
-            const dy = Math.abs(p1.y - p2.y);
-            let type: 'distance' | 'horizontal_distance' | 'vertical_distance' = 'distance';
-            
-            if (dy / dx < 0.57) {
-                type = 'horizontal_distance';
-            } else if (dx / dy < 0.57) {
-                type = 'vertical_distance';
-            }
-
-            const currentVal = distance(p1.x, p1.y, p2.x, p2.y);
-            const spawnPos = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-            this.showInlineDimensionInput(type, [firstId, secondId], currentVal, spawnPos);
+            this.placingDimension = {
+                type: 'distance',
+                entityIds: [firstId, secondId]
+            };
+            this.dimensionFirstEntityId = null;
+            this.model.setSelectedEntityIds([firstId, secondId]);
+            const hud = document.getElementById('help-hud');
+            if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place point-to-point dimension.`;
 
         } else if ((firstId.startsWith('P_') && secondId.startsWith('L_')) || 
                    (firstId.startsWith('L_') && secondId.startsWith('P_'))) {
             const pointId = firstId.startsWith('P_') ? firstId : secondId;
             const lineId = firstId.startsWith('L_') ? firstId : secondId;
 
-            const p = this.model.getPoint(pointId);
-            const l = this.model.getLine(lineId);
-            if (!p || !l) return;
-
-            const lp1 = this.model.getPoint(l.p1Id);
-            const lp2 = this.model.getPoint(l.p2Id);
-            if (!lp1 || !lp2) return;
-
-            const ux = lp2.x - lp1.x;
-            const uy = lp2.y - lp1.y;
-            const len2 = ux*ux + uy*uy;
-            let projX = lp1.x;
-            let projY = lp1.y;
-            if (len2 > 0) {
-                const t = ((p.x - lp1.x)*ux + (p.y - lp1.y)*uy) / len2;
-                projX = lp1.x + t * ux;
-                projY = lp1.y + t * uy;
-            }
-
-            const currentVal = distance(p.x, p.y, projX, projY);
-            const spawnPos = { x: (p.x + projX) / 2, y: (p.y + projY) / 2 };
-            this.showInlineDimensionInput('point_line_distance', [pointId, lineId], currentVal, spawnPos);
+            this.placingDimension = {
+                type: 'point_line_distance',
+                entityIds: [pointId, lineId]
+            };
+            this.dimensionFirstEntityId = null;
+            this.model.setSelectedEntityIds([pointId, lineId]);
+            const hud = document.getElementById('help-hud');
+            if (hud) hud.innerHTML = `Mode: <span>Dimension</span>. Move mouse and click canvas to place point-to-line dimension.`;
         } else {
             alert("Dimension between these entities not supported yet.");
             this.model.setSelectedEntityIds([]);
             this.dimensionFirstEntityId = null;
         }
-    }
-
-    private applyLineLengthDimension(line: GCSLine) {
-        const p1 = this.model.getPoint(line.p1Id);
-        const p2 = this.model.getPoint(line.p2Id);
-        if (!p1 || !p2) return;
-
-        const currentVal = distance(p1.x, p1.y, p2.x, p2.y);
-        const spawnPos = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-        this.showInlineDimensionInput('distance', [line.p1Id, line.p2Id], currentVal, spawnPos);
     }
 
     private showInlineDimensionInput(
