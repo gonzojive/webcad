@@ -74,6 +74,7 @@ use_repo(crate, "crates")
 bazel_dep(name = "rules_nodejs", version = "6.7.4")
 bazel_dep(name = "aspect_rules_js", version = "3.1.2")
 bazel_dep(name = "aspect_rules_ts", version = "3.1.0")
+bazel_dep(name = "aspect_rules_esbuild", version = "0.26.0")
 bazel_dep(name = "aspect_gazelle_prebuilt", version = "0.0.22")
 
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")

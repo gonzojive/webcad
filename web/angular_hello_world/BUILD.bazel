@@ -1,0 +1,46 @@
+# gazelle:exclude
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("@npm//web:@angular/compiler-cli/package_json.bzl", compiler_cli = "bin")
+
+compiler_cli.ngc_binary(name = "ngc")
+
+ts_project(
+    name = "frontend",
+    srcs = [
+        "src/main.ts",
+        "src/app/app.component.ts",
+    ],
+    tsconfig = "tsconfig.json",
+    tsc = ":ngc",
+    transpiler = "tsc",
+    deps = [
+        "//web:node_modules/@angular/core",
+        "//web:node_modules/@angular/common",
+        "//web:node_modules/@angular/platform-browser",
+        "//web:node_modules/@angular/platform-browser-dynamic",
+        "//web:node_modules/rxjs",
+        "//web:node_modules/tslib",
+        "//web:node_modules/zone.js",
+    ],
+)
+
+esbuild(
+    name = "bundle",
+    entry_point = "src/main.ts",
+    output = "bundle.js",
+    platform = "browser",
+    format = "esm",
+    minify = True,
+    sourcemap = "inline",
+    deps = [":frontend"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "assets",
+    srcs = ["src/index.html"],
+    visibility = ["//visibility:public"],
+)
+
+
