@@ -1,4 +1,5 @@
 {
+  "//": "Root workspace configuration. Defines the monorepo packages and shared development dependencies.",
   "name": "webcad-root",
   "private": true,
   "devDependencies": {
