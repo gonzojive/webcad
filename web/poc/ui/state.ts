@@ -119,13 +119,15 @@ export class SketchStateModel {
     }
 
     deleteEntity(id: string) {
+        const isPoint = this.points.some(p => p.id === id);
+
         // 1. Remove entity
         this.points = this.points.filter(p => p.id !== id);
         this.lines = this.lines.filter(l => l.id !== id);
         this.circles = this.circles.filter(c => c.id !== id);
 
         // 2. Cascade delete lines/circles linked to deleted points
-        if (/^P\d+$/.test(id)) {
+        if (isPoint) {
             this.lines = this.lines.filter(l => l.p1Id !== id && l.p2Id !== id);
             this.circles = this.circles.filter(c => c.centerId !== id);
         }
