@@ -1,4 +1,5 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("//web:defs.bzl", "js_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,3 +16,34 @@ ts_project(
         "//web/poc/units",
     ],
 )
+
+ts_project(
+    name = "test_lib",
+    testonly = True,
+    srcs = ["dimension-input.component.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        ":dimension-input",
+        "//web:node_modules/@angular/core",
+        "//web:node_modules/@angular/platform-browser",
+        "//web:node_modules/@angular/compiler",
+        "//web:node_modules/@types/node",
+        "//web:node_modules/jsdom",
+        "//web:node_modules/@types/jsdom",
+        "//web/poc/ui/app/services",
+        "//web/poc/units",
+        "//web:node_modules/zone.js",
+    ],
+)
+
+js_test(
+    name = "test",
+    data = [
+        ":test_lib",
+        "//web/poc/solver-wasm:solver_wasm_bindgen",
+    ],
+    entry_point = "dimension-input.component.test.js",
+)
+
