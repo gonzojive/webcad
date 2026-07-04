@@ -1,44 +1,47 @@
-load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
-load("//web:defs.bzl", "js_test")
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+load("@npm//web:@angular/compiler-cli/package_json.bzl", compiler_cli = "bin")
 
 package(default_visibility = ["//visibility:public"])
 
-js_test(
-    name = "state_test",
-    data = [
-        "package.json",
-        ":ui_tests",
-    ],
-    entry_point = "state.test.js",
-)
-
-exports_files(["index.html"])
-
-ts_project(
-    name = "ui_tests",
-    testonly = True,
-    srcs = ["state.test.ts"],
-    declaration = True,
-    source_map = True,
-    tsconfig = "//web:tsconfig",
-    deps = [
-        ":ui",
-        "//web:node_modules/@types/node",
-    ],
-)
+compiler_cli.ngc_binary(name = "ngc")
 
 ts_project(
     name = "ui",
     srcs = [
         "main.ts",
-        "sidebar.ts",
-        "solver.ts",
-        "state.ts",
-        "store.ts",
-        "viewport.ts",
     ],
     declaration = True,
     source_map = True,
-    tsconfig = "//web:tsconfig",
-    deps = ["//web/poc/gcsapi"],
+    transpiler = "tsc",
+    tsc = ":ngc",
+    tsconfig = ":tsconfig",
+    deps = [
+        "//web:node_modules/@angular/platform-browser",
+        "//web:node_modules/zone.js",
+        "//web/poc/ui/app",
+    ],
+)
+
+esbuild(
+    name = "bundle",
+    entry_point = "main.ts",
+    external = ["../solver-wasm/solver_wasm_bindgen/solver_wasm_bindgen.js"],
+    format = "esm",
+    minify = True,
+    output = "bundle.js",
+    platform = "browser",
+    sourcemap = "inline",
+    deps = [":ui"],
+)
+
+filegroup(
+    name = "assets",
+    srcs = ["index.html"],
+)
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    visibility = [":__subpackages__"],
 )

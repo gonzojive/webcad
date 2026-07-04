@@ -1,0 +1,23 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "services",
+    srcs = [
+        "tool.service.ts",
+        "workspace.service.ts",
+    ],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        "//web:node_modules/@angular/core",
+        "//web/poc/gcsapi",
+        "//web/poc/geometry",
+        "//web/poc/model",
+        "//web/poc/tools",
+        "//web/poc/ui/interfaces",
+        "//web/poc/units",
+    ],
+)

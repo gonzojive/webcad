@@ -1,0 +1,21 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "app",
+    srcs = ["app.component.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        "//web:node_modules/@angular/common",
+        "//web:node_modules/@angular/core",
+        "//web/poc/ui/app/dimension-input",
+        "//web/poc/ui/app/services",
+        "//web/poc/ui/app/sidebar",
+        "//web/poc/ui/app/toolbar",
+        "//web/poc/ui/app/viewport",
+        "//web/poc/units",
+    ],
+)

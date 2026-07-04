@@ -1,0 +1,14 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "geometry",
+    srcs = [
+        "project.ts",
+        "vector.ts",
+    ],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+)

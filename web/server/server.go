@@ -25,6 +25,10 @@ type Options struct {
 	// WorkspaceSubpath is the path relative to the workspace root where the assets are located
 	// (e.g., "web/poc"). Used for local fallback serving.
 	WorkspaceSubpath string
+
+	// RedirectRootTo configures a redirect from "/" to the specified path (e.g., "/ui/").
+	// If empty, no redirect is performed.
+	RedirectRootTo string
 }
 
 // Server is a helper that wraps the http server, parses command line flags,
@@ -55,9 +59,20 @@ func New(opts Options) *Server {
 		}
 	}
 
-	handler, err := runfilesserver.New(opts.RlocationRoot, fallbackDir)
+	runfilesHandler, err := runfilesserver.New(opts.RlocationRoot, fallbackDir)
 	if err != nil {
 		log.Fatalf("server: failed to initialize runfiles handler: %v", err)
+	}
+
+	var handler http.Handler = runfilesHandler
+	if opts.RedirectRootTo != "" {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, opts.RedirectRootTo, http.StatusMovedPermanently)
+				return
+			}
+			runfilesHandler.ServeHTTP(w, r)
+		})
 	}
 
 	return &Server{
@@ -65,6 +80,7 @@ func New(opts Options) *Server {
 		handler: handler,
 	}
 }
+
 
 // Start starts the HTTP listener and serves requests using the configured handler.
 func (s *Server) Start() error {

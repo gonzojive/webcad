@@ -1,17 +1,11 @@
 import { GCSSketchState } from '../gcsapi/gcsapi.js';
-import { SketchStateModel } from './state.js';
+import { SketchModel } from './sketch.js';
 
-/**
- * Handles IndexedDB persistence for saving and restoring the drawing sketch state.
- */
 export class SketchStore {
     private readonly dbName = 'WebCADSketcherDB';
     private readonly storeName = 'SketchStateStore';
     private readonly key = 'currentSketch';
 
-    /**
-     * Opens connection to the IndexedDB database.
-     */
     private getDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, 1);
@@ -26,19 +20,16 @@ export class SketchStore {
         });
     }
 
-    /**
-     * Persists the current model state into IndexedDB.
-     */
-    async save(model: SketchStateModel): Promise<void> {
+    async save(sketch: SketchModel): Promise<void> {
         try {
             const db = await this.getDB();
             const tx = db.transaction(this.storeName, 'readwrite');
             const store = tx.objectStore(this.storeName);
             const state: GCSSketchState = {
-                points: model.getPoints(),
-                lines: model.getLines(),
-                circles: model.getCircles(),
-                constraints: model.getConstraints()
+                points: sketch.points,
+                lines: sketch.lines,
+                circles: sketch.circles,
+                constraints: sketch.constraints
             };
             store.put(state, this.key);
         } catch (e) {
@@ -46,37 +37,35 @@ export class SketchStore {
         }
     }
 
-    /**
-     * Loads the persisted sketch state and updates the model.
-     */
-    async load(model: SketchStateModel): Promise<void> {
+    async load(): Promise<SketchModel | null> {
         try {
             const db = await this.getDB();
             const tx = db.transaction(this.storeName, 'readonly');
             const store = tx.objectStore(this.storeName);
             const request = store.get(this.key);
             
-            return new Promise<void>((resolve) => {
+            return new Promise<SketchModel | null>((resolve) => {
                 request.onsuccess = () => {
                     const state = request.result as GCSSketchState | undefined;
                     if (state) {
-                        model.setSketchData({
+                        resolve({
                             points: state.points || [],
                             lines: state.lines || [],
                             circles: state.circles || [],
                             constraints: state.constraints || []
                         });
-                        console.log('Sketch state loaded from IndexedDB.');
+                    } else {
+                        resolve(null);
                     }
-                    resolve();
                 };
                 request.onerror = () => {
                     console.error('Failed to load sketch from IndexedDB:', request.error);
-                    resolve();
+                    resolve(null);
                 };
             });
         } catch (e) {
             console.error('Failed to initialize IndexedDB for loading:', e);
+            return null;
         }
     }
 }

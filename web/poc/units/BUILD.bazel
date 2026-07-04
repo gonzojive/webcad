@@ -1,0 +1,33 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("//web:defs.bzl", "js_test")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "units",
+    srcs = ["units.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+)
+
+ts_project(
+    name = "units_tests",
+    testonly = True,
+    srcs = ["units.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+    deps = [
+        ":units",
+        "//web:node_modules/@types/node",
+    ],
+)
+
+js_test(
+    name = "test",
+    data = [
+        ":units_tests",
+    ],
+    entry_point = "units.test.js",
+)

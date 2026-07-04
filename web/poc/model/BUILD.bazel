@@ -1,0 +1,21 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "model",
+    srcs = [
+        "document.ts",
+        "gcs_bridge.ts",
+        "history.ts",
+        "sketch.ts",
+        "store.ts",
+    ],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+    deps = [
+        "//web/poc/gcsapi",
+        "//web/poc/units",
+    ],
+)

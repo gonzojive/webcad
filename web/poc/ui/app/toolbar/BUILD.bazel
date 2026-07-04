@@ -1,0 +1,15 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "toolbar",
+    srcs = ["toolbar.component.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        "//web:node_modules/@angular/core",
+        "//web/poc/ui/app/services",
+    ],
+)
