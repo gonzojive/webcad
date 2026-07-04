@@ -259,3 +259,10 @@ func TestRunfilesServer_Fallback(t *testing.T) {
 		})
 	}
 }
+
+func TestRunfilesServer_InvalidFallback(t *testing.T) {
+	_, err := New("webcad/web/runfilesserver/testdata", "/nonexistent/directory/path")
+	if err == nil {
+		t.Error("expected error when initializing with nonexistent fallback directory, got nil")
+	}
+}

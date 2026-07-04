@@ -3,6 +3,7 @@ package runfilesserver
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -59,11 +60,10 @@ func New(rlocationRoot string, fallbackDir string) (http.Handler, error) {
 	// 2. Initialize Fallback FS if provided
 	var fallbackFS fs.FS
 	if fallbackDir != "" {
-		if _, err := os.Stat(fallbackDir); err == nil {
-			fallbackFS = os.DirFS(fallbackDir)
-		} else {
-			log.Printf("runfilesserver: fallback directory %s not found: %v", fallbackDir, err)
+		if _, err := os.Stat(fallbackDir); err != nil {
+			return nil, fmt.Errorf("runfilesserver: fallback directory %s invalid: %w", fallbackDir, err)
 		}
+		fallbackFS = os.DirFS(fallbackDir)
 	}
 
 	// 3. Combine them into UnionFS
