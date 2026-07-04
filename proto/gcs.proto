@@ -333,9 +333,17 @@ message SolveResult {
   SolverTelemetry telemetry = 12;
 }
 
+// Telemetry metrics collected from a solver run to analyze performance and convergence.
 message SolverTelemetry {
+  // The number of solver iterations executed.
   int32 iterations = 1;
+  
+  // The number of objective function evaluations.
   int32 func_evaluations = 2;
+  
+  // The number of gradient evaluations.
   int32 grad_evaluations = 3;
+  
+  // The final residual error (sum of squared residuals) after the solve completes.
   double final_residual = 4;
 }
