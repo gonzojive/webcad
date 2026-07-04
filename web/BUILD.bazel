@@ -1,1 +1,17 @@
-# Package marker to make this directory a valid Bazel package.
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+# gazelle:js_tsconfig_file tsconfig.json
+# gazelle:resolve js node:assert //web:node_modules/@types/node
+# gazelle:resolve js node:test //web:node_modules/@types/node
+# gazelle:resolve ts node:assert //web:node_modules/@types/node
+# gazelle:resolve ts node:test //web:node_modules/@types/node
+package(default_visibility = ["//visibility:public"])
+
+npm_link_all_packages(name = "node_modules")
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    visibility = ["//visibility:public"],
+)

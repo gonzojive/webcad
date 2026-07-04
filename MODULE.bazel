@@ -68,7 +68,7 @@ npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependenc
 npm.npm_translate_lock(
     name = "npm",
     npm_package_target_name = "{dirname}",
-    pnpm_lock = "//:pnpm-lock.yaml",
+    pnpm_lock = "//web:pnpm-lock.yaml",
 )
 use_repo(npm, "npm")
 
@@ -76,5 +76,5 @@ pnpm = use_extension("@aspect_rules_js//npm:extensions.bzl", "pnpm", dev_depende
 use_repo(pnpm, "pnpm")
 
 rules_ts = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext", dev_dependency = True)
-rules_ts.deps(ts_version_from = "//:package.json")
+rules_ts.deps(ts_version_from = "//web:package.json")
 use_repo(rules_ts, "npm_typescript")

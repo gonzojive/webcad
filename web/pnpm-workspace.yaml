@@ -1,4 +1,4 @@
 packages:
   - '.'
-  - 'web/poc/ui'
+  - 'poc/ui'
 

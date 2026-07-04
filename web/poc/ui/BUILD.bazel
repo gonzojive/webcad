@@ -1,21 +1,7 @@
-load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
-load("@npm//:defs.bzl", "npm_link_all_packages")
 load("//web:defs.bzl", "js_test")
 
 package(default_visibility = ["//visibility:public"])
-
-npm_link_all_packages(name = "node_modules")
-
-# Managed by Gazelle
-ts_project(
-    name = "ui_lib",
-    srcs = ["main.ts"],
-    declaration = True,
-    source_map = True,
-    tsconfig = "//:tsconfig",
-    deps = ["//web/poc/gcsapi"],
-)
 
 js_test(
     name = "state_test",
@@ -28,24 +14,24 @@ js_test(
 
 exports_files(["index.html"])
 
-npm_package(
-    name = "ui",
-    srcs = [
-        "package.json",
-        ":ui_lib",
-    ],
-    visibility = ["//:__pkg__"],
-)
-
 ts_project(
     name = "ui_tests",
     testonly = True,
     srcs = ["state.test.ts"],
     declaration = True,
     source_map = True,
-    tsconfig = "//:tsconfig",
+    tsconfig = "//web:tsconfig",
     deps = [
-        "//:node_modules/@types/node",
+        "//web:node_modules/@types/node",
         "//web/poc/gcsapi",
     ],
+)
+
+ts_project(
+    name = "ui",
+    srcs = ["main.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+    deps = ["//web/poc/gcsapi"],
 )

@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@webcad/ui':
         specifier: workspace:*
-        version: link:web/poc/ui
+        version: link:poc/ui
     devDependencies:
       '@types/node':
         specifier: ^20.11.0
@@ -19,7 +19,7 @@ importers:
         specifier: 5.3.3
         version: 5.3.3
 
-  web/poc/ui: {}
+  poc/ui: {}
 
 packages:
 

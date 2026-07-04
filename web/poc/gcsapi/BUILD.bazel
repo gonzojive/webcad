@@ -8,5 +8,5 @@ ts_project(
     srcs = ["gcsapi.ts"],
     declaration = True,
     source_map = True,
-    tsconfig = "//:tsconfig",
+    tsconfig = "//web:tsconfig",
 )

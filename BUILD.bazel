@@ -1,10 +1,7 @@
 load("@aspect_gazelle_prebuilt//:def.bzl", "aspect_gazelle")
-load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
-load("@npm//:defs.bzl", "npm_link_all_packages")
 
 # gazelle:prefix github.com/gonzojive/webcad
 # gazelle:map_kind js_test js_test //web:defs.bzl
-# gazelle:js_tsconfig_file tsconfig.json
 
 aspect_gazelle(
     name = "gazelle",
@@ -14,12 +11,4 @@ aspect_gazelle(
         "proto",
     ],
     repo_config = "@bazel_gazelle_go_repository_config//:WORKSPACE",
-)
-
-npm_link_all_packages(name = "node_modules")
-
-ts_config(
-    name = "tsconfig",
-    src = "tsconfig.json",
-    visibility = ["//visibility:public"],
 )

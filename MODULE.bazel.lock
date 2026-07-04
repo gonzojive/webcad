@@ -352,7 +352,7 @@
     "@@aspect_rules_ts+//ts:extensions.bzl%ext": {
       "general": {
         "bzlTransitiveDigest": "rbPqjYi9kqrRFNA29YhhWlyN4aGZAxm0n5MJaNEYqhc=",
-        "usagesDigest": "lvaS7gE8ZvwLgIEbrmvTOJWkeyul46LNizDoIwsOFY0=",
+        "usagesDigest": "JRhtv2pHTlLDI+vy58TEAbjOcHaMT+NpMmY1In45Zww=",
         "recordedInputs": [
           "REPO_MAPPING:aspect_rules_ts+,bazel_tools bazel_tools"
         ],
@@ -362,7 +362,7 @@
             "attributes": {
               "bzlmod": true,
               "version": "",
-              "version_from": "@@//:package.json",
+              "version_from": "@@//web:package.json",
               "integrity": "",
               "build_file": "@@aspect_rules_ts+//ts:BUILD.typescript",
               "build_file_substitutions": {
