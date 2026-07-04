@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "poc_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/gonzojive/webcad/web/poc",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//web/server",
+    ],
+)
+
+go_binary(
+    name = "poc",
+    data = [
+        "//web/poc/gcsapi",
+        "//web/poc/solver-wasm:solver_wasm_bindgen",
+        "//web/poc/ui",
+        "//web/poc/ui:index.html",
+    ],
+    embed = [":poc_lib"],
+    tags = ["ibazel_notify_changes"],
+    visibility = ["//visibility:public"],
+)

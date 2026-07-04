@@ -1,0 +1,44 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("//web:defs.bzl", "js_test")
+
+package(default_visibility = ["//visibility:public"])
+
+js_test(
+    name = "state_test",
+    data = [
+        "package.json",
+        ":ui_tests",
+    ],
+    entry_point = "state.test.js",
+)
+
+exports_files(["index.html"])
+
+ts_project(
+    name = "ui_tests",
+    testonly = True,
+    srcs = ["state.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+    deps = [
+        ":ui",
+        "//web:node_modules/@types/node",
+    ],
+)
+
+ts_project(
+    name = "ui",
+    srcs = [
+        "main.ts",
+        "sidebar.ts",
+        "solver.ts",
+        "state.ts",
+        "store.ts",
+        "viewport.ts",
+    ],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+    deps = ["//web/poc/gcsapi"],
+)

@@ -1,0 +1,38 @@
+#!/bin/bash
+# Script to tidy all package manager and build manager files in the workspace.
+set -e
+
+# Change to the root of the workspace (where this script resides parent)
+cd "$(dirname "$0")/.."
+
+echo "=== Tidying Bazel Modules ==="
+bazel mod tidy
+
+echo "=== Applying workarounds for bazel mod tidy bugs ==="
+# Workaround for: bazel mod tidy removes bazel_gazelle_go_repository_config
+# which is required by aspect_gazelle.
+python3 -c '
+import re
+
+with open("MODULE.bazel", "r") as f:
+    content = f.read()
+
+pattern = r"use_repo\(\s*go_deps\s*,([^)]*)\)"
+match = re.search(pattern, content)
+if match:
+    repos = [r.strip().strip("\"") for r in match.group(1).split(",") if r.strip()]
+    if "bazel_gazelle_go_repository_config" not in repos:
+        repos.append("bazel_gazelle_go_repository_config")
+        repos.sort()
+        repos_str = ", ".join(f"\"{r}\"" for r in repos)
+        replacement = f"use_repo(go_deps, {repos_str})"
+        content = re.sub(pattern, replacement, content)
+        with open("MODULE.bazel", "w") as f:
+            f.write(content)
+'
+
+echo "=== Running Gazelle ==="
+./devtools/gaz
+
+echo "=== Tidying pnpm dependencies ==="
+bazel run -- @pnpm//:pnpm --dir "$PWD/web" install --lockfile-only
