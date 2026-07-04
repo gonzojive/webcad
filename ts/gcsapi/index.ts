@@ -321,66 +321,73 @@ export class GCSSolver {
         const goConstraints: any[] = [];
         
         for (const c of constraints) {
-            switch (c.type) {
-                case 'coincident':
-                    goConstraints.push({
-                        id: c.id,
-                        coincidence: { entityA: c.p1Id, entityB: c.p2Id }
-                    });
-                    break;
-                case 'distance':
-                    goConstraints.push({
-                        id: c.id,
-                        distance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
-                    });
-                    break;
-                case 'horizontalDistance':
-                    goConstraints.push({
-                        id: c.id,
-                        horizontalDistance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
-                    });
-                    break;
-                case 'verticalDistance':
-                    goConstraints.push({
-                        id: c.id,
-                        verticalDistance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
-                    });
-                    break;
-                case 'pointLineDistance':
-                    goConstraints.push({
-                        id: c.id,
-                        distance: { entityA: c.pointId, entityB: c.lineId, value: c.value }
-                    });
-                    break;
-                case 'horizontal':
-                    goConstraints.push({
-                        id: c.id,
-                        horizontal: { lineId: c.lineId }
-                    });
-                    break;
-                case 'vertical':
-                    goConstraints.push({
-                        id: c.id,
-                        vertical: { lineId: c.lineId }
-                    });
-                    break;
-                case 'parallel':
-                    goConstraints.push({
-                        id: c.id,
-                        parallel: { lineA: c.line1Id, lineB: c.line2Id }
-                    });
-                    break;
-                case 'perpendicular':
-                    goConstraints.push({
-                        id: c.id,
-                        perpendicular: { lineA: c.line1Id, lineB: c.line2Id }
-                    });
-                    break;
+            const mapped = this.mapSingleConstraintToGo(c);
+            if (mapped) {
+                goConstraints.push(mapped);
             }
         }
 
-        // Map fixed points to FixedConstraints
-        for (const p of state.points) {
+        goConstraints.push(...this.mapFixedPointsToGo(state.points));
+        goConstraints.push(...this.mapFixedCirclesToGo(state.circles));
+
+        return goConstraints;
+    }
+
+    private mapSingleConstraintToGo(c: GCSConstraint): any {
+        switch (c.type) {
+            case 'coincident':
+                return {
+                    id: c.id,
+                    coincidence: { entityA: c.p1Id, entityB: c.p2Id }
+                };
+            case 'distance':
+                return {
+                    id: c.id,
+                    distance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
+                };
+            case 'horizontalDistance':
+                return {
+                    id: c.id,
+                    horizontalDistance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
+                };
+            case 'verticalDistance':
+                return {
+                    id: c.id,
+                    verticalDistance: { entityA: c.p1Id, entityB: c.p2Id, value: c.value }
+                };
+            case 'pointLineDistance':
+                return {
+                    id: c.id,
+                    distance: { entityA: c.pointId, entityB: c.lineId, value: c.value }
+                };
+            case 'horizontal':
+                return {
+                    id: c.id,
+                    horizontal: { lineId: c.lineId }
+                };
+            case 'vertical':
+                return {
+                    id: c.id,
+                    vertical: { lineId: c.lineId }
+                };
+            case 'parallel':
+                return {
+                    id: c.id,
+                    parallel: { lineA: c.line1Id, lineB: c.line2Id }
+                };
+            case 'perpendicular':
+                return {
+                    id: c.id,
+                    perpendicular: { lineA: c.line1Id, lineB: c.line2Id }
+                };
+            default:
+                return null;
+        }
+    }
+
+    private mapFixedPointsToGo(points: GCSPoint[]): any[] {
+        const goConstraints: any[] = [];
+        for (const p of points) {
             if (p.fixed) {
                 goConstraints.push({
                     id: `fixed-${p.id}`,
@@ -388,9 +395,12 @@ export class GCSSolver {
                 });
             }
         }
+        return goConstraints;
+    }
 
-        // Map fixed radius circles to FixedConstraints
-        for (const c of state.circles) {
+    private mapFixedCirclesToGo(circles: GCSCircle[]): any[] {
+        const goConstraints: any[] = [];
+        for (const c of circles) {
             if (c.fixedRadius) {
                 goConstraints.push({
                     id: `fixed-${c.id}`,
@@ -398,7 +408,6 @@ export class GCSSolver {
                 });
             }
         }
-
         return goConstraints;
     }
 

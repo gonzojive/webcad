@@ -18,6 +18,10 @@ load("@npm//:defs.bzl", "npm_link_all_packages")
 # gazelle:resolve ts @angular/platform-browser-dynamic //web:node_modules/@angular/platform-browser-dynamic
 # gazelle:resolve ts rxjs //web:node_modules/rxjs
 # gazelle:resolve ts zone.js //web:node_modules/zone.js
+# gazelle:resolve js @angular/compiler //web:node_modules/@angular/compiler
+# gazelle:resolve ts @angular/compiler //web:node_modules/@angular/compiler
+# gazelle:resolve js jsdom //web:node_modules/jsdom
+# gazelle:resolve ts jsdom //web:node_modules/jsdom
 package(default_visibility = ["//visibility:public"])
 
 npm_link_all_packages(name = "node_modules")

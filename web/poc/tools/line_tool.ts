@@ -1,6 +1,7 @@
 import { Tool, ToolContext } from './tool.js';
 import { Vector2D, dist } from '../geometry/vector.js';
 import { IRenderer, IInteractionProvider } from '../ui/interfaces/viewport_interfaces.js';
+import { snapPoint } from '../geometry/snap.js';
 
 export class LineTool implements Tool {
     readonly name = 'line';
@@ -109,38 +110,14 @@ export class LineTool implements Tool {
         interaction: IInteractionProvider,
         renderer: IRenderer
     ): Vector2D {
-        // 1. Snap to existing points
-        const hoveredEntityId = interaction.getEntityAt(pos);
-        if (hoveredEntityId) {
-            const pt = context.getPoint(hoveredEntityId);
-            if (pt) return pt;
-        }
-
-        // 2. Snap to horizontal / vertical from startPoint (zoom-independent)
-        if (this.startPointId) {
-            const startPt = context.getPoint(this.startPointId);
-            if (startPt) {
-                const screenPos = renderer.sketchToScreen(pos);
-                const screenStart = renderer.sketchToScreen(startPt);
-                
-                const snapThresholdPx = 10; // 10 pixels
-                
-                let snappedScreenX = screenPos.x;
-                let snappedScreenY = screenPos.y;
-                
-                if (Math.abs(screenPos.y - screenStart.y) < snapThresholdPx) {
-                    snappedScreenY = screenStart.y; // horizontal snap in screen space
-                }
-                if (Math.abs(screenPos.x - screenStart.x) < snapThresholdPx) {
-                    snappedScreenX = screenStart.x; // vertical snap in screen space
-                }
-                
-                if (snappedScreenX !== screenPos.x || snappedScreenY !== screenPos.y) {
-                    return renderer.screenToSketch({ x: snappedScreenX, y: snappedScreenY });
-                }
-            }
-        }
-
-        return pos;
+        const startPt = this.startPointId ? (context.getPoint(this.startPointId) ?? null) : null;
+        return snapPoint({
+            pos,
+            entitiesAtPos: p => interaction.getEntityAt(p),
+            getPointById: id => context.getPoint(id),
+            startPoint: startPt,
+            sketchToScreen: p => renderer.sketchToScreen(p),
+            screenToSketch: p => renderer.screenToSketch(p)
+        });
     }
 }

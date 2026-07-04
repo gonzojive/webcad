@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Document, createEmptyDocument } from '../../../model/document.js';
-import { SketchModel, cloneSketch, createEmptySketch } from '../../../model/sketch.js';
+import { SketchModel, createEmptySketch, cloneSketchForMutation } from '../../../model/sketch.js';
 import { HistoryManager } from '../../../model/history.js';
 import { GCSBridge } from '../../../model/gcs_bridge.js';
 import { Vector2D } from '../../../geometry/vector.js';
@@ -164,14 +164,20 @@ export class WorkspaceService implements ToolContext {
 
     addPoint(pos: Vector2D): string {
         const id = this.generateNextId('P');
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         sketch.points.push({ id, x: pos.x, y: pos.y });
         this.updateSketch(sketch, false);
         return id;
     }
 
     updatePointPosition(id: string, pos: Vector2D) {
-        const sketch = cloneSketch(this.document().sketch);
+        const currentSketch = this.document().sketch;
+        const pCurrent = currentSketch.points.find(x => x.id === id);
+        if (pCurrent && pCurrent.x === pos.x && pCurrent.y === pos.y) {
+            return; // No-op, position didn't change
+        }
+
+        const sketch = cloneSketchForMutation(currentSketch);
         const p = sketch.points.find(x => x.id === id);
         if (p) {
             p.x = pos.x;
@@ -182,7 +188,7 @@ export class WorkspaceService implements ToolContext {
 
     addLine(p1Id: string, p2Id: string): string {
         const id = this.generateNextId('L');
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         sketch.lines.push({ id, p1Id, p2Id });
         this.updateSketch(sketch, false);
         return id;
@@ -190,14 +196,14 @@ export class WorkspaceService implements ToolContext {
 
     addCircle(centerId: string, radius: number): string {
         const id = this.generateNextId('C');
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         sketch.circles.push({ id, centerId, radius });
         this.updateSketch(sketch, false);
         return id;
     }
 
     addConstraint(constraint: GCSConstraint): string {
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         constraint.id = this.makeUniqueConstraintId(constraint.id, sketch);
         sketch.constraints.push(constraint);
         this.updateSketch(sketch, false);
@@ -215,7 +221,7 @@ export class WorkspaceService implements ToolContext {
     }
 
     togglePointFixed(pointId: string) {
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         const p = sketch.points.find(x => x.id === pointId);
         if (p) {
             p.fixed = !p.fixed;
@@ -226,7 +232,7 @@ export class WorkspaceService implements ToolContext {
     }
 
     deleteEntity(id: string, commit = true) {
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         
         sketch.points = sketch.points.filter(p => p.id !== id);
         sketch.lines = sketch.lines.filter(l => l.id !== id && l.p1Id !== id && l.p2Id !== id);
@@ -265,7 +271,7 @@ export class WorkspaceService implements ToolContext {
         const selected = this.selectedEntityIds();
         if (selected.length === 0) return;
 
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         
         sketch.points = sketch.points.filter(p => !selected.includes(p.id));
         sketch.lines = sketch.lines.filter(l => !selected.includes(l.id));
@@ -299,7 +305,7 @@ export class WorkspaceService implements ToolContext {
     }
 
     deleteConstraint(constraintId: string) {
-        const sketch = cloneSketch(this.document().sketch);
+        const sketch = cloneSketchForMutation(this.document().sketch);
         sketch.constraints = sketch.constraints.filter(c => c.id !== constraintId);
         this.updateSketch(sketch, false);
         this.solve();

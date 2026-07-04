@@ -4,7 +4,10 @@ package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "viewport",
-    srcs = ["viewport.component.ts"],
+    srcs = [
+        "annotation_drawer.ts",
+        "viewport.component.ts",
+    ],
     declaration = True,
     source_map = True,
     tsconfig = "//web/poc/ui:tsconfig",

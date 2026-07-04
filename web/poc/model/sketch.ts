@@ -5,6 +5,7 @@ export interface SketchModel {
     lines: GCSLine[];
     circles: GCSCircle[];
     constraints: GCSConstraint[];
+    revision?: number;
 }
 
 export function createEmptySketch(): SketchModel {
@@ -12,7 +13,8 @@ export function createEmptySketch(): SketchModel {
         points: [],
         lines: [],
         circles: [],
-        constraints: []
+        constraints: [],
+        revision: 0
     };
 }
 
@@ -25,6 +27,13 @@ export function cloneSketch(sketch: SketchModel): SketchModel {
             // Shallow clone of constraints is fine since they are simple objects, 
             // but we can deep copy if needed.
             return { ...c } as GCSConstraint;
-        })
+        }),
+        revision: sketch.revision
     };
+}
+
+export function cloneSketchForMutation(sketch: SketchModel): SketchModel {
+    const cloned = cloneSketch(sketch);
+    cloned.revision = (sketch.revision ?? 0) + 1;
+    return cloned;
 }

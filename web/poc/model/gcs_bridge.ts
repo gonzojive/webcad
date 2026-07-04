@@ -1,5 +1,10 @@
-import { GCSSolver, GCSSketchState } from '../../../ts/gcsapi/dist/index.js';
+import { GCSSolver, GCSSketchState, GCSPoint, GCSCircle, SolverResult } from '../../../ts/gcsapi/dist/index.js';
 import { SketchModel, cloneSketch } from './sketch.js';
+
+interface DragOverride {
+    point: GCSPoint;
+    originalFixedState: boolean;
+}
 
 export class GCSBridge {
     private readonly gcs = new GCSSolver();
@@ -20,12 +25,7 @@ export class GCSBridge {
         const cloned = cloneSketch(sketch);
 
         // Temporarily fix the dragged point so the GCS solves around it
-        let tempFixedPoint = cloned.points.find(p => p.id === draggedPointId);
-        let originalFixedState = false;
-        if (tempFixedPoint) {
-            originalFixedState = !!tempFixedPoint.fixed;
-            tempFixedPoint.fixed = true;
-        }
+        const override = this.applyDragOverride(cloned, draggedPointId);
 
         const state: GCSSketchState = {
             points: cloned.points,
@@ -37,39 +37,53 @@ export class GCSBridge {
         try {
             const result = this.gcs.solve(state);
 
-            // Restore original fixed state
-            if (tempFixedPoint) {
-                tempFixedPoint.fixed = originalFixedState;
-            }
+            this.restoreDragOverride(override);
 
             if (result.success) {
-                // Update point positions
-                result.points.forEach((sp: any) => {
-                    const p = cloned.points.find(x => x.id === sp.id);
-                    if (p) {
-                        p.x = sp.x;
-                        p.y = sp.y;
-                    }
-                });
-
-                // Update circle radius values
-                result.circles.forEach((sc: any) => {
-                    const c = cloned.circles.find(x => x.id === sc.id);
-                    if (c) {
-                        c.radius = sc.radius;
-                    }
-                });
-
+                this.applySolveResult(cloned, result);
                 return { success: true, sketch: cloned };
             } else {
                 return { success: false, sketch, error: result.error || 'Over-constrained' };
             }
         } catch (e: any) {
-            // Restore original fixed state on crash
-            if (tempFixedPoint) {
-                tempFixedPoint.fixed = originalFixedState;
-            }
+            this.restoreDragOverride(override);
             return { success: false, sketch, error: e.message || String(e) };
         }
+    }
+
+    private applyDragOverride(sketch: SketchModel, draggedPointId: string | null): DragOverride | null {
+        if (!draggedPointId) return null;
+        const tempFixedPoint = sketch.points.find(p => p.id === draggedPointId);
+        if (tempFixedPoint) {
+            const originalFixedState = !!tempFixedPoint.fixed;
+            tempFixedPoint.fixed = true;
+            return { point: tempFixedPoint, originalFixedState };
+        }
+        return null;
+    }
+
+    private restoreDragOverride(override: DragOverride | null): void {
+        if (override) {
+            override.point.fixed = override.originalFixedState;
+        }
+    }
+
+    private applySolveResult(sketch: SketchModel, result: SolverResult): void {
+        // Update point positions
+        result.points.forEach((sp) => {
+            const p = sketch.points.find(x => x.id === sp.id);
+            if (p) {
+                p.x = sp.x;
+                p.y = sp.y;
+            }
+        });
+
+        // Update circle radius values
+        result.circles.forEach((sc) => {
+            const c = sketch.circles.find(x => x.id === sc.id);
+            if (c) {
+                c.radius = sc.radius;
+            }
+        });
     }
 }

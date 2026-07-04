@@ -1,4 +1,5 @@
 node_modules
+web/node_modules
 web/poc/ui/node_modules
 web/poc/gcsapi/node_modules
 

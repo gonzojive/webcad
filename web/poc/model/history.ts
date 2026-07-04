@@ -17,8 +17,14 @@ export class HistoryManager {
     pushState(state: SketchModel) {
         // Only push if the state has changed from the top of the stack
         const current = this.getCurrentState();
-        if (current && JSON.stringify(current) === JSON.stringify(state)) {
-            return;
+        if (current) {
+            if (current.revision !== undefined && state.revision !== undefined) {
+                if (current.revision === state.revision) {
+                    return;
+                }
+            } else if (JSON.stringify(current) === JSON.stringify(state)) {
+                return;
+            }
         }
 
         this.undoStack.push(cloneSketch(state));

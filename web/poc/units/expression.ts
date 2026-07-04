@@ -14,6 +14,44 @@ type SymbolToken = { type: 'SYMBOL'; value: string };
 type OperatorToken = { type: 'OPERATOR'; value: '+' | '-' | '*' | '/' | '(' | ')' };
 
 
+function readNumberToken(str: string, startIndex: number): { token: Token; nextIndex: number } {
+  let i = startIndex;
+  const char = str[i];
+  let valStr = '';
+  if (char === '.') {
+     if (i + 1 < str.length && /[0-9]/.test(str[i+1])) {
+       valStr += char;
+       i++;
+     } else {
+       throw new Error(`Unexpected character: ${char}`);
+     }
+  }
+  while (i < str.length && /[0-9.]/.test(str[i])) {
+    if (str[i] === '.' && valStr.includes('.')) {
+      break;
+    }
+    valStr += str[i];
+    i++;
+  }
+  return { token: { type: 'NUMBER', value: parseFloat(valStr) }, nextIndex: i };
+}
+
+function readSymbolToken(str: string, startIndex: number): { token: Token; nextIndex: number } {
+  let i = startIndex;
+  const char = str[i];
+  let valStr = '';
+  if (char === "'" || char === '"') {
+    valStr = char;
+    i++;
+  } else {
+    while (i < str.length && /[a-zA-Z]/.test(str[i])) {
+      valStr += str[i];
+      i++;
+    }
+  }
+  return { token: { type: 'SYMBOL', value: valStr }, nextIndex: i };
+}
+
 export function tokenize(str: string): Token[] {
   const tokens: Token[] = [];
   let i = 0;
@@ -29,37 +67,15 @@ export function tokenize(str: string): Token[] {
       continue;
     }
     if (/[0-9.]/.test(char)) {
-      let valStr = '';
-      if (char === '.') {
-         if (i + 1 < str.length && /[0-9]/.test(str[i+1])) {
-           valStr += char;
-           i++;
-         } else {
-           throw new Error(`Unexpected character: ${char}`);
-         }
-      }
-      while (i < str.length && /[0-9.]/.test(str[i])) {
-        if (str[i] === '.' && valStr.includes('.')) {
-          break;
-        }
-        valStr += str[i];
-        i++;
-      }
-      tokens.push({ type: 'NUMBER', value: parseFloat(valStr) });
+      const res = readNumberToken(str, i);
+      tokens.push(res.token);
+      i = res.nextIndex;
       continue;
     }
     if (/[a-zA-Z'"]/.test(char)) {
-      let valStr = '';
-      if (char === "'" || char === '"') {
-        valStr = char;
-        i++;
-      } else {
-        while (i < str.length && /[a-zA-Z]/.test(str[i])) {
-          valStr += str[i];
-          i++;
-        }
-      }
-      tokens.push({ type: 'SYMBOL', value: valStr });
+      const res = readSymbolToken(str, i);
+      tokens.push(res.token);
+      i = res.nextIndex;
       continue;
     }
     throw new Error(`Unexpected character: ${char} at index ${i}`);

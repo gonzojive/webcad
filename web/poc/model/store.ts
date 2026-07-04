@@ -25,13 +25,7 @@ export class SketchStore {
             const db = await this.getDB();
             const tx = db.transaction(this.storeName, 'readwrite');
             const store = tx.objectStore(this.storeName);
-            const state: GCSSketchState = {
-                points: sketch.points,
-                lines: sketch.lines,
-                circles: sketch.circles,
-                constraints: sketch.constraints
-            };
-            store.put(state, this.key);
+            store.put(sketch, this.key);
         } catch (e) {
             console.error('Failed to save sketch to IndexedDB:', e);
         }
@@ -46,13 +40,14 @@ export class SketchStore {
             
             return new Promise<SketchModel | null>((resolve) => {
                 request.onsuccess = () => {
-                    const state = request.result as GCSSketchState | undefined;
-                    if (state) {
+                    const saved = request.result as SketchModel | undefined;
+                    if (saved) {
                         resolve({
-                            points: state.points || [],
-                            lines: state.lines || [],
-                            circles: state.circles || [],
-                            constraints: state.constraints || []
+                            points: saved.points || [],
+                            lines: saved.lines || [],
+                            circles: saved.circles || [],
+                            constraints: saved.constraints || [],
+                            revision: saved.revision !== undefined ? saved.revision : 0
                         });
                     } else {
                         resolve(null);

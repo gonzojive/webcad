@@ -6,6 +6,7 @@ ts_project(
     name = "geometry",
     srcs = [
         "project.ts",
+        "snap.ts",
         "vector.ts",
     ],
     declaration = True,
