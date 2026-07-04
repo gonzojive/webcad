@@ -1,0 +1,6 @@
+{
+  "//": "Defines the UI application package.",
+  "name": "@webcad/ui",
+  "version": "0.0.1",
+  "type": "module"
+}

@@ -1,4 +1,17 @@
-load("@gazelle//:def.bzl", "gazelle")
+# We use the prebuilt aspect_gazelle to speed up builds. If we need to write
+# custom Gazelle extensions in the future (e.g. for custom code generation),
+# we can switch this load to a source-compiled Gazelle target.
+load("@aspect_gazelle_prebuilt//:def.bzl", "aspect_gazelle")
 
 # gazelle:prefix github.com/gonzojive/webcad
-gazelle(name = "gazelle")
+# gazelle:map_kind js_test js_test //web:defs.bzl
+
+aspect_gazelle(
+    name = "gazelle",
+    languages = [
+        "go",
+        "js",
+        "proto",
+    ],
+    repo_config = "@bazel_gazelle_go_repository_config//:WORKSPACE",
+)

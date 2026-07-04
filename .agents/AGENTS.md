@@ -22,7 +22,9 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **Fast feedback loop**: Favor small, incremental changes.
 - **Unit testing**: Get into a fast iteration loop quickly using tools like unit tests. Avoid running long-running processes or broad execution commands when localized tests can verify correctness.
 - **Bazel tooling**: Always use Bazel to build, test, and run code in this repository. Avoid using native toolchains directly (e.g., `go run`, `go build`, `go test`). Use commands like `bazel build //...` and `bazel test //...` to compile and verify changes.
-- **Gazelle build generator**: Use Gazelle to manage and generate `BUILD.bazel` files for Go packages. Run `./devtools/gaz` to automatically update or regenerate targets whenever Go source files, imports, or dependencies in `go.mod` change.
+- **Gazelle build generator**: Use Gazelle to manage and generate `BUILD.bazel` files for Go and TypeScript packages. Run `./devtools/gaz` to automatically update or regenerate targets whenever source files, imports, or dependencies in `go.mod` or `package.json` change.
+- **Frontend development guide**: For details on how to build, test, and run the frontend with live reload, refer to [web/README.md](file:///usr/local/google/home/reddaly/.gemini/jetski/worktrees/webcad2/implement-bazel-frontend-phase1/web/README.md).
+
 
 ## Markdown document formatting
 - **Footnotes**: Markdown (`.md`) documents should use footnotes (`[^1]`) to explain reasoning, relationships, and context for decisions rather than just providing academic references.
@@ -33,6 +35,8 @@ All agentic AI coding assistants working in this repository must adhere to the f
   - **Allowed scopes**: `solver` (GCS engine), `ui` (viewport, canvas, frontend), `research` (research documents), `ci` (workflows)
 - **No force pushes**: Do not force push to active pull request branches, as this dislocates reviewer comments. Instead, merge updates or append new commits. The squash merge at pull request submission will clean up the commit history.
 - **Meaningful PR descriptions**: Do not use generic headers like `# Description` at the beginning of a pull request description. The first line of the PR description should be a meaningful and concise summary of the change, because when squashed, this first line will be visible in the git commit log.
+- **No internal tags**: Do not include internal tracking tags (such as `TAG=agy` or `CONV=...`) in Git commit messages or Pull Request descriptions in this public repository.
+
 
 
 

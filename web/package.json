@@ -1,0 +1,16 @@
+{
+  "//": "Root workspace configuration. Defines the monorepo packages and shared development dependencies.",
+  "name": "webcad-root",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "5.3.3"
+  },
+  "dependencies": {
+    "@webcad/ui": "workspace:*"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}

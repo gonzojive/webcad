@@ -8,3 +8,7 @@
 # Bazel local user configurations
 *.user.bazelrc
 user.bazelrc
+
+# Node dependencies
+node_modules/
+

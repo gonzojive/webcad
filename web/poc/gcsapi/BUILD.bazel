@@ -1,0 +1,12 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+# Managed by Gazelle
+ts_project(
+    name = "gcsapi",
+    srcs = ["gcsapi.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+)

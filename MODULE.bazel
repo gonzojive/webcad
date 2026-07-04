@@ -15,7 +15,7 @@ go_sdk.download(version = "1.25.0")
 # Configure Gazelle to use go.mod
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
-use_repo(go_deps, "org_golang_google_protobuf", "org_gonum_v1_gonum")
+use_repo(go_deps, "bazel_gazelle_go_repository_config", "org_golang_google_protobuf", "org_gonum_v1_gonum")
 
 bazel_dep(name = "rules_rust", version = "0.71.3")
 
@@ -43,13 +43,37 @@ crate.from_cargo(
     ],
 )
 crate.annotation(
-    crate = "yeslogic-fontconfig-sys",
     build_script_env = {
         "RUST_FONTCONFIG_DLOPEN": "1",
     },
+    crate = "yeslogic-fontconfig-sys",
 )
 crate.annotation(
     crate = "font-kit",
     crate_features = ["source-fontconfig-dlopen"],
 )
 use_repo(crate, "crates")
+
+bazel_dep(name = "rules_nodejs", version = "6.7.4")
+bazel_dep(name = "aspect_rules_js", version = "3.1.2")
+bazel_dep(name = "aspect_rules_ts", version = "3.1.0")
+bazel_dep(name = "aspect_gazelle_prebuilt", version = "0.0.22")
+
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(node_version = "20.11.1")
+use_repo(node, "nodejs_toolchains")
+
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependency = True)
+npm.npm_translate_lock(
+    name = "npm",
+    npm_package_target_name = "{dirname}",
+    pnpm_lock = "//web:pnpm-lock.yaml",
+)
+use_repo(npm, "npm")
+
+pnpm = use_extension("@aspect_rules_js//npm:extensions.bzl", "pnpm", dev_dependency = True)
+use_repo(pnpm, "pnpm")
+
+rules_ts = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext", dev_dependency = True)
+rules_ts.deps(ts_version_from = "//web:package.json")
+use_repo(rules_ts, "npm_typescript")

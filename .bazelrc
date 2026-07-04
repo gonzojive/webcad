@@ -1,2 +1,7 @@
 # Enable precompiled protoc binaries from official releases to avoid building protoc from source
 common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc=true
+
+# aspect_rules_ts flags
+build --@aspect_rules_ts//ts:default_to_tsc_transpiler
+build --@aspect_rules_ts//ts:skipLibCheck=always
+
