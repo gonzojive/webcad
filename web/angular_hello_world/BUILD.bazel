@@ -11,6 +11,8 @@ ts_project(
         "src/main.ts",
         "src/app/app.component.ts",
     ],
+    declaration = True,
+    source_map = True,
     tsconfig = "tsconfig.json",
     tsc = ":ngc",
     transpiler = "tsc",
@@ -41,6 +43,35 @@ filegroup(
     name = "assets",
     srcs = ["src/index.html"],
     visibility = ["//visibility:public"],
+)
+
+load("//web:defs.bzl", "js_test")
+
+ts_project(
+    name = "test_lib",
+    testonly = True,
+    srcs = ["src/app/app.component.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "tsconfig.json",
+    tsc = ":ngc",
+    transpiler = "tsc",
+    deps = [
+        ":frontend",
+        "//web:node_modules/@types/node",
+        "//web:node_modules/jsdom",
+        "//web:node_modules/@types/jsdom",
+        "//web:node_modules/@angular/compiler",
+    ],
+)
+
+js_test(
+    name = "app_component_test",
+    data = [
+        "tsconfig.json",
+        ":test_lib",
+    ],
+    entry_point = "src/app/app.component.test.js",
 )
 
 
