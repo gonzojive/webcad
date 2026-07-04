@@ -1,0 +1,15 @@
+{
+  "name": "webcad-root",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "5.3.3"
+  },
+  "dependencies": {
+    "@webcad/gcsapi": "workspace:*",
+    "@webcad/ui": "workspace:*"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}

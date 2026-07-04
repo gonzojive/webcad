@@ -1,0 +1,5 @@
+packages:
+  - '.'
+  - 'web/poc/ui'
+  - 'web/poc/gcsapi'
+
