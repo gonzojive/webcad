@@ -10,7 +10,7 @@ import (
 func main() {
 	s := server.New(server.Options{
 		DefaultAddr:      ":8080",
-		WorkspaceName:    "webcad",
+		RlocationRoot:    "webcad/web/poc",
 		WorkspaceSubpath: "web/poc",
 	})
 

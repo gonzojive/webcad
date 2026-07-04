@@ -1,127 +1,125 @@
-// Package runfilesserver provides an [net/http.Handler] that serves files from Bazel runfiles.
+// Package runfilesserver provides utilities to serve Bazel runfiles using Go's [io/fs.FS] interface.
 package runfilesserver
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
-// RunfilesServer implements [net/http.Handler] to serve files from Bazel runfiles.
-// If a file is not found in runfiles, it can delegate to a fallback handler.
-type RunfilesServer struct {
-	workspaceName    string
-	workspaceSubpath string
-	indexHTML        string
-	fallback         http.Handler
-	localOverrideDir string
+// UnionFS implements [io/fs.FS] by trying a primary filesystem first,
+// and falling back to a secondary filesystem if the file is not found.
+type UnionFS struct {
+	Primary   fs.FS
+	Secondary fs.FS
 }
 
-// New creates a new [RunfilesServer] handler.
+// Open implements [io/fs.FS]. It tries the primary FS first, and if it returns
+// an error wrapping [fs.ErrNotExist], it tries the secondary FS.
+func (u *UnionFS) Open(name string) (fs.File, error) {
+	f, err := u.Primary.Open(name)
+	if err == nil {
+		return f, nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return u.Secondary.Open(name)
+	}
+	return nil, err
+}
+
+// New creates an [net/http.Handler] that serves files from Bazel runfiles,
+// falling back to a local filesystem directory if the file is not found in runfiles.
 //
-// The workspaceName is the apparent name of the Bazel workspace (e.g. "webcad").
-// The workspaceSubpath is the path relative to the workspace root containing the assets (e.g. "web/poc").
-// The indexHTML is the path relative to workspaceSubpath to serve at "/" (defaults to "ui/index.html").
-// The fallback handler is called when a file is not found in runfiles (can be nil).
-func New(workspaceName, workspaceSubpath, indexHTML string, fallback http.Handler) *RunfilesServer {
-	if indexHTML == "" {
-		indexHTML = "ui/index.html"
+// The rlocationRoot is the runfiles-root-relative path to the assets directory (e.g. "webcad/web/poc").
+// The fallbackDir is the absolute path to the local workspace directory (e.g. "/path/to/web/poc").
+// If fallbackDir is empty, no fallback is used.
+func New(rlocationRoot string, fallbackDir string) (http.Handler, error) {
+	var fsys fs.FS
+
+	// 1. Initialize Runfiles FS
+	r, err := runfiles.New()
+	if err == nil {
+		// Scope the runfiles FS to the rlocationRoot
+		sub, err := fs.Sub(r, rlocationRoot)
+		if err == nil {
+			fsys = sub
+		} else {
+			log.Printf("runfilesserver: failed to scope runfiles to %s: %v", rlocationRoot, err)
+		}
+	} else {
+		log.Printf("runfilesserver: runfiles.New failed (normal if running outside Bazel): %v", err)
 	}
 
-	return &RunfilesServer{
-		workspaceName:    workspaceName,
-		workspaceSubpath: workspaceSubpath,
-		indexHTML:        indexHTML,
-		fallback:         fallback,
+	// 2. Initialize Fallback FS if provided
+	var fallbackFS fs.FS
+	if fallbackDir != "" {
+		if _, err := os.Stat(fallbackDir); err != nil {
+			return nil, fmt.Errorf("runfilesserver: fallback directory %s invalid: %w", fallbackDir, err)
+		}
+		fallbackFS = os.DirFS(fallbackDir)
 	}
+
+	// 3. Combine them into UnionFS
+	var finalFS fs.FS
+	if fsys != nil && fallbackFS != nil {
+		finalFS = &UnionFS{Primary: fsys, Secondary: fallbackFS}
+	} else if fsys != nil {
+		finalFS = fsys
+	} else if fallbackFS != nil {
+		finalFS = fallbackFS
+	} else {
+		return nil, errors.New("runfilesserver: neither runfiles nor fallback directory could be initialized")
+	}
+
+	// 4. Wrap with http.FileServer and custom middleware
+	fileServer := http.FileServer(http.FS(finalFS))
+	return &runfilesHandler{
+		fsys: finalFS,
+		next: fileServer,
+	}, nil
 }
 
-// SetLocalOverrideDir sets a local directory to serve from directly, bypassing runfiles.
-// Useful for development overrides.
-func (s *RunfilesServer) SetLocalOverrideDir(dir string) {
-	s.localOverrideDir = dir
+// runfilesHandler wraps http.FileServer to enforce MIME types and disable directory listing.
+type runfilesHandler struct {
+	fsys fs.FS
+	next http.Handler
 }
 
-// ServeHTTP implements the [net/http.Handler] interface.
-//
-// It mutates r.URL.Path in-place to clean it and apply the indexHTML fallback
-// before attempting to resolve it or delegating to the fallback handler.
-func (s *RunfilesServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *runfilesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Enforce that path starts with "/" to prevent relative path escaping during Clean.
 	if !strings.HasPrefix(r.URL.Path, "/") {
 		http.Error(w, "Bad Request: path must start with /", http.StatusBadRequest)
 		return
 	}
 
-	origPath := r.URL.Path
-
-	// Clean the path to resolve ".." and "." segments.
-	r.URL.Path = filepath.Clean(r.URL.Path)
-	if r.URL.Path == "/" {
-		r.URL.Path = "/" + s.indexHTML
-	}
-	relPath := strings.TrimPrefix(r.URL.Path, "/")
-
-	// 1. Manual local override (highest priority if set)
-	if s.localOverrideDir != "" {
-		localPath := filepath.Clean(filepath.Join(s.localOverrideDir, relPath))
-		expectedManualPrefix := filepath.Clean(s.localOverrideDir)
-		if !strings.HasPrefix(localPath, expectedManualPrefix) {
-			log.Printf("Security warning: attempted directory traversal in manual override? path=%s, localPath=%s, expectedPrefix=%s", r.URL.Path, localPath, expectedManualPrefix)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+	cleaned := path.Clean(r.URL.Path)
+	
+	// 1. Disable directory listing: if request is for a directory, index.html must exist
+	if strings.HasSuffix(r.URL.Path, "/") || cleaned == "." || cleaned == "/" {
+		relPath := strings.TrimPrefix(cleaned, "/")
+		indexPath := path.Join(relPath, "index.html")
+		f, err := h.fsys.Open(indexPath)
+		if err != nil {
+			// index.html missing or error, return 404 to prevent listing
+			http.NotFound(w, r)
 			return
 		}
-		if _, err := os.Stat(localPath); err == nil {
-			http.ServeFile(w, r, localPath)
-			return
-		}
-		http.NotFound(w, r)
-		return
+		f.Close()
 	}
 
-	// 2. Try Bazel runfiles
-	if s.workspaceName != "" && s.workspaceSubpath != "" {
-		// Construct logical runfiles path (rlocation path): <workspace>/<subpath>/<request_path>
-		runfilesPath := filepath.Clean(filepath.Join(s.workspaceName, s.workspaceSubpath, relPath))
-		expectedRunfilesPrefix := filepath.Clean(filepath.Join(s.workspaceName, s.workspaceSubpath))
-		
-		// Ensure it doesn't escape the workspace subpath (directory traversal protection)
-		if !strings.HasPrefix(runfilesPath, expectedRunfilesPrefix) {
-			log.Printf("Security warning: attempted directory traversal in runfiles? path=%s, runfilesPath=%s, expectedPrefix=%s", r.URL.Path, runfilesPath, expectedRunfilesPrefix)
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		
-		resolvedPath, err := runfiles.Rlocation(runfilesPath)
-		if err == nil {
-			// runfiles.Rlocation might return a path even if the file doesn't exist
-			// (e.g. in directory-based runfiles environments). We must verify existence.
-			if _, err := os.Stat(resolvedPath); err == nil {
-				// Ensure JavaScript module files have the correct MIME type
-				if filepath.Ext(resolvedPath) == ".js" {
-					w.Header().Set("Content-Type", "application/javascript")
-				} else if filepath.Ext(resolvedPath) == ".wasm" {
-					w.Header().Set("Content-Type", "application/wasm")
-				}
-				// Restore original path to prevent http.ServeFile from redirecting
-				// requests that we internally rewrote (like "/" to "/ui/index.html").
-				r.URL.Path = origPath
-				http.ServeFile(w, r, resolvedPath)
-				return
-			}
-		}
+	// 2. Set explicit MIME types for files that might not be registered in the host OS
+	if strings.HasSuffix(cleaned, ".js") {
+		w.Header().Set("Content-Type", "application/javascript")
+	} else if strings.HasSuffix(cleaned, ".wasm") {
+		w.Header().Set("Content-Type", "application/wasm")
 	}
 
-	// 3. Fallback handler
-	if s.fallback != nil {
-		s.fallback.ServeHTTP(w, r)
-		return
-	}
-
-	log.Printf("File not found: %s", r.URL.Path)
-	http.NotFound(w, r)
+	h.next.ServeHTTP(w, r)
 }
