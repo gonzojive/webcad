@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@mcp-hub/browser-client": "workspace:*",
+    "@resvg/resvg-wasm": "^2.6.2",
     "@webcad/ui": "workspace:*",
     "@angular/common": "^18.0.0",
     "@angular/compiler": "^18.0.0",

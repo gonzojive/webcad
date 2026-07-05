@@ -7,6 +7,7 @@
     "@angular/common": "^18.0.0",
     "@angular/core": "^18.0.0",
     "@mcp-hub/browser-client": "workspace:*",
+    "@resvg/resvg-wasm": "^2.6.2",
     "rxjs": "^7.8.0",
     "tslib": "^2.6.2"
   },

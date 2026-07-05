@@ -7,6 +7,7 @@ import { projectPointOntoLine } from '../../../geometry/project.js';
 import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 import { AnnotationDrawer } from './annotation_drawer.js';
 import { exportToSVG } from './svg_exporter.js';
+import { rasterizeSVG } from './png_rasterizer.js';
 
 declare const Konva: any;
 
@@ -245,10 +246,9 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         };
     }
 
-    toRasterImage(): string {
+    async toRasterImage(): Promise<string> {
         const svg = this.toSVG();
-        const base64 = btoa(unescape(encodeURIComponent(svg)));
-        return `data:image/svg+xml;base64,${base64}`;
+        return rasterizeSVG(svg);
     }
 
     toSVG(options?: {

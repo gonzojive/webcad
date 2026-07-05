@@ -38,6 +38,13 @@ genrule(
     cmd = "cp $< $@",
 )
 
+genrule(
+    name = "copy_resvg_wasm",
+    srcs = ["//web:node_modules/@resvg/resvg-wasm/dir"],
+    outs = ["resvg_index_bg.wasm"],
+    cmd = "cp $(location //web:node_modules/@resvg/resvg-wasm/dir)/index_bg.wasm $@",
+)
+
 esbuild(
     name = "bundle",
     entry_point = "main.ts",
@@ -53,6 +60,7 @@ filegroup(
     name = "assets",
     srcs = [
         "index.html",
+        ":copy_resvg_wasm",
         ":wasm_exec.js",
         ":wasm_solver.wasm",
     ],
