@@ -253,6 +253,7 @@ var runCheckCmd = &cobra.Command{
 			})
 			if createErr == nil {
 				checkID = checkRun.GetID()
+				fmt.Fprintf(os.Stderr, "devtool debug: created check run ID=%d, name=%q, url=%s\n", checkRun.GetID(), checkRun.GetName(), checkRun.GetHTMLURL())
 			} else {
 				fmt.Fprintf(os.Stderr, "Warning: failed to create check run: %v\n", createErr)
 			}
@@ -278,7 +279,9 @@ var runCheckCmd = &cobra.Command{
 				Status:     github.String("completed"),
 				Conclusion: github.String(conclusion),
 			})
-			if updateErr != nil {
+			if updateErr == nil {
+				fmt.Fprintf(os.Stderr, "devtool debug: updated check run ID=%d to conclusion=%s\n", checkID, conclusion)
+			} else {
 				fmt.Fprintf(os.Stderr, "Warning: failed to update check run: %v\n", updateErr)
 			}
 		}
