@@ -32,10 +32,6 @@ async function main() {
         throw new Error('Solve failed');
     }
 
-    console.log('Solve succeeded! Point coordinates updated:');
-    workspace.getPoints().forEach(p => {
-        console.log(` - ${p.id}: (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
-    });
 
     // 3. Export GCS-solved sketch to SVG
     console.log('Exporting GCS-solved sketch to SVG...');
