@@ -1,5 +1,8 @@
 import assert from 'node:assert';
 import test from 'node:test';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as url from 'node:url';
 import { GCSPoint, GCSLine } from '../../../../../ts/gcsapi/dist/index.js';
 import { exportToSVG, ISketchWorkspace } from './svg_exporter.js';
 import { rasterizeSVG } from './png_rasterizer.js';
@@ -15,7 +18,7 @@ class MockWorkspace implements ISketchWorkspace {
     getPoint(id: string) { return this.points.find(p => p.id === id); }
 }
 
-test('rasterizeSVG initializes WASM and outputs a valid PNG data URL', async () => {
+test('rasterizeSVG initializes WASM and outputs a valid PNG matching golden reference', async () => {
     const ws = new MockWorkspace();
     ws.points = [
         { id: 'p1', x: 0, y: 0 },
@@ -34,19 +37,38 @@ test('rasterizeSVG initializes WASM and outputs a valid PNG data URL', async () 
     // Rasterize SVG -> PNG via WASM
     const pngDataUrl = await rasterizeSVG(svg);
     
-    // 1. Verify it is a valid data URL
-    assert.ok(pngDataUrl.startsWith('data:image/png;base64,'), 'Should return a PNG base64 data URL');
-
-    // 2. Decode the base64 payload
+    // Decode the base64 payload
     const base64Data = pngDataUrl.substring('data:image/png;base64,'.length);
     const pngBuffer = Buffer.from(base64Data, 'base64');
 
-    // 3. Verify the PNG 8-byte file signature
-    // PNG signature: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
-    const expectedSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-    for (let i = 0; i < expectedSignature.length; i++) {
-        assert.strictEqual(pngBuffer[i], expectedSignature[i], `Byte ${i} should match PNG signature`);
-    }
+    const workspaceDir = process.env.BUILD_WORKSPACE_DIRECTORY;
+    const testdataRelativePath = 'web/poc/ui/app/viewport/testdata/reference_layout.png';
+    const regenerate = process.env.GENERATE_GOLDEN || process.env.REGENERATE || process.argv.includes('--regenerate');
 
-    assert.ok(pngBuffer.byteLength > 100, 'PNG buffer should contain actual file data');
+    if (regenerate && workspaceDir) {
+        // Generate/Overwrite the golden reference file on the host machine
+        const outputPath = path.resolve(workspaceDir, testdataRelativePath);
+        fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+        fs.writeFileSync(outputPath, pngBuffer);
+        console.log(`[GOLDEN] Wrote new golden reference file to: ${outputPath}`);
+    } else {
+        // Compare the generated output bit-for-bit with the reference layout in runfiles
+        const referenceUrl = (import.meta as any).resolve('./testdata/reference_layout.png');
+        const referencePath = url.fileURLToPath(referenceUrl);
+        
+        assert.ok(fs.existsSync(referencePath), `Reference image must exist at: ${referencePath}`);
+        const referenceBuffer = fs.readFileSync(referencePath);
+
+        assert.strictEqual(
+            pngBuffer.byteLength,
+            referenceBuffer.byteLength,
+            'Generated PNG byte size matches reference image exactly'
+        );
+
+        assert.deepStrictEqual(
+            pngBuffer,
+            referenceBuffer,
+            'Generated PNG matches reference image bit-for-bit'
+        );
+    }
 });
