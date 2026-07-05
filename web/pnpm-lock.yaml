@@ -63,6 +63,9 @@ importers:
       '@angular/core':
         specifier: ^18.0.0
         version: 18.2.14(rxjs@7.8.2)(zone.js@0.14.10)
+      '@mcp-hub/browser-client':
+        specifier: workspace:*
+        version: link:../../vendor/@mcp-hub/browser-client
       rxjs:
         specifier: ^7.8.0
         version: 7.8.2
