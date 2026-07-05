@@ -154,27 +154,32 @@ export class AnnotationDrawer {
         const len = Math.hypot(dx, dy);
         if (len === 0) return;
 
-        let nx = 0;
-        let ny = 0;
-        if (type === 'distance') {
-            nx = -dy / len;
-            ny = dx / len;
-        } else if (type === 'horizontalDistance') {
-            nx = 0;
-            ny = 1;
-        } else if (type === 'verticalDistance') {
-            nx = 1;
-            ny = 0;
-        }
-
         const offset = (con as any).layoutOffset !== undefined ? (con as any).layoutOffset : 30;
-        const offX = nx * offset;
-        const offY = ny * offset;
 
-        const ap1X = p1.x + offX;
-        const ap1Y = p1.y + offY;
-        const ap2X = p2.x + offX;
-        const ap2Y = p2.y + offY;
+        let ap1X = 0, ap1Y = 0, ap2X = 0, ap2Y = 0;
+
+        if (type === 'distance') {
+            const nx = -dy / len;
+            const ny = dx / len;
+            const offX = nx * offset;
+            const offY = ny * offset;
+            ap1X = p1.x + offX;
+            ap1Y = p1.y + offY;
+            ap2X = p2.x + offX;
+            ap2Y = p2.y + offY;
+        } else if (type === 'horizontalDistance') {
+            const yLevel = ((p1.y + p2.y) / 2) + offset;
+            ap1X = p1.x;
+            ap1Y = yLevel;
+            ap2X = p2.x;
+            ap2Y = yLevel;
+        } else if (type === 'verticalDistance') {
+            const xLevel = ((p1.x + p2.x) / 2) + offset;
+            ap1X = xLevel;
+            ap1Y = p1.y;
+            ap2X = xLevel;
+            ap2Y = p2.y;
+        }
 
         if (type === 'horizontalDistance') {
             const ext1 = new Konva.Line({ points: [p1.x, p1.y, p1.x, ap1Y], stroke: 'rgba(148, 163, 184, 0.4)', strokeWidth: 1 * invS, dash: [4, 4] });
@@ -397,30 +402,33 @@ export class AnnotationDrawer {
         const len = Math.hypot(dx, dy);
         if (len === 0) return;
 
-        let nx = 0;
-        let ny = 0;
+        let ap1X = 0, ap1Y = 0, ap2X = 0, ap2Y = 0;
+
         if (type === 'distance') {
-            nx = -dy / len;
-            ny = dx / len;
+            const nx = -dy / len;
+            const ny = dx / len;
+            const mx = mousePos.x - (p1.x + p2.x)/2;
+            const my = mousePos.y - (p1.y + p2.y)/2;
+            const offset = mx * nx + my * ny;
+            const offX = nx * offset;
+            const offY = ny * offset;
+            ap1X = p1.x + offX;
+            ap1Y = p1.y + offY;
+            ap2X = p2.x + offX;
+            ap2Y = p2.y + offY;
         } else if (type === 'horizontalDistance') {
-            nx = 0;
-            ny = 1;
+            const yLevel = mousePos.y;
+            ap1X = p1.x;
+            ap1Y = yLevel;
+            ap2X = p2.x;
+            ap2Y = yLevel;
         } else if (type === 'verticalDistance') {
-            nx = 1;
-            ny = 0;
+            const xLevel = mousePos.x;
+            ap1X = xLevel;
+            ap1Y = p1.y;
+            ap2X = xLevel;
+            ap2Y = p2.y;
         }
-
-        const mx = mousePos.x - (p1.x + p2.x)/2;
-        const my = mousePos.y - (p1.y + p2.y)/2;
-        const offset = mx * nx + my * ny;
-
-        const offX = nx * offset;
-        const offY = ny * offset;
-
-        const ap1X = p1.x + offX;
-        const ap1Y = p1.y + offY;
-        const ap2X = p2.x + offX;
-        const ap2Y = p2.y + offY;
 
         const ext1 = new Konva.Line({ points: [p1.x, p1.y, ap1X, ap1Y], stroke: 'rgba(148, 163, 184, 0.3)', strokeWidth: 1 * invS, dash: [4, 4] });
         const ext2 = new Konva.Line({ points: [p2.x, p2.y, ap2X, ap2Y], stroke: 'rgba(148, 163, 184, 0.3)', strokeWidth: 1 * invS, dash: [4, 4] });
