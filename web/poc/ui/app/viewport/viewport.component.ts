@@ -224,6 +224,29 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         const transform = this.stage.getAbsoluteTransform().copy().invert();
         return transform.point(pos);
     }
+ 
+    isSketchPointInViewport(pos: Vector2D): boolean {
+        if (!this.stage) return false;
+        const screenPos = this.sketchToScreen(pos);
+        return screenPos.x >= 0 && screenPos.x <= this.stage.width() &&
+               screenPos.y >= 0 && screenPos.y <= this.stage.height();
+    }
+
+    getViewportSketchBounds(): { min: Vector2D; max: Vector2D } {
+        if (!this.stage) {
+            return { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } };
+        }
+        const topLeft = this.screenToSketch({ x: 0, y: 0 });
+        const bottomRight = this.screenToSketch({ x: this.stage.width(), y: this.stage.height() });
+        return {
+            min: { x: Math.min(topLeft.x, bottomRight.x), y: Math.min(topLeft.y, bottomRight.y) },
+            max: { x: Math.max(topLeft.x, bottomRight.x), y: Math.max(topLeft.y, bottomRight.y) }
+        };
+    }
+
+    toDataURL(): string {
+        return this.stage ? this.stage.toDataURL() : '';
+    }
 
     // --- IInteractionProvider Implementation ---
 

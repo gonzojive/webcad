@@ -1,5 +1,6 @@
 import { Injectable, NgZone } from '@angular/core';
 import { WorkspaceService } from './workspace.service.js';
+import { ToolService } from './tool.service.js';
 import { McpHubClient } from './vendor/mcp/index.js';
 
 @Injectable({
@@ -10,6 +11,7 @@ export class McpService {
 
     constructor(
         private readonly workspace: WorkspaceService,
+        private readonly toolService: ToolService,
         private readonly zone: NgZone
     ) {
         this.init();
@@ -230,6 +232,45 @@ export class McpService {
                     this.workspace.commitHistory();
                     return success ? "Solver resolved successfully!" : "Solver failed (Over-constrained/Stalled)";
                 });
+            }
+        });
+
+        // 8. Get Viewport Status
+        this.client.tool("WebCad.getViewportStatus", {
+            description: "Get the current viewport boundary in sketch coordinates and the visibility status of all sketch points",
+            inputSchema: { type: "object", properties: {} },
+            handler: async () => {
+                const renderer = this.toolService.activeRenderer;
+                if (!renderer) {
+                    throw new Error("Active renderer/viewport not registered");
+                }
+
+                const bounds = renderer.getViewportSketchBounds();
+                const points = this.workspace.getPoints();
+                const pointVisibility = points.map(p => ({
+                    id: p.id,
+                    x: p.x,
+                    y: p.y,
+                    visible: renderer.isSketchPointInViewport(p)
+                }));
+
+                return JSON.stringify({
+                    viewportSketchBounds: bounds,
+                    points: pointVisibility
+                }, null, 2);
+            }
+        });
+
+        // 9. Take Screenshot
+        this.client.tool("WebCad.takeScreenshot", {
+            description: "Capture a screenshot of the current CAD canvas as a base64-encoded PNG data URL",
+            inputSchema: { type: "object", properties: {} },
+            handler: async () => {
+                const renderer = this.toolService.activeRenderer;
+                if (!renderer) {
+                    throw new Error("Active renderer/viewport not registered");
+                }
+                return renderer.toDataURL();
             }
         });
     }
