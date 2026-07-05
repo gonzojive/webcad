@@ -6,7 +6,6 @@ ts_project(
     name = "viewport",
     srcs = [
         "annotation_drawer.ts",
-        "raster_exporter.ts",
         "viewport.component.ts",
     ],
     declaration = True,
