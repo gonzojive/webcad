@@ -5,6 +5,7 @@ load("@aspect_gazelle_prebuilt//:def.bzl", "aspect_gazelle")
 
 # gazelle:prefix github.com/gonzojive/webcad
 # gazelle:map_kind js_test js_test //web:defs.bzl
+# gazelle:exclude go/cmd/devtool
 
 aspect_gazelle(
     name = "gazelle",
