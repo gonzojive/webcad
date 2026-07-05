@@ -256,6 +256,7 @@ export class GCSSolver {
         };
 
         const inputJson = JSON.stringify(sketchProto);
+        console.log("GCS Solver Input JSON:", inputJson);
         
         try {
             const outputJson = solve_gcs(inputJson, algo);
