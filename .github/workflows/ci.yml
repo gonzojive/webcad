@@ -25,6 +25,9 @@ jobs:
       with:
         go-version: 'stable'
 
+    - name: Register Checks
+      run: ./devtool github-ci register --name "Check Workspace Tidy" --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}"
+
     - name: Set up Bazel
       uses: bazelbuild/setup-bazelisk@v3
 
@@ -50,10 +53,10 @@ jobs:
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
     - name: Check Workspace Tidy
-      run: ./devtool github-ci run-check --name "Check Workspace Tidy" --sha "${{ github.event.pull_request.head.sha || github.sha }}" -- ./devtools/tidy && git diff --exit-code
+      run: ./devtool github-ci run-check --name "Check Workspace Tidy" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- ./devtools/tidy && git diff --exit-code
 
     - name: Bazel Build and Test
-      run: ./devtool github-ci run-check --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}" -- bazel build //... && bazel test //...
+      run: ./devtool github-ci run-check --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- bazel build //... && bazel test //...
 
   validate-docs:
     name: Validate Markdown and Diagrams

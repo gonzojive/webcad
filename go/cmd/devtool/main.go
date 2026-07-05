@@ -96,9 +96,16 @@ func init() {
 	// Run command flags
 	runCheckCmd.Flags().String("name", "", "Name of the check run (required)")
 	runCheckCmd.Flags().String("sha", "", "Commit SHA (defaults to GITHUB_SHA env var)")
+	runCheckCmd.Flags().Bool("preregistered", false, "Ensure the status check is already registered before executing")
 	_ = runCheckCmd.MarkFlagRequired("name")
 
+	// Register command flags
+	registerCmd.Flags().StringSlice("name", nil, "Names of the status checks to register (required)")
+	registerCmd.Flags().String("sha", "", "Commit SHA (defaults to GITHUB_SHA env var)")
+	_ = registerCmd.MarkFlagRequired("name")
+
 	githubCiCmd.AddCommand(runCheckCmd)
+	githubCiCmd.AddCommand(registerCmd)
 }
 
 // getGitHubClient retrieves a GitHub client authenticated via token flag or GITHUB_TOKEN environment variable.
@@ -137,6 +144,50 @@ func isUnauthorized(err error) bool {
 	return strings.Contains(msg, "401") || strings.Contains(msg, "403")
 }
 
+var registerCmd = &cobra.Command{
+	Use:   "register",
+	Short: "Pre-register one or more pending commit statuses",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		names, _ := cmd.Flags().GetStringSlice("name")
+		sha, _ := cmd.Flags().GetString("sha")
+		if sha == "" {
+			sha = os.Getenv("GITHUB_SHA")
+		}
+
+		client, owner, repo, err := getGitHubClient(cmd)
+		if err != nil {
+			if isForkPR() {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize GitHub client: %v\n", err)
+				return nil
+			}
+			return fmt.Errorf("failed to initialize GitHub client: %w", err)
+		}
+
+		if sha != "" && client != nil {
+			ctx := context.Background()
+			targetURL := os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv("GITHUB_REPOSITORY") + "/actions/runs/" + os.Getenv("GITHUB_RUN_ID")
+			for _, name := range names {
+				_, _, createErr := client.Repositories.CreateStatus(ctx, owner, repo, sha, &github.RepoStatus{
+					State:       github.String("pending"),
+					Context:     github.String(name),
+					Description: github.String("Pending execution..."),
+					TargetURL:   github.String(targetURL),
+				})
+				if createErr != nil {
+					if isForkPR() && isUnauthorized(createErr) {
+						fmt.Fprintf(os.Stderr, "Warning: GITHUB_TOKEN lacks permission to manage commit statuses: %v\n", createErr)
+					} else {
+						return fmt.Errorf("failed to create commit status for %q: %w", name, createErr)
+					}
+				} else {
+					fmt.Fprintf(os.Stderr, "devtool debug: pre-registered pending status check %q\n", name)
+				}
+			}
+		}
+		return nil
+	},
+}
+
 var runCheckCmd = &cobra.Command{
 	Use:   "run-check",
 	Short: "Execute a command and report its status as a GitHub commit status",
@@ -150,8 +201,9 @@ var runCheckCmd = &cobra.Command{
 		if sha == "" {
 			sha = os.Getenv("GITHUB_SHA")
 		}
+		preregistered, _ := cmd.Flags().GetBool("preregistered")
 
-		fmt.Fprintf(os.Stderr, "devtool debug: name=%q, sha=%q, args=%v\n", name, sha, args)
+		fmt.Fprintf(os.Stderr, "devtool debug: name=%q, sha=%q, preregistered=%v, args=%v\n", name, sha, preregistered, args)
 
 		client, owner, repo, err := getGitHubClient(cmd)
 		if err != nil {
@@ -160,8 +212,34 @@ var runCheckCmd = &cobra.Command{
 			} else {
 				return fmt.Errorf("failed to initialize GitHub client: %w", err)
 			}
-		} else if sha != "" {
+		} else if sha != "" && client != nil {
 			ctx := context.Background()
+			if preregistered {
+				status, _, getErr := client.Repositories.GetCombinedStatus(ctx, owner, repo, sha, nil)
+				if getErr != nil {
+					if isForkPR() && isUnauthorized(getErr) {
+						fmt.Fprintf(os.Stderr, "Warning: failed to query commit statuses: %v\n", getErr)
+					} else {
+						return fmt.Errorf("failed to check pre-registration: %w", getErr)
+					}
+				} else {
+					found := false
+					for _, st := range status.Statuses {
+						if st.GetContext() == name {
+							found = true
+							break
+						}
+					}
+					if !found {
+						if isForkPR() {
+							fmt.Fprintf(os.Stderr, "Warning: status check %q was not pre-registered\n", name)
+						} else {
+							return fmt.Errorf("status check %q was not pre-registered as required by --preregistered flag", name)
+						}
+					}
+				}
+			}
+
 			targetURL := os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv("GITHUB_REPOSITORY") + "/actions/runs/" + os.Getenv("GITHUB_RUN_ID")
 			_, _, createErr := client.Repositories.CreateStatus(ctx, owner, repo, sha, &github.RepoStatus{
 				State:       github.String("pending"),
