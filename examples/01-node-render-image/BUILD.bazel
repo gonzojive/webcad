@@ -24,10 +24,7 @@ ts_project(
     declaration = True,
     source_map = True,
     tsconfig = ":tsconfig",
-    deps = [
-        "//web/poc/model",
-        "//web/poc/ui/app/viewport",
-    ],
+    deps = ["//web/poc/ui/app/viewport"],
 )
 
 ts_config(
