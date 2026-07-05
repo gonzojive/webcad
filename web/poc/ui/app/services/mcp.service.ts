@@ -93,9 +93,10 @@ export class McpService {
             },
             handler: async ({ x, y }) => {
                 return this.zone.run(() => {
-                    const id = this.workspace.addPoint({ x, y });
-                    this.workspace.commitHistory();
-                    return `Successfully added point "${id}" at (${x}, ${y})`;
+                    return this.workspace.transaction(() => {
+                        const id = this.workspace.addPoint({ x, y });
+                        return `Successfully added point "${id}" at (${x}, ${y})`;
+                    });
                 });
             }
         });
@@ -113,14 +114,15 @@ export class McpService {
             },
             handler: async ({ p1Id, p2Id }) => {
                 return this.zone.run(() => {
-                    const p1 = this.workspace.getPoint(p1Id);
-                    const p2 = this.workspace.getPoint(p2Id);
-                    if (!p1 || !p2) {
-                        throw new Error(`Failed to find point: p1=${p1Id}, p2=${p2Id}`);
-                    }
-                    const id = this.workspace.addLine(p1Id, p2Id);
-                    this.workspace.commitHistory();
-                    return `Successfully added line "${id}" connecting "${p1Id}" and "${p2Id}"`;
+                    return this.workspace.transaction(() => {
+                        const p1 = this.workspace.getPoint(p1Id);
+                        const p2 = this.workspace.getPoint(p2Id);
+                        if (!p1 || !p2) {
+                            throw new Error(`Failed to find point: p1=${p1Id}, p2=${p2Id}`);
+                        }
+                        const id = this.workspace.addLine(p1Id, p2Id);
+                        return `Successfully added line "${id}" connecting "${p1Id}" and "${p2Id}"`;
+                    });
                 });
             }
         });
@@ -138,13 +140,14 @@ export class McpService {
             },
             handler: async ({ centerId, radius }) => {
                 return this.zone.run(() => {
-                    const center = this.workspace.getPoint(centerId);
-                    if (!center) {
-                        throw new Error(`Failed to find point: centerId=${centerId}`);
-                    }
-                    const id = this.workspace.addCircle(centerId, radius);
-                    this.workspace.commitHistory();
-                    return `Successfully added circle "${id}" with center "${centerId}" and radius ${radius}`;
+                    return this.workspace.transaction(() => {
+                        const center = this.workspace.getPoint(centerId);
+                        if (!center) {
+                            throw new Error(`Failed to find point: centerId=${centerId}`);
+                        }
+                        const id = this.workspace.addCircle(centerId, radius);
+                        return `Successfully added circle "${id}" with center "${centerId}" and radius ${radius}`;
+                    });
                 });
             }
         });
@@ -185,53 +188,54 @@ export class McpService {
             },
             handler: async (args) => {
                 return this.zone.run(() => {
-                    const constraint: any = {
-                        id: this.workspace.generateNextId('C'),
-                        type: args.type
-                    };
+                    return this.workspace.transaction(() => {
+                        const constraint: any = {
+                            id: this.workspace.generateNextId('C'),
+                            type: args.type
+                        };
 
-                    switch (args.type) {
-                        case 'coincident':
-                            if (!args.p1Id || !args.p2Id) throw new Error("coincident constraint requires p1Id and p2Id");
-                            constraint.p1Id = args.p1Id;
-                            constraint.p2Id = args.p2Id;
-                            break;
-                        case 'distance':
-                        case 'horizontal_distance':
-                        case 'vertical_distance':
-                            if (!args.p1Id || !args.p2Id || args.value === undefined) {
-                                throw new Error(`${args.type} constraint requires p1Id, p2Id, and value`);
-                            }
-                            constraint.p1Id = args.p1Id;
-                            constraint.p2Id = args.p2Id;
-                            constraint.value = args.value;
-                            break;
-                        case 'point_line_distance':
-                            if (!args.pointId || !args.lineId || args.value === undefined) {
-                                throw new Error("point_line_distance constraint requires pointId, lineId, and value");
-                            }
-                            constraint.pointId = args.pointId;
-                            constraint.lineId = args.lineId;
-                            constraint.value = args.value;
-                            break;
-                        case 'vertical':
-                        case 'horizontal':
-                            if (!args.lineId) throw new Error(`${args.type} constraint requires lineId`);
-                            constraint.lineId = args.lineId;
-                            break;
-                        case 'parallel':
-                        case 'perpendicular':
-                            if (!args.line1Id || !args.line2Id) throw new Error(`${args.type} constraint requires line1Id and line2Id`);
-                            constraint.line1Id = args.line1Id;
-                            constraint.line2Id = args.line2Id;
-                            break;
-                        default:
-                            throw new Error(`Unsupported constraint type: ${args.type}`);
-                    }
+                        switch (args.type) {
+                            case 'coincident':
+                                if (!args.p1Id || !args.p2Id) throw new Error("coincident constraint requires p1Id and p2Id");
+                                constraint.p1Id = args.p1Id;
+                                constraint.p2Id = args.p2Id;
+                                break;
+                            case 'distance':
+                            case 'horizontal_distance':
+                            case 'vertical_distance':
+                                if (!args.p1Id || !args.p2Id || args.value === undefined) {
+                                    throw new Error(`${args.type} constraint requires p1Id, p2Id, and value`);
+                                }
+                                constraint.p1Id = args.p1Id;
+                                constraint.p2Id = args.p2Id;
+                                constraint.value = args.value;
+                                break;
+                            case 'point_line_distance':
+                                if (!args.pointId || !args.lineId || args.value === undefined) {
+                                    throw new Error("point_line_distance constraint requires pointId, lineId, and value");
+                                }
+                                constraint.pointId = args.pointId;
+                                constraint.lineId = args.lineId;
+                                constraint.value = args.value;
+                                break;
+                            case 'vertical':
+                            case 'horizontal':
+                                if (!args.lineId) throw new Error(`${args.type} constraint requires lineId`);
+                                constraint.lineId = args.lineId;
+                                break;
+                            case 'parallel':
+                            case 'perpendicular':
+                                if (!args.line1Id || !args.line2Id) throw new Error(`${args.type} constraint requires line1Id and line2Id`);
+                                constraint.line1Id = args.line1Id;
+                                constraint.line2Id = args.line2Id;
+                                break;
+                            default:
+                                throw new Error(`Unsupported constraint type: ${args.type}`);
+                        }
 
-                    const id = this.workspace.addConstraint(constraint);
-                    this.workspace.commitHistory();
-                    return `Successfully added constraint "${id}" of type "${args.type}"`;
+                        const id = this.workspace.addConstraint(constraint);
+                        return `Successfully added constraint "${id}" of type "${args.type}"`;
+                    });
                 });
             }
         });
@@ -254,9 +258,13 @@ export class McpService {
             inputSchema: { type: "object", properties: {} },
             handler: async () => {
                 return this.zone.run(() => {
-                    const success = this.workspace.solve();
-                    this.workspace.commitHistory();
-                    return success ? "Solver resolved successfully!" : "Solver failed (Over-constrained/Stalled)";
+                    return this.workspace.transaction(() => {
+                        const success = this.workspace.solve();
+                        if (!success) {
+                            throw new Error("Solver failed (Over-constrained/Stalled)");
+                        }
+                        return "Solver resolved successfully!";
+                    });
                 });
             }
         });

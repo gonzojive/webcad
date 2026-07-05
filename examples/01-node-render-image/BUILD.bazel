@@ -25,7 +25,7 @@ ts_project(
     source_map = True,
     tsconfig = ":tsconfig",
     deps = [
-        "//ts/gcsapi",
+        "//web/poc/model",
         "//web/poc/ui/app/viewport",
     ],
 )

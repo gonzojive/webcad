@@ -1,14 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as url from 'url';
-import { GCSSolver, GCSSketchState, GCSPoint } from '../../ts/gcsapi/dist/index.js';
+import { GCSBridge } from '../../web/poc/model/gcs_bridge.js';
+import { createEmptySketch, SketchModel } from '../../web/poc/model/sketch.js';
 import { exportToSVG, ISketchWorkspace } from '../../web/poc/ui/app/viewport/svg_exporter.js';
 import { rasterizeSVG } from '../../web/poc/ui/app/viewport/png_rasterizer.js';
 
 // Setup environment and load the Go WASM solver in Node.js
-async function initNodeSolver(): Promise<GCSSolver> {
+async function initNodeBridge(): Promise<GCSBridge> {
     // 1. Load the Go WASM execution environment globally
-    const wasmExecUrl = (import.meta as any).resolve('../../web/poc/ui/wasm_exec.js');
+    const wasmExecUrl = '../../web/poc/ui/wasm_exec.js';
     // @ts-ignore
     await import(wasmExecUrl);
 
@@ -21,10 +22,20 @@ async function initNodeSolver(): Promise<GCSSolver> {
         return new Response(buffer, { headers: { 'content-type': 'application/wasm' } });
     };
 
-    // 4. Instantiate and initialize the GCS solver
-    const solver = new GCSSolver();
-    await solver.initGoWasm(solverWasmUrl);
-    return solver;
+    // 4. Instantiate and initialize the GCS solver bridge
+    const bridge = new GCSBridge();
+    await bridge.init(solverWasmUrl);
+    return bridge;
+}
+
+// Helper to wrap a SketchModel to match the exporter's ISketchWorkspace interface
+function wrapSketch(sketch: SketchModel): ISketchWorkspace {
+    return {
+        getPoints: () => sketch.points,
+        getLines: () => sketch.lines,
+        getCircles: () => sketch.circles,
+        getPoint: (id) => sketch.points.find(p => p.id === id)
+    };
 }
 
 async function main() {
@@ -34,50 +45,38 @@ async function main() {
     const svgPath = svgArgIndex !== -1 ? process.argv[svgArgIndex + 1] : undefined;
     const pngPath = pngArgIndex !== -1 ? process.argv[pngArgIndex + 1] : undefined;
 
-    console.log('Initializing Go GCS Solver in Node.js...');
-    const solver = await initNodeSolver();
+    console.log('Initializing GCS Solver Bridge...');
+    const bridge = await initNodeBridge();
 
-    // 1. Define initial sketch state (before solve):
+    // 1. Setup a real SketchModel with shapes and a distance constraint
     // P1 fixed at (10, 20)
     // P2 initially at (20, 20)
     // Constraint: Distance between P1 and P2 must be exactly 150
     console.log('Setting up sketch state and distance constraint...');
-    const state: GCSSketchState = {
-        points: [
-            { id: 'P1', x: 10, y: 20, fixed: true },
-            { id: 'P2', x: 20, y: 20 }
-        ],
-        lines: [
-            { id: 'L1', p1Id: 'P1', p2Id: 'P2' }
-        ],
-        circles: [],
-        constraints: [
-            { id: 'C1', type: 'distance', p1Id: 'P1', p2Id: 'P2', value: 150 }
-        ]
-    };
+    const sketch = createEmptySketch();
+    sketch.points.push(
+        { id: 'P1', x: 10, y: 20, fixed: true },
+        { id: 'P2', x: 20, y: 20 }
+    );
+    sketch.lines.push({ id: 'L1', p1Id: 'P1', p2Id: 'P2' });
+    sketch.constraints.push({ id: 'C1', type: 'distance', p1Id: 'P1', p2Id: 'P2', value: 150 });
 
     // 2. Solve the sketch layout constraints
     console.log('Invoking GCS Solver...');
-    const result = solver.solve(state);
+    const result = bridge.solve(sketch);
     if (!result.success) {
         throw new Error(`Solve failed: ${result.error}`);
     }
 
+    const solvedSketch = result.sketch;
     console.log('Solve succeeded! Point coordinates updated:');
-    result.points.forEach((p: GCSPoint) => {
+    solvedSketch.points.forEach(p => {
         console.log(` - ${p.id}: (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
     });
 
-    // 3. Wrap solved state in workspace interface for the exporter
-    const workspace: ISketchWorkspace = {
-        getPoints: () => result.points,
-        getLines: () => state.lines,
-        getCircles: () => state.circles,
-        getPoint: (id: string) => result.points.find((p: GCSPoint) => p.id === id)
-    };
-
+    // 3. Export GCS-solved sketch to SVG
     console.log('Exporting GCS-solved sketch to SVG...');
-    const svgString = exportToSVG(workspace);
+    const svgString = exportToSVG(wrapSketch(solvedSketch));
 
     if (svgPath) {
         const resolvedSvgPath = resolvePath(svgPath);

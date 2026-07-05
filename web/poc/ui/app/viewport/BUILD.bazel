@@ -55,7 +55,7 @@ ts_project(
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         ":viewport",
-        "//ts/gcsapi",
+        "//web:node_modules/@resvg/resvg-wasm",
         "//web:node_modules/@types/node",
     ],
 )

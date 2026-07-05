@@ -505,3 +505,48 @@ func TestLMSolverImpossiblePointLineDistance(t *testing.T) {
 	}
 }
 
+func TestLMSolverStalledSuccess(t *testing.T) {
+	// Create a simple consistent system: two points with a distance constraint.
+	sketch := &schema.Sketch{
+		Id: "stalled_success_test",
+		Entities: []*schema.Entity{
+			{Id: "P1", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0, Y: 0}}},
+			{Id: "P2", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 10, Y: 0}}},
+		},
+		Constraints: []*schema.Constraint{
+			{
+				Id: "fixed_P1",
+				ConstraintType: &schema.Constraint_Fixed{
+					Fixed: &schema.FixedConstraint{EntityId: "P1"},
+				},
+			},
+			{
+				Id: "dist_P1_P2",
+				ConstraintType: &schema.Constraint_Distance{
+					Distance: &schema.DistanceConstraint{EntityA: "P1", EntityB: "P2", Value: 20},
+				},
+			},
+		},
+	}
+
+	// We configure EpGeom to be impossibly tight (e.g., 1e-25), ensuring
+	// the solver cannot satisfy the strict convergence check due to machine precision.
+	// But since the system is consistent, it will reach a residual of ~0, stall,
+	// and should be tolerated as a Success.
+	solver := New()
+	solver.EpGeom = 1e-25
+	solver.EpGrad = 1e-20
+	solver.EpStep = 1e-8 // Relaxed step tolerance to trigger stall early
+
+	res, err := solver.Solve(sketch)
+	if err != nil {
+		t.Fatalf("Solve failed: %v", err)
+	}
+
+	if !res.Success {
+		t.Fatalf("Expected solver to tolerate the stall and succeed, but it failed! Error: %s", res.ErrorMessage)
+	}
+
+	t.Logf("Solver successfully tolerated stall. Telemetry final residual: %e", res.Telemetry.FinalResidual)
+}
+

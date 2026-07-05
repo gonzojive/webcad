@@ -110,12 +110,17 @@ func (s *LMSolver) solve(sys *core.ConstraintSystem, x []float64) ([]float64, so
 			// ||dx||∞ < ε_step * (1 + ||x||∞)
 			if normInf(w.Dx) < s.EpStep*(1.0+normInfSlice(w.X)) {
 				copy(x, w.X)
+				finalRes := blas64.Dot(w.F.RawVector(), w.F.RawVector())
+				status := Stalled
+				if finalRes < 1e-8 {
+					status = Success
+				}
 				return x, solveResult{
-					status:          Stalled,
+					status:          status,
 					iterations:      iterations,
 					funcEvaluations: funcEvals,
 					gradEvaluations: gradEvals,
-					finalResidual:   blas64.Dot(w.F.RawVector(), w.F.RawVector()),
+					finalResidual:   finalRes,
 				}
 			}
 
