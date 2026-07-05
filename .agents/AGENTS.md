@@ -22,8 +22,13 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **Fast feedback loop**: Favor small, incremental changes.
 - **Unit testing**: Get into a fast iteration loop quickly using tools like unit tests. Avoid running long-running processes or broad execution commands when localized tests can verify correctness.
 - **Bazel tooling**: Always use Bazel to build, test, and run code in this repository. Avoid using native toolchains directly (e.g., `go run`, `go build`, `go test`). Use commands like `bazel build //...` and `bazel test //...` to compile and verify changes.
-- **Gazelle build generator**: Use Gazelle to manage and generate `BUILD.bazel` files for Go and TypeScript packages. Run `./devtools/gaz` to automatically update or regenerate targets whenever source files, imports, or dependencies in `go.mod` or `package.json` change.
-- **Frontend development guide**: For details on how to build, test, and run the frontend with live reload, refer to [web/README.md](file:///usr/local/google/home/reddaly/.gemini/jetski/worktrees/webcad2/implement-bazel-frontend-phase1/web/README.md).
+  - **Managing npm dependencies**: Do **not** run `npm install`, `npm add`, or bare `pnpm add` commands directly. This repo uses a Bazel-managed pnpm installation (not the system pnpm). To add an npm package:
+    1. Add the dependency to the relevant `package.json` by hand.
+    2. Run `./devtools/tidy` to update the lockfile via Bazel's managed pnpm and regenerate `BUILD.bazel` files via Gazelle.
+  - **Managing Go dependencies**: Do **not** run `go mod tidy` directly — it silently breaks the `bazel_gazelle_go_repository_config` repo. Always use `./devtools/tidy`, which runs `bazel mod tidy` followed by a workaround that re-adds the missing repo entry.
+  - **Gazelle build file generator**: `./devtools/gaz` runs Gazelle via Bazel to generate/update `BUILD.bazel` files for Go and TypeScript packages. Run it after any source file, import, or `package.json` change. `./devtools/tidy` automatically calls this as part of its workflow.
+  - **When to run `./devtools/tidy`**: Run it after any of the following: adding or removing an npm or Go dependency, modifying `package.json` or `go.mod`, adding a new local workspace package (e.g., under `web/vendor/`), or whenever the lockfile or `MODULE.bazel` may be out of sync.
+- **Frontend development guide**: For details on how to build, test, and run the frontend with live reload, refer to [web/README.md](./web/README.md).
 
 
 ## Markdown document formatting
@@ -36,6 +41,7 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **No force pushes**: Do not force push to active pull request branches, as this dislocates reviewer comments. Instead, merge updates or append new commits. The squash merge at pull request submission will clean up the commit history.
 - **Meaningful PR descriptions**: Do not use generic headers like `# Description` at the beginning of a pull request description. The first line of the PR description should be a meaningful and concise summary of the change, because when squashed, this first line will be visible in the git commit log.
 - **No internal tags**: Do not include internal tracking tags (such as `TAG=agy` or `CONV=...`) in Git commit messages or Pull Request descriptions in this public repository.
+- **AI attribution**: When adding comments to pull requests, reviews, or issues, always explicitly attribute the comments to yourself as an AI coding assistant.
 
 
 
