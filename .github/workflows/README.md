@@ -91,5 +91,5 @@ sequenceDiagram
 
 ### 2. Execute a command and update status:
 ```bash
-./devtool github-ci run-check --name "Check devtool tidy results in no diff" --sha "<commit-sha>" --preregistered -- ./devtools/tidy && git diff --exit-code
+./devtool github-ci run-check --name "Check devtool tidy results in no diff" --sha "<commit-sha>" --preregistered -- "./devtools/tidy && git diff --exit-code"
 ```
