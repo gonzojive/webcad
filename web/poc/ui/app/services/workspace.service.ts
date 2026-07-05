@@ -139,6 +139,28 @@ export class WorkspaceService implements ToolContext {
         this.historyVersion.update(v => v + 1);
     }
 
+    /**
+     * Executes a callback containing multiple sketch mutations atomically.
+     * If the callback executes successfully, a single history checkpoint is committed.
+     * If an error is thrown during execution, the workspace state is rolled back to
+     * the pre-transaction state and the error is rethrown.
+     *
+     * @param action Callback performing sketch mutations.
+     * @returns The value returned by the callback.
+     */
+    transaction<T>(action: () => T): T {
+        const preState = this.document().sketch;
+        try {
+            const result = action();
+            this.commitHistory();
+            return result;
+        } catch (e) {
+            console.error('Transaction failed, rolling back workspace state:', e);
+            this.updateSketch(preState, false);
+            throw e;
+        }
+    }
+
     requestDimensionInput(
         pos: Vector2D,
         defaultValue: number,
