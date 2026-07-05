@@ -48,7 +48,7 @@ test('rasterizeSVG initializes WASM and outputs a valid PNG matching golden refe
     const pngBuffer = Buffer.from(base64Data, 'base64');
 
     const workspaceDir = process.env.BUILD_WORKSPACE_DIRECTORY;
-    const testdataRelativePath = 'web/poc/ui/app/viewport/testdata/reference_layout.png';
+    const testdataRelativePath = 'web/poc/ui/app/viewport/testdata/01-reference_layout.png';
     const regenerate = process.env.GENERATE_GOLDEN || process.env.REGENERATE || process.argv.includes('--regenerate');
 
     if (regenerate && workspaceDir) {
@@ -59,7 +59,7 @@ test('rasterizeSVG initializes WASM and outputs a valid PNG matching golden refe
         console.log(`[GOLDEN] Wrote new golden reference file to: ${outputPath}`);
     } else {
         // Compare the generated output bit-for-bit with the reference layout in runfiles
-        const referenceUrl = (import.meta as any).resolve('./testdata/reference_layout.png');
+        const referenceUrl = (import.meta as any).resolve('./testdata/01-reference_layout.png');
         const referencePath = url.fileURLToPath(referenceUrl);
         
         assert.ok(fs.existsSync(referencePath), `Reference image must exist at: ${referencePath}`);
