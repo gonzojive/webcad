@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# devtool - Developer automation CLI wrapper script.
+set -euo pipefail
+
+# Find workspace root
+WORKSPACE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BIN_DIR="$WORKSPACE_ROOT/.build"
+BIN_PATH="$BIN_DIR/devtool"
+SRC_DIR="$WORKSPACE_ROOT/go/cmd/devtool"
+
+# Ensure build target directory exists
+mkdir -p "$BIN_DIR"
+
+# Get current git commit hash of the devtool Go source code
+# If there are uncommitted changes, treat as 'dirty' to trigger a rebuild
+if [ -n "$(git status --porcelain -- "$SRC_DIR" 2>/dev/null)" ]; then
+    CURRENT_HASH="dirty"
+else
+    CURRENT_HASH=$(git log -n 1 --pretty=format:%H -- "$SRC_DIR" 2>/dev/null || echo "dirty")
+fi
+
+REBUILD=false
+if [ ! -f "$BIN_PATH" ]; then
+    REBUILD=true
+else
+    # Query binary version hash
+    BINARY_HASH=$("$BIN_PATH" version --hash-only 2>/dev/null || echo "dirty")
+    if [ "$BINARY_HASH" != "$CURRENT_HASH" ] || [ "$CURRENT_HASH" = "dirty" ]; then
+        REBUILD=true
+    fi
+fi
+
+if [ "$REBUILD" = "true" ]; then
+    echo "Recompiling devtool CLI..." >&2
+    (
+        cd "$SRC_DIR"
+        go build -ldflags "-X main.commitHash=$CURRENT_HASH" -o "$BIN_PATH" main.go
+    )
+fi
+
+# Execute the compiled binary, passing all arguments
+exec "$BIN_PATH" "$@"
