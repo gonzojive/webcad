@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -18,6 +24,9 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: 'stable'
+
+    - name: Register Checks
+      run: ./devtool github-ci register --name "Check devtool tidy results in no diff" --name "Check bazel build //..." --name "Check bazel test //..." --sha "${{ github.event.pull_request.head.sha || github.sha }}"
 
     - name: Set up Bazel
       uses: bazelbuild/setup-bazelisk@v3
@@ -43,15 +52,14 @@ jobs:
         echo "build --disk_cache=~/.cache/bazel-disk" >> ~/.bazelrc
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
-    - name: Check Workspace Tidy
-      run: |
-        ./devtools/tidy
-        git diff --exit-code
+    - name: Check devtool tidy results in no diff
+      run: ./devtool github-ci run-check --name "Check devtool tidy results in no diff" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- ./devtools/tidy && git diff --exit-code
 
-    - name: Bazel Build and Test
-      run: |
-        bazel build //...
-        bazel test //...
+    - name: Check bazel build //...
+      run: ./devtool github-ci run-check --name "Check bazel build //..." --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- bazel build //...
+
+    - name: Check bazel test //...
+      run: ./devtool github-ci run-check --name "Check bazel test //..." --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- bazel test //...
 
   validate-docs:
     name: Validate Markdown and Diagrams
