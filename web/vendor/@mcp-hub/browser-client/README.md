@@ -6,11 +6,9 @@ Browser-side TypeScript SDK for connecting web applications (such as WebCAD) to 
 
 This package enables web applications to securely register browser-side tools, prompts, and resources with a local MCP Hub daemon over [WebTransport](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API). Once connected, external AI agents running on the user's machine can discover and execute these browser-side tools (e.g., executing sketch actions in a CAD canvas, taking screenshots, or reading viewport state).
 
-```
-   ┌──────────────┐                  ┌────────────────┐
-   │  Web App     │  WebTransport    │  MCP Hub       │
-   │  (Browser)   │ ◄──────────────► │  Daemon (Host) │
-   └──────────────┘                  └────────────────┘
+```mermaid
+graph LR
+    A["Web App (Browser)"] <-->|WebTransport| B["MCP Hub Daemon (Host)"]
 ```
 
 ## Key Features
