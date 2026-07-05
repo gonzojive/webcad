@@ -1,10 +1,14 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("//web:defs.bzl", "js_test")
 
 package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "services",
-    srcs = glob(["**/*.ts"]),
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["**/*.test.ts"],
+    ),
     declaration = True,
     source_map = True,
     tsc = "//web/poc/ui:ngc",
@@ -19,4 +23,28 @@ ts_project(
         "//web/poc/ui/interfaces",
         "//web/poc/units",
     ],
+)
+
+ts_project(
+    name = "services_tests",
+    testonly = True,
+    srcs = ["workspace.service.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsc = "//web/poc/ui:ngc",
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        ":services",
+        "//web:node_modules/@angular/compiler",
+        "//web:node_modules/@types/node",
+        "//web:node_modules/zone.js",
+    ],
+)
+
+js_test(
+    name = "test",
+    data = [
+        ":services_tests",
+    ],
+    entry_point = "workspace.service.test.js",
 )
