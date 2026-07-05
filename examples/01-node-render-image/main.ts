@@ -7,34 +7,23 @@ import { rasterizeSVG } from '../../web/poc/ui/app/viewport/png_rasterizer.js';
 
 // Setup environment and load the Go WASM solver in Node.js
 async function initNodeSolver(): Promise<GCSSolver> {
-    // 1. Resolve and load the Go WASM execution helper (wasm_exec.js) in global context
+    // 1. Load the Go WASM execution environment globally
     const wasmExecUrl = (import.meta as any).resolve('../../web/poc/ui/wasm_exec.js');
-    const wasmExecPath = url.fileURLToPath(wasmExecUrl);
-    const wasmExecSource = fs.readFileSync(wasmExecPath, 'utf8');
-    new Function(wasmExecSource)(); // Defines globalThis.Go
+    // @ts-ignore
+    await import(wasmExecUrl);
 
-    // 2. Resolve the compiled wasm_solver.wasm file
+    // 2. Resolve the compiled wasm_solver.wasm file URL
     const solverWasmUrl = (import.meta as any).resolve('../../web/poc/ui/wasm_solver.wasm');
-    const solverWasmPath = url.fileURLToPath(solverWasmUrl);
 
-    // 3. Mock fetch-like behavior for the solver to read the WASM file from the sandbox
-    const originalInstantiateStreaming = WebAssembly.instantiateStreaming;
-    (WebAssembly as any).instantiateStreaming = undefined; // Force fallback to arrayBuffer
-
-    globalThis.fetch = async (urlStr: any) => {
-        const buffer = fs.readFileSync(urlStr);
-        return {
-            arrayBuffer: async () => buffer,
-        } as any;
+    // 3. Configure a simple fetch mock using Node's native Response API to read local files
+    globalThis.fetch = async (fileUrl: any) => {
+        const buffer = fs.readFileSync(url.fileURLToPath(fileUrl));
+        return new Response(buffer, { headers: { 'content-type': 'application/wasm' } });
     };
 
     // 4. Instantiate and initialize the GCS solver
     const solver = new GCSSolver();
-    await solver.initGoWasm(solverWasmPath);
-
-    // Restore original WebAssembly behavior
-    WebAssembly.instantiateStreaming = originalInstantiateStreaming;
-
+    await solver.initGoWasm(solverWasmUrl);
     return solver;
 }
 
