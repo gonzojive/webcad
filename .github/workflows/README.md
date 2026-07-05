@@ -13,7 +13,7 @@ However, to avoid bundling all verification gates under a single generic status 
 Instead of the Checks API (which does not allow custom names for check runs created via `GITHUB_TOKEN`), this system utilizes the **Commit Statuses API** (`POST /repos/{owner}/{repo}/statuses/{sha}`). 
 
 By using the Statuses API:
-1. Status checks are registered and updated dynamically under custom names (like `Check devtool tidy results in no diff` and `Bazel Build and Test`).
+1. Status checks are registered and updated dynamically under custom names (like `Check devtool tidy results in no diff`, `Check bazel build //...`, and `Check bazel test //...`).
 2. Each check has a direct link pointing back to the GHA workflow job logs (`TargetURL`).
 3. External PRs from public forks (where `GITHUB_TOKEN` is read-only) are handled gracefully (the CLI outputs a warning and exits 0 instead of failing the build step).
 
@@ -36,10 +36,11 @@ sequenceDiagram
     runner->>runner: Checkout code & Set up Go (~5s)
     
     note over runner, devtool: Pre-register checks early
-    runner->>devtool: Run `./devtool github-ci register --name "Check devtool tidy results in no diff" --name "Bazel Build and Test"`
+    runner->>devtool: Run `./devtool github-ci register --name "Check devtool tidy results in no diff" --name "Check bazel build //..." --name "Check bazel test //..."`
     activate devtool
     devtool->>GH_API: POST /statuses/{sha} (pending: Check devtool tidy results in no diff)
-    devtool->>GH_API: POST /statuses/{sha} (pending: Bazel Build and Test)
+    devtool->>GH_API: POST /statuses/{sha} (pending: Check bazel build //...)
+    devtool->>GH_API: POST /statuses/{sha} (pending: Check bazel test //...)
     GH_API-->>devtool: 201 Created (Pending checks show up on PR immediately)
     deactivate devtool
     
@@ -56,12 +57,22 @@ sequenceDiagram
     devtool->>GH_API: POST /statuses/{sha} (State: "success", Description: "Check completed successfully")
     deactivate devtool
 
-    note over runner, devtool: Step 2: Bazel Build and Test
-    runner->>devtool: Run `./devtool github-ci run-check --name "Bazel Build and Test" --preregistered -- <cmd>`
+    note over runner, devtool: Step 2: Check bazel build //...
+    runner->>devtool: Run `./devtool github-ci run-check --name "Check bazel build //..." --preregistered -- <cmd>`
     activate devtool
     devtool->>GH_API: GET /statuses/{sha} (Verify check is pre-registered)
     devtool->>GH_API: POST /statuses/{sha} (State: "pending", Description: "Check is running...")
-    devtool->>runner: Run subprocess: bazel build //... && bazel test //...
+    devtool->>runner: Run subprocess: bazel build //...
+    runner-->>devtool: Subprocess exit code (0 = success)
+    devtool->>GH_API: POST /statuses/{sha} (State: "success", Description: "Check completed successfully")
+    deactivate devtool
+
+    note over runner, devtool: Step 3: Check bazel test //...
+    runner->>devtool: Run `./devtool github-ci run-check --name "Check bazel test //..." --preregistered -- <cmd>`
+    activate devtool
+    devtool->>GH_API: GET /statuses/{sha} (Verify check is pre-registered)
+    devtool->>GH_API: POST /statuses/{sha} (State: "pending", Description: "Check is running...")
+    devtool->>runner: Run subprocess: bazel test //...
     runner-->>devtool: Subprocess exit code (0 = success)
     devtool->>GH_API: POST /statuses/{sha} (State: "success", Description: "Check completed successfully")
     deactivate devtool
@@ -75,7 +86,7 @@ sequenceDiagram
 
 ### 1. Pre-register pending status names early:
 ```bash
-./devtool github-ci register --name "Check devtool tidy results in no diff" --name "Bazel Build and Test" --sha "<commit-sha>"
+./devtool github-ci register --name "Check devtool tidy results in no diff" --name "Check bazel build //..." --name "Check bazel test //..." --sha "<commit-sha>"
 ```
 
 ### 2. Execute a command and update status:
