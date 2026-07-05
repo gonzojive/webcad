@@ -17,6 +17,7 @@ ts_project(
     tsc = ":ngc",
     tsconfig = ":tsconfig",
     deps = [
+        "//web:node_modules/@angular/compiler",
         "//web:node_modules/@angular/platform-browser",
         "//web:node_modules/zone.js",
         "//web/poc/ui/app",
