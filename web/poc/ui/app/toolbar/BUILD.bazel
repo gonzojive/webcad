@@ -1,3 +1,9 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+# gazelle:exclude compile_icons.ts
+
+load("@aspect_bazel_lib//lib:run_binary.bzl", "run_binary")
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_files")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("//web:defs.bzl", "js_test")
 
@@ -5,13 +11,17 @@ package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "toolbar",
-    srcs = ["toolbar.component.ts"],
+    srcs = [
+        "icons.ts",
+        "toolbar.component.ts",
+    ],
     declaration = True,
     source_map = True,
     tsc = "//web/poc/ui:ngc",
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         "//web:node_modules/@angular/core",
+        "//web:node_modules/@angular/platform-browser",
         "//web/poc/ui/app/services",
     ],
 )
@@ -43,4 +53,44 @@ ts_project(
         "//web:node_modules/zone.js",
         "//web/poc/ui/app/services",
     ],
+)
+
+run_binary(
+    name = "generate_icons_ts",
+    srcs = [
+        "icons/circle.svg",
+        "icons/dimension.svg",
+        "icons/line.svg",
+        "icons/point.svg",
+        "icons/select.svg",
+    ],
+    outs = ["icons.ts.generated"],
+    args = [
+        "$(execpath icons.ts.generated)",
+        "$(rootpath icons/circle.svg)",
+        "$(rootpath icons/dimension.svg)",
+        "$(rootpath icons/line.svg)",
+        "$(rootpath icons/point.svg)",
+        "$(rootpath icons/select.svg)",
+    ],
+    tool = ":compile_icons_bin",
+)
+
+write_source_files(
+    name = "write_icons",
+    files = {
+        "icons.ts": ":generate_icons_ts",
+    },
+)
+
+go_library(
+    name = "toolbar_lib",
+    srcs = ["compile_icons.go"],
+    importpath = "github.com/gonzojive/webcad/web/poc/ui/app/toolbar",
+)
+
+go_binary(
+    name = "compile_icons_bin",
+    embed = [":toolbar_lib"],
+    visibility = ["//visibility:public"],
 )
