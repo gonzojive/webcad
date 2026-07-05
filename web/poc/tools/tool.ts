@@ -48,5 +48,6 @@ export interface Tool {
     onMouseDown(pos: Vector2D, event: MouseEvent, context: ToolContext, renderer: IRenderer, interaction: IInteractionProvider): void;
     onMouseMove(pos: Vector2D, event: MouseEvent, context: ToolContext, renderer: IRenderer, interaction: IInteractionProvider): void;
     onMouseUp(pos: Vector2D, event: MouseEvent, context: ToolContext, renderer: IRenderer, interaction: IInteractionProvider): void;
+    onKeyDown?(event: KeyboardEvent, context: ToolContext, renderer: IRenderer, interaction: IInteractionProvider): void;
     onCancel?(context: ToolContext, renderer: IRenderer): void;
 }

@@ -67,6 +67,12 @@ export class ToolService {
         this.activeTool.onMouseUp(pos, event, this.workspace, renderer, interaction);
     }
 
+    onKeyDown(event: KeyboardEvent) {
+        if (this.activeTool.onKeyDown && this.activeRenderer && this.activeInteractionProvider) {
+            this.activeTool.onKeyDown(event, this.workspace, this.activeRenderer, this.activeInteractionProvider);
+        }
+    }
+
     cancelActiveOperation() {
         if (!this.activeRenderer) return;
         if (this.activeTool.onCancel) {

@@ -341,6 +341,10 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         this.stage.on('wheel', (e: any) => {
             this.handleZoom(e);
         });
+
+        this.stage.on('dblclick', (e: any) => {
+            this.zoomToFit();
+        });
     }
 
     private handlePanStart(pos: Vector2D) {
@@ -418,6 +422,72 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         this.redrawAll();
     }
 
+    zoomToFit() {
+        if (!this.stage) return;
+
+        const points = this.workspace.points();
+        const circles = this.workspace.circles();
+
+        if (points.length === 0 && circles.length === 0) {
+            this.stage.scale({ x: 1, y: 1 });
+            this.stage.position({ x: 0, y: 0 });
+            this.drawGrid();
+            this.redrawAll();
+            return;
+        }
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        points.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        });
+
+        circles.forEach(c => {
+            const center = this.workspace.getPoint(c.centerId);
+            if (center) {
+                const cx1 = center.x - c.radius;
+                const cx2 = center.x + c.radius;
+                const cy1 = center.y - c.radius;
+                const cy2 = center.y + c.radius;
+
+                if (cx1 < minX) minX = cx1;
+                if (cx2 > maxX) maxX = cx2;
+                if (cy1 < minY) minY = cy1;
+                if (cy2 > maxY) maxY = cy2;
+            }
+        });
+
+        const boxW = maxX - minX;
+        const boxH = maxY - minY;
+
+        const vpW = this.stage.width();
+        const vpH = this.stage.height();
+
+        const padW = boxW > 0 ? boxW * 1.3 : 200;
+        const padH = boxH > 0 ? boxH * 1.3 : 200;
+
+        let scale = Math.min(vpW / padW, vpH / padH);
+        scale = Math.max(0.05, Math.min(scale, 50));
+
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+
+        this.stage.scale({ x: scale, y: scale });
+        this.stage.position({
+            x: vpW / 2 - cx * scale,
+            y: vpH / 2 - cy * scale
+        });
+
+        this.drawGrid();
+        this.redrawAll();
+    }
+
     // --- CAD Rendering Implementation (Ported from viewport.ts) ---
 
     private isConstraintEntityHovered(conId: string | null, entityId: string): boolean {
@@ -482,7 +552,8 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
             });
 
             lineShape.on('mouseenter', () => {
-                if (this.toolService.activeToolMode() === 'select') {
+                const mode = this.toolService.activeToolMode();
+                if (mode === 'select' || mode === 'dimension') {
                     this.workspace.setHoveredEntityId(l.id);
                     this.stage.container().style.cursor = 'pointer';
                 }
@@ -518,7 +589,8 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
             });
 
             circleShape.on('mouseenter', () => {
-                if (this.toolService.activeToolMode() === 'select') {
+                const mode = this.toolService.activeToolMode();
+                if (mode === 'select' || mode === 'dimension') {
                     this.workspace.setHoveredEntityId(c.id);
                     this.stage.container().style.cursor = 'pointer';
                 }
@@ -583,7 +655,8 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
             pointGroup.add(dot);
 
             pointGroup.on('mouseenter', () => {
-                if (this.toolService.activeToolMode() === 'select') {
+                const mode = this.toolService.activeToolMode();
+                if (mode === 'select' || mode === 'dimension') {
                     this.workspace.setHoveredEntityId(p.id);
                     this.stage.container().style.cursor = 'pointer';
                 }

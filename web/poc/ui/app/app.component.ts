@@ -207,6 +207,11 @@ export class AppComponent {
             return;
         }
 
+        this.toolService.onKeyDown(event);
+        if (event.defaultPrevented) {
+            return;
+        }
+
         const key = event.key.toLowerCase();
         switch (key) {
             case 'd':

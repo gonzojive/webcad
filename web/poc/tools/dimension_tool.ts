@@ -79,6 +79,19 @@ export class DimensionTool implements Tool {
             if (!clickedEntityId) {
                 this.handlePlacementClick(pos, context, renderer);
             }
+        } else if (this.firstEntityId && !clickedEntityId) {
+            // Clicked empty space with one entity selected.
+            // Check if we can dimension it as a single entity (only supported for Line length currently)
+            const l = context.getLine(this.firstEntityId);
+            if (l) {
+                this.placingDimension = {
+                    type: 'distance',
+                    entityIds: [l.p1Id, l.p2Id]
+                };
+                this.handlePlacementClick(pos, context, renderer);
+            } else {
+                this.resetState(renderer);
+            }
         } else {
             // First click on entity or second click on entity
             this.handleSelectionClick(clickedEntityId, context);
@@ -243,6 +256,19 @@ export class DimensionTool implements Tool {
                 }
             }
             renderer.requestRedraw();
+        } else if (this.firstEntityId) {
+            // Selected 1 entity. Check if it's a line to show length preview
+            const l = context.getLine(this.firstEntityId);
+            if (l) {
+                const p1 = context.getPoint(l.p1Id);
+                const p2 = context.getPoint(l.p2Id);
+                if (p1 && p2) {
+                    const implied = getImpliedDimensionType(p1, p2, pos);
+                    this.currentPreviewType = implied;
+                    renderer.setDimensionPreview(implied, [l.p1Id, l.p2Id], pos);
+                    renderer.requestRedraw();
+                }
+            }
         }
     }
 
@@ -253,6 +279,31 @@ export class DimensionTool implements Tool {
         renderer: IRenderer,
         interaction: IInteractionProvider
     ) {}
+
+    onKeyDown(
+        event: KeyboardEvent,
+        context: ToolContext,
+        renderer: IRenderer,
+        interaction: IInteractionProvider
+    ) {
+        if (event.key === 'Enter') {
+            const pos = interaction.getMousePosition();
+            if (this.placingDimension) {
+                this.handlePlacementClick(pos, context, renderer);
+                event.preventDefault();
+            } else if (this.firstEntityId) {
+                const l = context.getLine(this.firstEntityId);
+                if (l) {
+                    this.placingDimension = {
+                        type: 'distance',
+                        entityIds: [l.p1Id, l.p2Id]
+                    };
+                    this.handlePlacementClick(pos, context, renderer);
+                    event.preventDefault();
+                }
+            }
+        }
+    }
 
     onCancel(context: ToolContext, renderer: IRenderer) {
         this.resetState(renderer);
