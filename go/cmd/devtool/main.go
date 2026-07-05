@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -243,7 +244,11 @@ var runCheckCmd = &cobra.Command{
 		var checkID int64
 		client, owner, repo, err := getGitHubClient(cmd)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to initialize GitHub client: %v\n", err)
+			if isForkPR() {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize GitHub client: %v\n", err)
+			} else {
+				return fmt.Errorf("failed to initialize GitHub client: %w", err)
+			}
 		} else if sha != "" {
 			ctx := context.Background()
 			checkRun, _, createErr := client.Checks.CreateCheckRun(ctx, owner, repo, github.CreateCheckRunOptions{
@@ -255,7 +260,11 @@ var runCheckCmd = &cobra.Command{
 				checkID = checkRun.GetID()
 				fmt.Fprintf(os.Stderr, "devtool debug: created check run ID=%d, name=%q, url=%s\n", checkRun.GetID(), checkRun.GetName(), checkRun.GetHTMLURL())
 			} else {
-				fmt.Fprintf(os.Stderr, "Warning: failed to create check run: %v\n", createErr)
+				if isForkPR() && isUnauthorized(createErr) {
+					fmt.Fprintf(os.Stderr, "Warning: GITHUB_TOKEN lacks permission to manage check runs: %v\n", createErr)
+				} else {
+					return fmt.Errorf("failed to create check run: %w", createErr)
+				}
 			}
 		}
 
@@ -282,7 +291,11 @@ var runCheckCmd = &cobra.Command{
 			if updateErr == nil {
 				fmt.Fprintf(os.Stderr, "devtool debug: updated check run ID=%d to conclusion=%s\n", checkID, conclusion)
 			} else {
-				fmt.Fprintf(os.Stderr, "Warning: failed to update check run: %v\n", updateErr)
+				if isForkPR() && isUnauthorized(updateErr) {
+					fmt.Fprintf(os.Stderr, "Warning: failed to update check run: %v\n", updateErr)
+				} else {
+					return fmt.Errorf("failed to update check run: %w", updateErr)
+				}
 			}
 		}
 
@@ -294,4 +307,33 @@ var runCheckCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+type githubEvent struct {
+	PullRequest *struct {
+		Head *struct {
+			Repo *struct {
+				Fork bool `json:"fork"`
+			} `json:"repo"`
+		} `json:"head"`
+	} `json:"pull_request"`
+}
+
+func isForkPR() bool {
+	eventPath := os.Getenv("GITHUB_EVENT_PATH")
+	if eventPath == "" {
+		return false
+	}
+	data, err := os.ReadFile(eventPath)
+	if err != nil {
+		return false
+	}
+	var event githubEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		return false
+	}
+	if event.PullRequest != nil && event.PullRequest.Head != nil && event.PullRequest.Head.Repo != nil {
+		return event.PullRequest.Head.Repo.Fork
+	}
+	return false
 }
