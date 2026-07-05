@@ -3,12 +3,29 @@ import { WorkspaceService } from './workspace.service.js';
 import { ToolService } from './tool.service.js';
 import { McpHubClient } from '@mcp-hub/browser-client';
 
+/**
+ * Service that exposes core parametric CAD actions and viewport status
+ * to an external AI agent by registering them as browser-side MCP tools.
+ *
+ * This service connects to a local daemon over a secure WebTransport connection.
+ * To ensure Angular's change detection correctly intercepts updates triggered by
+ * external tool invocations, handlers that mutate the sketch workspace run inside
+ * the Angular zone (`NgZone`).
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class McpService {
+    /** The Model Context Protocol client instance. */
     private client: McpHubClient | null = null;
 
+    /**
+     * Initializes the service and initiates the connection to the host daemon.
+     *
+     * @param workspace Service for manipulating the sketch workspace entities and solver.
+     * @param toolService Service for accessing active canvas renderers and viewport state.
+     * @param zone Angular zone wrapper to run callbacks with change detection enabled.
+     */
     constructor(
         private readonly workspace: WorkspaceService,
         private readonly toolService: ToolService,
@@ -17,7 +34,12 @@ export class McpService {
         this.init();
     }
 
+    /**
+     * Instantiates the client, registers the available CAD tools,
+     * and establishes the secure WebTransport connection to the host daemon.
+     */
     private async init() {
+        // Shared local development token to authorize connection to the host hub daemon
         const token = "23860d7fdc832ec08977e6fa1bc595f625377dbf46709053d724e25dd7541f4c";
         
         try {
@@ -37,6 +59,10 @@ export class McpService {
         }
     }
 
+    /**
+     * Registers all drawing canvas actions, solver operations, and viewport query
+     * tools onto the MCP client.
+     */
     private registerTools() {
         if (!this.client) return;
 
@@ -240,7 +266,7 @@ export class McpService {
             description: "Get the current viewport boundary in sketch coordinates and the visibility status of all sketch points",
             inputSchema: { type: "object", properties: {} },
             handler: async () => {
-                const renderer = this.toolService.activeRenderer;
+                const renderer = this.toolService.activeRenderer as any;
                 if (!renderer) {
                     throw new Error("Active renderer/viewport not registered");
                 }
