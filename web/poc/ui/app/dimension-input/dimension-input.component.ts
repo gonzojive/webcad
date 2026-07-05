@@ -108,9 +108,12 @@ export class DimensionInputComponent implements AfterViewChecked {
         // Auto focus input when spawned (preventing infinite focus loops)
         const req = this.request();
         if (req && this.inputField && !this.focused) {
-            this.inputField.nativeElement.focus();
-            this.inputField.nativeElement.select();
             this.focused = true;
+            const el = this.inputField.nativeElement;
+            setTimeout(() => {
+                el.focus();
+                el.select();
+            }, 0);
         } else if (!req) {
             this.focused = false;
         }
