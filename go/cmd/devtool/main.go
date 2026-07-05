@@ -1,15 +1,21 @@
-// Package main implements the devtool command-line tool for workspace automation.
+// Package main implements the devtool command-line tool for WebCAD workspace automation.
 package main
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/go-github/v62/github"
 	"github.com/spf13/cobra"
 )
+
+// commitHash is injected at build time using:
+// go build -ldflags "-X main.commitHash=$(git log -n 1 --pretty=format:%H)"
+var commitHash = "unknown"
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
@@ -28,9 +34,66 @@ var githubCmd = &cobra.Command{
 	Short: "Manage GitHub repository integration and check runs",
 }
 
+var checkRunCmd = &cobra.Command{
+	Use:   "check-run",
+	Short: "Create or update check runs for commits",
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version and commit info",
+	Run: func(cmd *cobra.Command, args []string) {
+		hashOnly, _ := cmd.Flags().GetBool("hash-only")
+		if hashOnly {
+			fmt.Print(commitHash)
+			return
+		}
+		fmt.Printf("devtool version 0.0.1 (commit: %s)\n", commitHash)
+	},
+}
+
+var tidyCmd = &cobra.Command{
+	Use:   "tidy",
+	Short: "Tidy Go/npm dependencies and Gazelle configurations",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		var root string
+		for dir := wd; dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+			if _, err := os.Stat(filepath.Join(dir, "MODULE.bazel")); err == nil {
+				root = dir
+				break
+			}
+		}
+		if root == "" {
+			return fmt.Errorf("could not find workspace root (MODULE.bazel)")
+		}
+
+		tidyScript := filepath.Join(root, "devtools", "tidy")
+		c := exec.Command(tidyScript)
+		c.Dir = root
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		c.Stdin = os.Stdin
+
+		if err := c.Run(); err != nil {
+			return fmt.Errorf("tidy script failed: %w", err)
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(githubCmd)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(tidyCmd)
+	
 	githubCmd.AddCommand(checkRunCmd)
+
+	versionCmd.Flags().Bool("hash-only", false, "Output only the commit hash")
 
 	// Add common flags to github command
 	githubCmd.PersistentFlags().String("token", "", "GitHub API token (defaults to GITHUB_TOKEN env var)")
@@ -49,11 +112,6 @@ func init() {
 
 	checkRunCmd.AddCommand(createCheckCmd)
 	checkRunCmd.AddCommand(updateCheckCmd)
-}
-
-var checkRunCmd = &cobra.Command{
-	Use:   "check-run",
-	Short: "Create or update check runs for commits",
 }
 
 // getGitHubClient retrieves a GitHub client authenticated via token flag or GITHUB_TOKEN environment variable.
