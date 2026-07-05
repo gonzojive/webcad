@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -92,24 +93,11 @@ func init() {
 	githubCiCmd.PersistentFlags().String("token", "", "GitHub API token (defaults to GITHUB_TOKEN env var)")
 	githubCiCmd.PersistentFlags().String("repo", "", "GitHub repository owner/name (defaults to GITHUB_REPOSITORY env var)")
 
-	// Create command flags
-	createCheckCmd.Flags().String("name", "", "Name of the check run (required)")
-	createCheckCmd.Flags().String("sha", "", "Commit SHA (defaults to GITHUB_SHA env var)")
-	_ = createCheckCmd.MarkFlagRequired("name")
-
-	// Update command flags
-	updateCheckCmd.Flags().Int64("id", 0, "Check run ID (required)")
-	updateCheckCmd.Flags().String("conclusion", "", "Conclusion of the check run: success, failure, neutral, etc. (required)")
-	_ = updateCheckCmd.MarkFlagRequired("id")
-	_ = updateCheckCmd.MarkFlagRequired("conclusion")
-
 	// Run command flags
 	runCheckCmd.Flags().String("name", "", "Name of the check run (required)")
 	runCheckCmd.Flags().String("sha", "", "Commit SHA (defaults to GITHUB_SHA env var)")
 	_ = runCheckCmd.MarkFlagRequired("name")
 
-	githubCiCmd.AddCommand(createCheckCmd)
-	githubCiCmd.AddCommand(updateCheckCmd)
 	githubCiCmd.AddCommand(runCheckCmd)
 }
 
@@ -149,84 +137,9 @@ func isUnauthorized(err error) bool {
 	return strings.Contains(msg, "401") || strings.Contains(msg, "403")
 }
 
-var createCheckCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a new check run",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		client, owner, repo, err := getGitHubClient(cmd)
-		if err != nil {
-			if isUnauthorized(err) {
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-				return nil
-			}
-			return err
-		}
-
-		name, _ := cmd.Flags().GetString("name")
-		sha, _ := cmd.Flags().GetString("sha")
-		if sha == "" {
-			sha = os.Getenv("GITHUB_SHA")
-		}
-		if sha == "" {
-			return fmt.Errorf("commit SHA is required (specify --sha or GITHUB_SHA env var)")
-		}
-
-		ctx := context.Background()
-		checkRun, _, err := client.Checks.CreateCheckRun(ctx, owner, repo, github.CreateCheckRunOptions{
-			Name:    name,
-			HeadSHA: sha,
-			Status:  github.String("in_progress"),
-		})
-		if err != nil {
-			if isUnauthorized(err) {
-				fmt.Fprintf(os.Stderr, "Warning: GitHub token lacks permission to manage check runs: %v\n", err)
-				return nil
-			}
-			return fmt.Errorf("failed to create check run: %w", err)
-		}
-
-		// Output only the check run ID so script steps can capture it
-		fmt.Println(checkRun.GetID())
-		return nil
-	},
-}
-
-var updateCheckCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Update an existing check run",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		client, owner, repo, err := getGitHubClient(cmd)
-		if err != nil {
-			if isUnauthorized(err) {
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-				return nil
-			}
-			return err
-		}
-
-		id, _ := cmd.Flags().GetInt64("id")
-		conclusion, _ := cmd.Flags().GetString("conclusion")
-
-		ctx := context.Background()
-		_, _, err = client.Checks.UpdateCheckRun(ctx, owner, repo, id, github.UpdateCheckRunOptions{
-			Status:     github.String("completed"),
-			Conclusion: github.String(conclusion),
-		})
-		if err != nil {
-			if isUnauthorized(err) {
-				fmt.Fprintf(os.Stderr, "Warning: GitHub token lacks permission to manage check runs: %v\n", err)
-				return nil
-			}
-			return fmt.Errorf("failed to update check run: %w", err)
-		}
-
-		return nil
-	},
-}
-
 var runCheckCmd = &cobra.Command{
 	Use:   "run-check",
-	Short: "Execute a command and report its status as a GitHub check run",
+	Short: "Execute a command and report its status as a GitHub commit status",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return fmt.Errorf("no command specified to run")
@@ -240,21 +153,30 @@ var runCheckCmd = &cobra.Command{
 
 		fmt.Fprintf(os.Stderr, "devtool debug: name=%q, sha=%q, args=%v\n", name, sha, args)
 
-		var checkID int64
 		client, owner, repo, err := getGitHubClient(cmd)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to initialize GitHub client: %v\n", err)
+			if isForkPR() {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize GitHub client: %v\n", err)
+			} else {
+				return fmt.Errorf("failed to initialize GitHub client: %w", err)
+			}
 		} else if sha != "" {
 			ctx := context.Background()
-			checkRun, _, createErr := client.Checks.CreateCheckRun(ctx, owner, repo, github.CreateCheckRunOptions{
-				Name:    name,
-				HeadSHA: sha,
-				Status:  github.String("in_progress"),
+			targetURL := os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv("GITHUB_REPOSITORY") + "/actions/runs/" + os.Getenv("GITHUB_RUN_ID")
+			_, _, createErr := client.Repositories.CreateStatus(ctx, owner, repo, sha, &github.RepoStatus{
+				State:       github.String("pending"),
+				Context:     github.String(name),
+				Description: github.String("Check is running..."),
+				TargetURL:   github.String(targetURL),
 			})
-			if createErr == nil {
-				checkID = checkRun.GetID()
+			if createErr != nil {
+				if isForkPR() && isUnauthorized(createErr) {
+					fmt.Fprintf(os.Stderr, "Warning: GITHUB_TOKEN lacks permission to manage commit statuses: %v\n", createErr)
+				} else {
+					return fmt.Errorf("failed to create commit status: %w", createErr)
+				}
 			} else {
-				fmt.Fprintf(os.Stderr, "Warning: failed to create check run: %v\n", createErr)
+				fmt.Fprintf(os.Stderr, "devtool debug: created pending status check %q\n", name)
 			}
 		}
 
@@ -266,20 +188,34 @@ var runCheckCmd = &cobra.Command{
 		c.Stdin = os.Stdin
 
 		runErr := c.Run()
-		conclusion := "success"
+		stateStr := "success"
+		desc := "Check completed successfully"
 		if runErr != nil {
-			conclusion = "failure"
+			stateStr = "failure"
+			desc = "Check failed: " + runErr.Error()
+			if len(desc) > 140 {
+				desc = desc[:137] + "..."
+			}
 		}
 
-		// Update check run if created
-		if checkID != 0 && client != nil {
+		// Update commit status
+		if client != nil && sha != "" {
 			ctx := context.Background()
-			_, _, updateErr := client.Checks.UpdateCheckRun(ctx, owner, repo, checkID, github.UpdateCheckRunOptions{
-				Status:     github.String("completed"),
-				Conclusion: github.String(conclusion),
+			targetURL := os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv("GITHUB_REPOSITORY") + "/actions/runs/" + os.Getenv("GITHUB_RUN_ID")
+			_, _, updateErr := client.Repositories.CreateStatus(ctx, owner, repo, sha, &github.RepoStatus{
+				State:       github.String(stateStr),
+				Context:     github.String(name),
+				Description: github.String(desc),
+				TargetURL:   github.String(targetURL),
 			})
 			if updateErr != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to update check run: %v\n", updateErr)
+				if isForkPR() && isUnauthorized(updateErr) {
+					fmt.Fprintf(os.Stderr, "Warning: failed to update commit status: %v\n", updateErr)
+				} else {
+					return fmt.Errorf("failed to update commit status: %w", updateErr)
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "devtool debug: updated status check %q to %s\n", name, stateStr)
 			}
 		}
 
@@ -291,4 +227,33 @@ var runCheckCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+type githubEvent struct {
+	PullRequest *struct {
+		Head *struct {
+			Repo *struct {
+				Fork bool `json:"fork"`
+			} `json:"repo"`
+		} `json:"head"`
+	} `json:"pull_request"`
+}
+
+func isForkPR() bool {
+	eventPath := os.Getenv("GITHUB_EVENT_PATH")
+	if eventPath == "" {
+		return false
+	}
+	data, err := os.ReadFile(eventPath)
+	if err != nil {
+		return false
+	}
+	var event githubEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		return false
+	}
+	if event.PullRequest != nil && event.PullRequest.Head != nil && event.PullRequest.Head.Repo != nil {
+		return event.PullRequest.Head.Repo.Fork
+	}
+	return false
 }
