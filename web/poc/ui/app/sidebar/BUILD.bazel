@@ -7,6 +7,7 @@ ts_project(
     srcs = ["sidebar.component.ts"],
     declaration = True,
     source_map = True,
+    tsc = "//web/poc/ui:ngc",
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         "//ts/gcsapi",

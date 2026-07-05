@@ -8,6 +8,7 @@ ts_project(
     srcs = ["dimension-input.component.ts"],
     declaration = True,
     source_map = True,
+    tsc = "//web/poc/ui:ngc",
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         "//web:node_modules/@angular/common",
@@ -31,6 +32,7 @@ ts_project(
     srcs = ["dimension-input.component.test.ts"],
     declaration = True,
     source_map = True,
+    tsc = "//web/poc/ui:ngc",
     tsconfig = "//web/poc/ui:tsconfig",
     deps = [
         ":dimension-input",
