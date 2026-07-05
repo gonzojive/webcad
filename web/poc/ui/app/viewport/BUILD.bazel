@@ -39,7 +39,10 @@ js_test(
     data = [
         ":viewport_tests",
         "//web:node_modules/@resvg/resvg-wasm",
-    ] + glob(["testdata/**"], allow_empty = True),
+    ] + glob(
+        ["testdata/**"],
+        allow_empty = True,
+    ),
     entry_point = "visual_regression.test.js",
 )
 

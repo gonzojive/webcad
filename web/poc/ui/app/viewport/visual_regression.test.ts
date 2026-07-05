@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as url from 'node:url';
 import { GCSPoint, GCSLine } from '../../../../../ts/gcsapi/dist/index.js';
 import { exportToSVG, ISketchWorkspace } from './svg_exporter.js';
-import { rasterizeSVG } from './png_rasterizer.js';
+import { initializeResvgWasm, rasterizeSVG } from './png_rasterizer.js';
 
 class MockWorkspace implements ISketchWorkspace {
     points: GCSPoint[] = [];
@@ -33,6 +33,12 @@ test('rasterizeSVG initializes WASM and outputs a valid PNG matching golden refe
         height: 100,
         viewBox: { x: -10, y: -10, width: 120, height: 120 }
     });
+
+    // Initialize resvg WASM explicitly under Node
+    const resvgWasmUrl = (import.meta as any).resolve('@resvg/resvg-wasm/index_bg.wasm');
+    const resvgWasmPath = url.fileURLToPath(resvgWasmUrl);
+    const resvgWasmBuffer = fs.readFileSync(resvgWasmPath);
+    await initializeResvgWasm(resvgWasmBuffer);
 
     // Rasterize SVG -> PNG via WASM
     const pngDataUrl = await rasterizeSVG(svg);

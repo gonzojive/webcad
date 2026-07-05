@@ -4,34 +4,19 @@ let wasmInitialized = false;
 
 /**
  * Initializes the @resvg/resvg-wasm module.
+ * 
+ * In the browser, it defaults to fetching the WASM module from '/ui/resvg_index_bg.wasm'.
+ * Headless or Node.js environments can pass a custom URL or pre-loaded Uint8Array buffer.
  *
- * Automatically detects whether it is running in a Node.js (JSDOM test) environment
- * or a web browser, and loads the WebAssembly binary accordingly.
+ * @param wasmSource Optional custom URL or Uint8Array buffer containing the WASM binary.
  */
-export async function initializeResvgWasm(): Promise<void> {
+export async function initializeResvgWasm(wasmSource?: string | Uint8Array): Promise<void> {
     if (wasmInitialized) {
         return;
     }
 
-    const isNode = typeof globalThis !== 'undefined' && !!(globalThis as any).process?.versions?.node;
-
-    if (isNode) {
-        // Node.js environment (JSDOM testing under Bazel)
-        // Use variable names to prevent esbuild from statically analyzing and bundling Node modules
-        const fsName = 'node:fs';
-        const urlName = 'node:url';
-        const fs = await import(fsName);
-        const url = await import(urlName);
-        
-        const wasmUrl = (import.meta as any).resolve('@resvg/resvg-wasm/index_bg.wasm');
-        const wasmPath = url.fileURLToPath(wasmUrl);
-        const wasmBuffer = fs.readFileSync(wasmPath);
-        await initWasm(wasmBuffer);
-    } else {
-        // Browser environment
-        await initWasm('/ui/resvg_index_bg.wasm');
-    }
-
+    const source = wasmSource ?? '/ui/resvg_index_bg.wasm';
+    await initWasm(source as any);
     wasmInitialized = true;
 }
 

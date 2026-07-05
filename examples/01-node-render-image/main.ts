@@ -1,8 +1,9 @@
 import { NodeWorkspace } from '../../web/poc/node_workspace/index.js';
 import { exportToSVG } from '../../web/poc/ui/app/viewport/svg_exporter.js';
-import { rasterizeSVG } from '../../web/poc/ui/app/viewport/png_rasterizer.js';
+import { initializeResvgWasm, rasterizeSVG } from '../../web/poc/ui/app/viewport/png_rasterizer.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as url from 'url';
 
 async function main() {
     // Parse optional command line flags (--svg <path>, --png <path>)
@@ -47,6 +48,11 @@ async function main() {
 
     if (pngPath) {
         console.log('Rasterizing SVG to PNG via resvg-wasm...');
+        // Initialize resvg WASM explicitly under Node
+        const resvgWasmUrl = (import.meta as any).resolve('@resvg/resvg-wasm/index_bg.wasm');
+        const resvgWasmBuffer = fs.readFileSync(url.fileURLToPath(resvgWasmUrl));
+        await initializeResvgWasm(resvgWasmBuffer);
+
         const pngDataUrl = await rasterizeSVG(svgString);
         const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, '');
         const resolvedPngPath = resolvePath(pngPath);
