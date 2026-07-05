@@ -2,6 +2,7 @@ import { Component, inject, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkspaceService } from './services/workspace.service.js';
 import { ToolService } from './services/tool.service.js';
+import { McpService } from './services/mcp.service.js';
 import { ViewportComponent } from './viewport/viewport.component.js';
 import { ToolbarComponent } from './toolbar/toolbar.component.js';
 import { SidebarComponent } from './sidebar/sidebar.component.js';
@@ -248,6 +249,7 @@ import { Unit } from '../../units/units.js';
 export class AppComponent {
     readonly workspace = inject(WorkspaceService);
     private readonly toolService = inject(ToolService);
+    private readonly mcp = inject(McpService);
 
     readonly activeToolLabel = computed(() => {
         const mode = this.toolService.activeToolMode();
