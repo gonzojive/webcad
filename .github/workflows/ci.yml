@@ -14,6 +14,8 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -47,51 +49,11 @@ jobs:
         echo "build --disk_cache=~/.cache/bazel-disk" >> ~/.bazelrc
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
-    - name: Register Check Run for Workspace Tidy
-      id: tidy_check
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        CHECK_ID=$(bazel run //go/cmd/devtool -- github check-run create --name "CI / Check Workspace Tidy")
-        echo "check_id=$CHECK_ID" >> $GITHUB_OUTPUT
-
     - name: Check Workspace Tidy
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        if [ -n "${{ steps.tidy_check.outputs.check_id }}" ]; then
-          if ./devtools/tidy && git diff --exit-code; then
-            bazel run //go/cmd/devtool -- github check-run update --id ${{ steps.tidy_check.outputs.check_id }} --conclusion success
-          else
-            bazel run //go/cmd/devtool -- github check-run update --id ${{ steps.tidy_check.outputs.check_id }} --conclusion failure
-            exit 1
-          fi
-        else
-          ./devtools/tidy && git diff --exit-code
-        fi
-
-    - name: Register Check Run for Bazel Build and Test
-      id: build_check
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        CHECK_ID=$(bazel run //go/cmd/devtool -- github check-run create --name "CI / Bazel Build and Test")
-        echo "check_id=$CHECK_ID" >> $GITHUB_OUTPUT
+      run: bazel run //go/cmd/devtool -- github check-run run --name "CI / Check Workspace Tidy" -- ./devtools/tidy && git diff --exit-code
 
     - name: Bazel Build and Test
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        if [ -n "${{ steps.build_check.outputs.check_id }}" ]; then
-          if bazel build //... && bazel test //...; then
-            bazel run //go/cmd/devtool -- github check-run update --id ${{ steps.build_check.outputs.check_id }} --conclusion success
-          else
-            bazel run //go/cmd/devtool -- github check-run update --id ${{ steps.build_check.outputs.check_id }} --conclusion failure
-            exit 1
-          fi
-        else
-          bazel build //... && bazel test //...
-        fi
+      run: bazel run //go/cmd/devtool -- github check-run run --name "CI / Bazel Build and Test" -- bazel build //... && bazel test //...
 
   validate-docs:
     name: Validate Markdown and Diagrams

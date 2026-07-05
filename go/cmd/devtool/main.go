@@ -110,8 +110,14 @@ func init() {
 	_ = updateCheckCmd.MarkFlagRequired("id")
 	_ = updateCheckCmd.MarkFlagRequired("conclusion")
 
+	// Run command flags
+	runCheckCmd.Flags().String("name", "", "Name of the check run (required)")
+	runCheckCmd.Flags().String("sha", "", "Commit SHA (defaults to GITHUB_SHA env var)")
+	_ = runCheckCmd.MarkFlagRequired("name")
+
 	checkRunCmd.AddCommand(createCheckCmd)
 	checkRunCmd.AddCommand(updateCheckCmd)
+	checkRunCmd.AddCommand(runCheckCmd)
 }
 
 // getGitHubClient retrieves a GitHub client authenticated via token flag or GITHUB_TOKEN environment variable.
@@ -221,6 +227,75 @@ var updateCheckCmd = &cobra.Command{
 			return fmt.Errorf("failed to update check run: %w", err)
 		}
 
+		return nil
+	},
+}
+
+var runCheckCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Execute a command and report its status as a GitHub check run",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return fmt.Errorf("no command specified to run")
+		}
+
+		name, _ := cmd.Flags().GetString("name")
+		sha, _ := cmd.Flags().GetString("sha")
+		if sha == "" {
+			sha = os.Getenv("GITHUB_SHA")
+		}
+
+		var checkID int64
+		client, owner, repo, err := getGitHubClient(cmd)
+		if err == nil && sha != "" {
+			ctx := context.Background()
+			checkRun, _, createErr := client.Checks.CreateCheckRun(ctx, owner, repo, github.CreateCheckRunOptions{
+				Name:    name,
+				HeadSHA: sha,
+				Status:  github.String("in_progress"),
+			})
+			if createErr == nil {
+				checkID = checkRun.GetID()
+			} else if isUnauthorized(createErr) {
+				fmt.Fprintf(os.Stderr, "Warning: GITHUB_TOKEN lacks permission to manage check runs: %v\n", createErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "Warning: failed to create check run: %v\n", createErr)
+			}
+		} else if err != nil && isUnauthorized(err) {
+			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+		}
+
+		// Execute the command in bash to support piping and logical operators (&&, ||)
+		shellCmd := strings.Join(args, " ")
+		c := exec.Command("bash", "-c", shellCmd)
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		c.Stdin = os.Stdin
+
+		runErr := c.Run()
+		conclusion := "success"
+		if runErr != nil {
+			conclusion = "failure"
+		}
+
+		// Update check run if created
+		if checkID != 0 && client != nil {
+			ctx := context.Background()
+			_, _, updateErr := client.Checks.UpdateCheckRun(ctx, owner, repo, checkID, github.UpdateCheckRunOptions{
+				Status:     github.String("completed"),
+				Conclusion: github.String(conclusion),
+			})
+			if updateErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to update check run: %v\n", updateErr)
+			}
+		}
+
+		if runErr != nil {
+			if exitErr, ok := runErr.(*exec.ExitError); ok {
+				os.Exit(exitErr.ExitCode())
+			}
+			return runErr
+		}
 		return nil
 	},
 }
