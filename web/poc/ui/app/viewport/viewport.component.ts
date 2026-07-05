@@ -6,7 +6,7 @@ import { Vector2D, dist } from '../../../geometry/vector.js';
 import { projectPointOntoLine } from '../../../geometry/project.js';
 import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 import { AnnotationDrawer } from './annotation_drawer.js';
-import { exportToRasterImage } from './raster_exporter.js';
+import { exportToSVG } from './svg_exporter.js';
 
 declare const Konva: any;
 
@@ -246,7 +246,30 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     }
 
     toRasterImage(): string {
-        return exportToRasterImage(this.stage, this.gridLayer, this.mainLayer, this.workspace, () => this.redrawAll());
+        const svg = this.toSVG();
+        const base64 = btoa(unescape(encodeURIComponent(svg)));
+        return `data:image/svg+xml;base64,${base64}`;
+    }
+
+    toSVG(options?: {
+        width?: number;
+        height?: number;
+        viewBox?: { x: number; y: number; width: number; height: number };
+        scale?: number;
+    }): string {
+        const bounds = this.getViewportSketchBounds();
+        const defaultOptions = {
+            width: this.stage ? this.stage.width() : 800,
+            height: this.stage ? this.stage.height() : 600,
+            scale: this.stage ? this.stage.scaleX() : 1,
+            viewBox: {
+                x: bounds.min.x,
+                y: bounds.min.y,
+                width: bounds.max.x - bounds.min.x,
+                height: bounds.max.y - bounds.min.y
+            }
+        };
+        return exportToSVG(this.workspace, { ...defaultOptions, ...options });
     }
 
     // --- IInteractionProvider Implementation ---

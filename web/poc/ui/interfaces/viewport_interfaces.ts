@@ -31,4 +31,10 @@ export interface IRenderer {
     isSketchPointInViewport(pos: Vector2D): boolean;
     getViewportSketchBounds(): { min: Vector2D; max: Vector2D };
     toRasterImage(): string;
+    toSVG(options?: {
+        width?: number;
+        height?: number;
+        viewBox?: { x: number; y: number; width: number; height: number };
+        scale?: number;
+    }): string;
 }

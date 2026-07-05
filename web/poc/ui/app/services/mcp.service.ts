@@ -299,5 +299,18 @@ export class McpService {
                 return renderer.toRasterImage();
             }
         });
+
+        // 10. Export SVG
+        this.client.tool("WebCad.exportSVG", {
+            description: "Export the current CAD sketch geometry as a raw XML SVG vector string",
+            inputSchema: { type: "object", properties: {} },
+            handler: async () => {
+                const renderer = this.toolService.activeRenderer as any;
+                if (!renderer) {
+                    throw new Error("Active renderer/viewport not registered");
+                }
+                return renderer.toSVG();
+            }
+        });
     }
 }
