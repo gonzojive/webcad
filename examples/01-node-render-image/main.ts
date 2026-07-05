@@ -1,30 +1,42 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as url from 'url';
+import { GCSSolver, GCSSketchState, GCSPoint } from '../../ts/gcsapi/dist/index.js';
 import { exportToSVG, ISketchWorkspace } from '../../web/poc/ui/app/viewport/svg_exporter.js';
 import { rasterizeSVG } from '../../web/poc/ui/app/viewport/png_rasterizer.js';
 
-// 1. Setup a sketch workspace containing a line, a circle, and their points:
-const workspace: ISketchWorkspace = {
-    getPoints: () => [
-        { id: 'p1', x: 10, y: 20 },
-        { id: 'p2', x: 150, y: 120 },
-        { id: 'c1_center', x: 100, y: 70 }
-    ],
-    getLines: () => [
-        { id: 'l1', p1Id: 'p1', p2Id: 'p2' }
-    ],
-    getCircles: () => [
-        { id: 'circ1', centerId: 'c1_center', radius: 40 }
-    ],
-    getPoint: (id: string) => {
-        const pts = [
-            { id: 'p1', x: 10, y: 20 },
-            { id: 'p2', x: 150, y: 120 },
-            { id: 'c1_center', x: 100, y: 70 }
-        ];
-        return pts.find(p => p.id === id);
-    }
-};
+// Setup environment and load the Go WASM solver in Node.js
+async function initNodeSolver(): Promise<GCSSolver> {
+    // 1. Resolve and load the Go WASM execution helper (wasm_exec.js) in global context
+    const wasmExecUrl = (import.meta as any).resolve('../../web/poc/ui/wasm_exec.js');
+    const wasmExecPath = url.fileURLToPath(wasmExecUrl);
+    const wasmExecSource = fs.readFileSync(wasmExecPath, 'utf8');
+    new Function(wasmExecSource)(); // Defines globalThis.Go
+
+    // 2. Resolve the compiled wasm_solver.wasm file
+    const solverWasmUrl = (import.meta as any).resolve('../../web/poc/ui/wasm_solver.wasm');
+    const solverWasmPath = url.fileURLToPath(solverWasmUrl);
+
+    // 3. Mock fetch-like behavior for the solver to read the WASM file from the sandbox
+    const originalInstantiateStreaming = WebAssembly.instantiateStreaming;
+    (WebAssembly as any).instantiateStreaming = undefined; // Force fallback to arrayBuffer
+
+    globalThis.fetch = async (urlStr: any) => {
+        const buffer = fs.readFileSync(urlStr);
+        return {
+            arrayBuffer: async () => buffer,
+        } as any;
+    };
+
+    // 4. Instantiate and initialize the GCS solver
+    const solver = new GCSSolver();
+    await solver.initGoWasm(solverWasmPath);
+
+    // Restore original WebAssembly behavior
+    WebAssembly.instantiateStreaming = originalInstantiateStreaming;
+
+    return solver;
+}
 
 async function main() {
     // Parse optional command line flags (--svg <path>, --png <path>)
@@ -33,7 +45,49 @@ async function main() {
     const svgPath = svgArgIndex !== -1 ? process.argv[svgArgIndex + 1] : undefined;
     const pngPath = pngArgIndex !== -1 ? process.argv[pngArgIndex + 1] : undefined;
 
-    console.log('Exporting sketch to SVG...');
+    console.log('Initializing Go GCS Solver in Node.js...');
+    const solver = await initNodeSolver();
+
+    // 1. Define initial sketch state (before solve):
+    // P1 fixed at (10, 20)
+    // P2 initially at (20, 20)
+    // Constraint: Distance between P1 and P2 must be exactly 150
+    console.log('Setting up sketch state and distance constraint...');
+    const state: GCSSketchState = {
+        points: [
+            { id: 'P1', x: 10, y: 20, fixed: true },
+            { id: 'P2', x: 20, y: 20 }
+        ],
+        lines: [
+            { id: 'L1', p1Id: 'P1', p2Id: 'P2' }
+        ],
+        circles: [],
+        constraints: [
+            { id: 'C1', type: 'distance', p1Id: 'P1', p2Id: 'P2', value: 150 }
+        ]
+    };
+
+    // 2. Solve the sketch layout constraints
+    console.log('Invoking GCS Solver...');
+    const result = solver.solve(state);
+    if (!result.success) {
+        throw new Error(`Solve failed: ${result.error}`);
+    }
+
+    console.log('Solve succeeded! Point coordinates updated:');
+    result.points.forEach((p: GCSPoint) => {
+        console.log(` - ${p.id}: (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
+    });
+
+    // 3. Wrap solved state in workspace interface for the exporter
+    const workspace: ISketchWorkspace = {
+        getPoints: () => result.points,
+        getLines: () => state.lines,
+        getCircles: () => state.circles,
+        getPoint: (id: string) => result.points.find((p: GCSPoint) => p.id === id)
+    };
+
+    console.log('Exporting GCS-solved sketch to SVG...');
     const svgString = exportToSVG(workspace);
 
     if (svgPath) {
@@ -47,7 +101,6 @@ async function main() {
     if (pngPath) {
         console.log('Rasterizing SVG to PNG via resvg-wasm...');
         const pngDataUrl = await rasterizeSVG(svgString);
-        // Extract base64 payload and write to a physical PNG file
         const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, '');
         const resolvedPngPath = resolvePath(pngPath);
         fs.writeFileSync(resolvedPngPath, Buffer.from(base64Data, 'base64'));

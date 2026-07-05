@@ -12,6 +12,8 @@ js_binary(
         "package.json",
         ":01-node-render-image",
         "//web:node_modules/@resvg/resvg-wasm",
+        "//web/poc/ui:copy_wasm_exec",
+        "//web/poc/ui:copy_wasm_solver",
     ],
     entry_point = "main.js",
 )
@@ -22,7 +24,10 @@ ts_project(
     declaration = True,
     source_map = True,
     tsconfig = ":tsconfig",
-    deps = ["//web/poc/ui/app/viewport"],
+    deps = [
+        "//ts/gcsapi",
+        "//web/poc/ui/app/viewport",
+    ],
 )
 
 ts_config(
