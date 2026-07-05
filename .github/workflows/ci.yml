@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -44,14 +50,10 @@ jobs:
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
     - name: Check Workspace Tidy
-      run: |
-        ./devtools/tidy
-        git diff --exit-code
+      run: bazel run //go/cmd/devtool -- github check-run run --name "CI / Check Workspace Tidy" -- ./devtools/tidy && git diff --exit-code
 
     - name: Bazel Build and Test
-      run: |
-        bazel build //...
-        bazel test //...
+      run: bazel run //go/cmd/devtool -- github check-run run --name "CI / Bazel Build and Test" -- bazel build //... && bazel test //...
 
   validate-docs:
     name: Validate Markdown and Diagrams
