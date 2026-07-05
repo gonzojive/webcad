@@ -4,10 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "services",
-    srcs = [
-        "tool.service.ts",
-        "workspace.service.ts",
-    ],
+    srcs = glob(["**/*.ts"]),
     declaration = True,
     source_map = True,
     tsc = "//web/poc/ui:ngc",
@@ -15,6 +12,7 @@ ts_project(
     deps = [
         "//ts/gcsapi",
         "//web:node_modules/@angular/core",
+        "//web:node_modules/@mcp-hub/browser-client",
         "//web/poc/geometry",
         "//web/poc/model",
         "//web/poc/tools",
