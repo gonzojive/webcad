@@ -12,6 +12,7 @@ ts_project(
     deps = [
         "//ts/gcsapi",
         "//web:node_modules/@angular/core",
+        "//web:node_modules/@mcp-hub/browser-client",
         "//web/poc/geometry",
         "//web/poc/model",
         "//web/poc/tools",

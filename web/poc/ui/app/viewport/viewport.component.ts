@@ -6,6 +6,7 @@ import { Vector2D, dist } from '../../../geometry/vector.js';
 import { projectPointOntoLine } from '../../../geometry/project.js';
 import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 import { AnnotationDrawer } from './annotation_drawer.js';
+import { exportToRasterImage } from './raster_exporter.js';
 
 declare const Konva: any;
 
@@ -244,8 +245,8 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
         };
     }
 
-    toDataURL(): string {
-        return this.stage ? this.stage.toDataURL() : '';
+    toRasterImage(): string {
+        return exportToRasterImage(this.stage, this.gridLayer, this.mainLayer, this.workspace, () => this.redrawAll());
     }
 
     // --- IInteractionProvider Implementation ---

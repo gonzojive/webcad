@@ -1,7 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
 import { WorkspaceService } from './workspace.service.js';
 import { ToolService } from './tool.service.js';
-import { McpHubClient } from './vendor/mcp/index.js';
+import { McpHubClient } from '@mcp-hub/browser-client';
 
 @Injectable({
   providedIn: 'root'
@@ -266,11 +266,11 @@ export class McpService {
             description: "Capture a screenshot of the current CAD canvas as a base64-encoded PNG data URL",
             inputSchema: { type: "object", properties: {} },
             handler: async () => {
-                const renderer = this.toolService.activeRenderer;
+                const renderer = this.toolService.activeRenderer as any;
                 if (!renderer) {
                     throw new Error("Active renderer/viewport not registered");
                 }
-                return renderer.toDataURL();
+                return renderer.toRasterImage();
             }
         });
     }
