@@ -1,0 +1,9 @@
+{
+  "extends": "../../web/poc/ui/tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": [
+      "../../web/node_modules/@types"
+    ],
+    "types": ["node"]
+  }
+}
