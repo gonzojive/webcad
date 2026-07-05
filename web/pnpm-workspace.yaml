@@ -1,5 +1,4 @@
 packages:
   - '.'
   - 'poc/ui'
-  - 'vendor/@mcp-hub/browser-client'
 
