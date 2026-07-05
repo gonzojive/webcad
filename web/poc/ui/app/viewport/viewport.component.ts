@@ -176,7 +176,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     setPointPreview(pos: Vector2D) {
         if (!this.tempPointPreview) {
             this.tempPointPreview = new Konva.Circle({
-                radius: 5,
+                radius: 3.5,
                 fill: 'rgba(59, 130, 246, 0.7)',
                 stroke: 'rgba(0,0,0,0.5)',
                 strokeWidth: 1,
@@ -639,7 +639,7 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
 
             const dot = new Konva.Circle({
                 name: 'dot',
-                radius: (isHovered || isSelected ? 6.5 : 4.5) * invS,
+                radius: (isHovered || isSelected ? 5.0 : 3.0) * invS,
                 fill: pointColor,
                 stroke: p.fixed ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0,0,0,0.5)',
                 strokeWidth: 1.5 * invS

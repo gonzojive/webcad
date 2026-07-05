@@ -37,9 +37,9 @@ test('ToolbarComponent renders buttons and updates active class based on ToolSer
     ]
   });
 
-  const selectBtn = dom.window.document.querySelector('button:nth-child(1)')!;
-  const lineBtn = dom.window.document.querySelector('button:nth-child(3)')!;
-  const circleBtn = dom.window.document.querySelector('button:nth-child(4)')!;
+  const selectBtn = dom.window.document.querySelector('button:nth-of-type(1)')!;
+  const lineBtn = dom.window.document.querySelector('button:nth-of-type(3)')!;
+  const circleBtn = dom.window.document.querySelector('button:nth-of-type(4)')!;
 
   assert.ok(selectBtn, 'Select button should exist');
   assert.ok(lineBtn, 'Line button should exist');

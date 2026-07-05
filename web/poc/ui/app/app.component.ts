@@ -1,4 +1,4 @@
-import { Component, inject, HostListener } from '@angular/core';
+import { Component, inject, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkspaceService } from './services/workspace.service.js';
 import { ToolService } from './services/tool.service.js';
@@ -21,12 +21,20 @@ import { Unit } from '../../units/units.js';
   template: `
     <!-- Top Header -->
     <header class="app-header">
-        <div class="logo-section">
-            <span class="logo-icon">📐</span>
-            <h1 class="logo-title">WebCAD 2D Sketcher</h1>
+        <div class="header-left">
+            <div class="logo-section">
+                <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12,3 21,8 21,18 12,23 3,18 3,8" stroke="#cbd5e1" stroke-width="1.75"/>
+                    <polygon points="12,7 17,10 17,16 12,19 7,16 7,10" stroke="#1a73e8" stroke-width="2"/>
+                    <circle cx="12" cy="13" r="1.5" fill="#1a73e8" stroke="none"/>
+                </svg>
+                <h1 class="logo-title">WebCAD<sub class="logo-subscript">2D</sub></h1>
+            </div>
+            <div class="header-divider"></div>
+            <app-toolbar></app-toolbar>
         </div>
 
-        <div class="solver-status-hud" [class]="workspace.solverStatusType()">
+        <div *ngIf="workspace.solverStatusType() !== 'success'" class="solver-status-hud" [class]="workspace.solverStatusType()">
             {{ workspace.solverStatus() }}
         </div>
 
@@ -58,8 +66,11 @@ import { Unit } from '../../units/units.js';
     <div class="workspace-main">
         <div class="viewport-area">
             <app-viewport></app-viewport>
-            <app-toolbar></app-toolbar>
             <app-dimension-input></app-dimension-input>
+            
+            <div class="help-overlay">
+                Mode: <span style="font-weight: 600; color: var(--accent-color);">{{ activeToolLabel() }}</span>. {{ activeToolHelp() }}
+            </div>
         </div>
         
         <div class="sidebar-area">
@@ -69,7 +80,7 @@ import { Unit } from '../../units/units.js';
   `,
   styles: [`
     .app-header {
-        background-color: #e2e8f0;
+        background-color: #f8fafc;
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
@@ -79,21 +90,46 @@ import { Unit } from '../../units/units.js';
         box-sizing: border-box;
     }
 
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .header-divider {
+        width: 1px;
+        height: 22px;
+        background-color: var(--border-color);
+    }
+
     .logo-section {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.55rem;
     }
 
-    .logo-icon {
-        font-size: 1.25rem;
+    .logo-svg {
+        width: 24px;
+        height: 24px;
+        display: block;
     }
 
     .logo-title {
-        font-size: 1.05rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 1.25rem;
+        font-weight: 750;
+        letter-spacing: -0.035em;
+        color: #0f172a; /* Slate-900 */
+        white-space: nowrap;
+        display: flex;
+        align-items: baseline;
+    }
+
+    .logo-subscript {
+        font-size: 0.65rem;
         font-weight: 600;
-        letter-spacing: -0.01em;
-        color: var(--text-color);
+        color: #64748b; /* Slate-500 */
+        margin-left: 2px;
     }
 
     .solver-status-hud {
@@ -189,11 +225,53 @@ import { Unit } from '../../units/units.js';
         height: 100%;
         flex-shrink: 0;
     }
+
+    .help-overlay {
+        position: absolute;
+        bottom: 1.25rem;
+        left: 1.25rem;
+        background-color: var(--glass-bg);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.55rem 0.95rem;
+        font-family: var(--font-family);
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        z-index: 90;
+        pointer-events: none;
+    }
   `]
 })
 export class AppComponent {
     readonly workspace = inject(WorkspaceService);
     private readonly toolService = inject(ToolService);
+
+    readonly activeToolLabel = computed(() => {
+        const mode = this.toolService.activeToolMode();
+        switch (mode) {
+            case 'select': return 'Select';
+            case 'point': return 'Point';
+            case 'line': return 'Line';
+            case 'circle': return 'Circle';
+            case 'dimension': return 'Dimension';
+            default: return 'None';
+        }
+    });
+
+    readonly activeToolHelp = computed(() => {
+        const mode = this.toolService.activeToolMode();
+        switch (mode) {
+            case 'select': return 'Click and drag to select elements, drag items to move them.';
+            case 'point': return 'Click on canvas to place a point constraint node.';
+            case 'line': return 'Click to define start point, click again to define endpoint.';
+            case 'circle': return 'Click to define circle center, click again to define radius.';
+            case 'dimension': return 'Select geometric entity, then click to place dimension annotation.';
+            default: return '';
+        }
+    });
 
     changeUnit(event: Event) {
         const select = event.target as HTMLSelectElement;
