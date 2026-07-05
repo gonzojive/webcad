@@ -27,20 +27,47 @@ const workspace: ISketchWorkspace = {
 };
 
 async function main() {
+    // Parse optional command line flags (--svg <path>, --png <path>)
+    const svgArgIndex = process.argv.indexOf('--svg');
+    const pngArgIndex = process.argv.indexOf('--png');
+    const svgPath = svgArgIndex !== -1 ? process.argv[svgArgIndex + 1] : undefined;
+    const pngPath = pngArgIndex !== -1 ? process.argv[pngArgIndex + 1] : undefined;
+
     console.log('Exporting sketch to SVG...');
     const svgString = exportToSVG(workspace);
-    console.log('Generated SVG content:\n', svgString);
 
-    console.log('Rasterizing SVG to PNG via resvg-wasm...');
-    const pngDataUrl = await rasterizeSVG(svgString);
-    console.log('Generated PNG Data URL length:', pngDataUrl.length);
+    if (svgPath) {
+        const resolvedSvgPath = resolvePath(svgPath);
+        fs.writeFileSync(resolvedSvgPath, svgString);
+        console.log(`Successfully wrote SVG markup to: ${resolvedSvgPath}`);
+    } else {
+        console.log('Generated SVG content:\n', svgString);
+    }
 
-    // Extract base64 payload and write to a physical PNG file
-    const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, '');
-    const outputDir = process.env.BUILD_WORKSPACE_DIRECTORY || process.cwd();
-    const outputPath = path.join(outputDir, 'output.png');
-    fs.writeFileSync(outputPath, Buffer.from(base64Data, 'base64'));
-    console.log(`Successfully wrote PNG image to: ${outputPath}`);
+    if (pngPath) {
+        console.log('Rasterizing SVG to PNG via resvg-wasm...');
+        const pngDataUrl = await rasterizeSVG(svgString);
+        // Extract base64 payload and write to a physical PNG file
+        const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, '');
+        const resolvedPngPath = resolvePath(pngPath);
+        fs.writeFileSync(resolvedPngPath, Buffer.from(base64Data, 'base64'));
+        console.log(`Successfully wrote PNG image to: ${resolvedPngPath}`);
+    }
+
+    if (!svgPath && !pngPath) {
+        console.log('\nTip: Run with "--svg <path>" or "--png <path>" arguments to save outputs.');
+    }
+}
+
+/**
+ * Resolves output paths relative to the invoking workspace directory when run via Bazel.
+ */
+function resolvePath(filePath: string): string {
+    if (path.isAbsolute(filePath)) {
+        return filePath;
+    }
+    const baseDir = process.env.BUILD_WORKSPACE_DIRECTORY || process.cwd();
+    return path.resolve(baseDir, filePath);
 }
 
 main().catch(err => {
