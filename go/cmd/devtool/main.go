@@ -238,9 +238,13 @@ var runCheckCmd = &cobra.Command{
 			sha = os.Getenv("GITHUB_SHA")
 		}
 
+		fmt.Fprintf(os.Stderr, "devtool debug: name=%q, sha=%q, args=%v\n", name, sha, args)
+
 		var checkID int64
 		client, owner, repo, err := getGitHubClient(cmd)
-		if err == nil && sha != "" {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to initialize GitHub client: %v\n", err)
+		} else if sha != "" {
 			ctx := context.Background()
 			checkRun, _, createErr := client.Checks.CreateCheckRun(ctx, owner, repo, github.CreateCheckRunOptions{
 				Name:    name,
@@ -249,13 +253,9 @@ var runCheckCmd = &cobra.Command{
 			})
 			if createErr == nil {
 				checkID = checkRun.GetID()
-			} else if isUnauthorized(createErr) {
-				fmt.Fprintf(os.Stderr, "Warning: GITHUB_TOKEN lacks permission to manage check runs: %v\n", createErr)
 			} else {
 				fmt.Fprintf(os.Stderr, "Warning: failed to create check run: %v\n", createErr)
 			}
-		} else if err != nil && isUnauthorized(err) {
-			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
 		}
 
 		// Execute the command in bash to support piping and logical operators (&&, ||)

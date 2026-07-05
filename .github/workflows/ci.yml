@@ -50,10 +50,10 @@ jobs:
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
     - name: Check Workspace Tidy
-      run: ./devtool github-ci run-check --name "CI / Check Workspace Tidy" -- ./devtools/tidy && git diff --exit-code
+      run: ./devtool github-ci run-check --name "Check Workspace Tidy" --sha "${{ github.event.pull_request.head.sha || github.sha }}" -- ./devtools/tidy && git diff --exit-code
 
     - name: Bazel Build and Test
-      run: ./devtool github-ci run-check --name "CI / Bazel Build and Test" -- bazel build //... && bazel test //...
+      run: ./devtool github-ci run-check --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}" -- bazel build //... && bazel test //...
 
   validate-docs:
     name: Validate Markdown and Diagrams

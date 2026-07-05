@@ -12,8 +12,12 @@ SRC_DIR="$WORKSPACE_ROOT/go/cmd/devtool"
 mkdir -p "$BIN_DIR"
 
 # Get current git commit hash of the devtool Go source code
-# If git is not initialized or fails, fallback to 'dirty'
-CURRENT_HASH=$(git log -n 1 --pretty=format:%H -- "$SRC_DIR" 2>/dev/null || echo "dirty")
+# If there are uncommitted changes, treat as 'dirty' to trigger a rebuild
+if [ -n "$(git status --porcelain -- "$SRC_DIR" 2>/dev/null)" ]; then
+    CURRENT_HASH="dirty"
+else
+    CURRENT_HASH=$(git log -n 1 --pretty=format:%H -- "$SRC_DIR" 2>/dev/null || echo "dirty")
+fi
 
 REBUILD=false
 if [ ! -f "$BIN_PATH" ]; then
