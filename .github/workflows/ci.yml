@@ -53,7 +53,7 @@ jobs:
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
     - name: Check devtool tidy results in no diff
-      run: ./devtool github-ci run-check --name "Check devtool tidy results in no diff" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- ./devtools/tidy && git diff --exit-code
+      run: ./devtool github-ci run-check --name "Check devtool tidy results in no diff" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- "./devtools/tidy && git diff --exit-code"
 
     - name: Check bazel build //...
       run: ./devtool github-ci run-check --name "Check bazel build //..." --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- bazel build //...
