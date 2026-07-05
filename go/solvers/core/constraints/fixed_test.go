@@ -55,9 +55,21 @@ func TestFixedEvaluator(t *testing.T) {
 			name: "FixedLine",
 			entities: []*schema.Entity{
 				{
+					Id: "l1_p1",
+					EntityType: &schema.Entity_Point{
+						Point: &schema.PointEntity{X: 1.0, Y: 2.0},
+					},
+				},
+				{
+					Id: "l1_p2",
+					EntityType: &schema.Entity_Point{
+						Point: &schema.PointEntity{X: 3.0, Y: 4.0},
+					},
+				},
+				{
 					Id: "l1",
 					EntityType: &schema.Entity_Line{
-						Line: &schema.LineEntity{X1: 1.0, Y1: 2.0, X2: 3.0, Y2: 4.0},
+						Line: &schema.LineEntity{P1Id: "l1_p1", P2Id: "l1_p2"},
 					},
 				},
 			},
@@ -70,7 +82,7 @@ func TestFixedEvaluator(t *testing.T) {
 				},
 			},
 			targetID:     "l1",
-			paramIndices: map[gcstypes.EntityID]int{"l1": 0},
+			paramIndices: map[gcstypes.EntityID]int{"l1_p1": 0, "l1_p2": 2},
 			numEqs:       4,
 			perturb: func(rng *rand.Rand) []float64 {
 				return []float64{
@@ -78,6 +90,41 @@ func TestFixedEvaluator(t *testing.T) {
 					2.0 + (rng.Float64()-0.5)*2.0,
 					3.0 + (rng.Float64()-0.5)*2.0,
 					4.0 + (rng.Float64()-0.5)*2.0,
+				}
+			},
+		},
+		{
+			name: "FixedCircle",
+			entities: []*schema.Entity{
+				{
+					Id: "c1_center",
+					EntityType: &schema.Entity_Point{
+						Point: &schema.PointEntity{X: 1.0, Y: 2.0},
+					},
+				},
+				{
+					Id: "c1",
+					EntityType: &schema.Entity_Circle{
+						Circle: &schema.CircleEntity{CenterId: "c1_center", R: 3.0},
+					},
+				},
+			},
+			constraint: &schema.Constraint{
+				Id: "c1",
+				ConstraintType: &schema.Constraint_Fixed{
+					Fixed: &schema.FixedConstraint{
+						EntityId: "c1",
+					},
+				},
+			},
+			targetID:     "c1",
+			paramIndices: map[gcstypes.EntityID]int{"c1_center": 0, "c1": 2},
+			numEqs:       1,
+			perturb: func(rng *rand.Rand) []float64 {
+				return []float64{
+					1.0 + (rng.Float64()-0.5)*2.0,
+					2.0 + (rng.Float64()-0.5)*2.0,
+					3.0 + (rng.Float64()-0.5)*2.0,
 				}
 			},
 		},

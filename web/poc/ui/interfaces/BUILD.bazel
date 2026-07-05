@@ -1,0 +1,12 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "interfaces",
+    srcs = ["viewport_interfaces.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = ["//web/poc/geometry"],
+)

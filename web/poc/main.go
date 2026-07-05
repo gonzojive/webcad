@@ -12,7 +12,9 @@ func main() {
 		DefaultAddr:      ":8080",
 		RlocationRoot:    "webcad/web/poc",
 		WorkspaceSubpath: "web/poc",
+		RedirectRootTo:   "/ui/",
 	})
+
 
 	if err := s.Start(); err != nil {
 		log.Fatal(err)

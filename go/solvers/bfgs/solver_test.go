@@ -1,12 +1,12 @@
 package bfgs
- 
+
 import (
 	"math"
 	"testing"
- 
+
 	"github.com/gonzojive/webcad/proto"
 )
- 
+
 func TestBFGSSolver(t *testing.T) {
 
 	tests := []struct {
@@ -111,9 +111,21 @@ func TestBFGSSolver(t *testing.T) {
 				Id: "fixed_line_dist",
 				Entities: []*schema.Entity{
 					{
+						Id: "l1_p1",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 0, Y: 0},
+						},
+					},
+					{
+						Id: "l1_p2",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 10, Y: 0},
+						},
+					},
+					{
 						Id: "l1",
 						EntityType: &schema.Entity_Line{
-							Line: &schema.LineEntity{X1: 0, Y1: 0, X2: 10, Y2: 0},
+							Line: &schema.LineEntity{P1Id: "l1_p1", P2Id: "l1_p2"},
 						},
 					},
 					{
@@ -145,15 +157,16 @@ func TestBFGSSolver(t *testing.T) {
 				},
 			},
 			assert: func(t *testing.T, res *schema.SolveResult) {
-				l1Solved := res.SolvedState.Entities["l1"].GetLine()
-				p2Solved := res.SolvedState.Entities["p2"].GetPoint()
-				if math.Abs(l1Solved.X1) > 1e-4 || math.Abs(l1Solved.Y1) > 1e-4 ||
-					math.Abs(l1Solved.X2-10) > 1e-4 || math.Abs(l1Solved.Y2) > 1e-4 {
-					t.Errorf("Fixed line L1 moved! Got (%f,%f) -> (%f,%f), expected (0,0) -> (10,0)",
-						l1Solved.X1, l1Solved.Y1, l1Solved.X2, l1Solved.Y2)
+				p1Solved := res.SolvedState.Entities["l1_p1"].GetPoint()
+				p2Solved := res.SolvedState.Entities["l1_p2"].GetPoint()
+				p2_Solved := res.SolvedState.Entities["p2"].GetPoint()
+				if math.Abs(p1Solved.X) > 1e-4 || math.Abs(p1Solved.Y) > 1e-4 ||
+					math.Abs(p2Solved.X-10) > 1e-4 || math.Abs(p2Solved.Y) > 1e-4 {
+					t.Errorf("Fixed line L1 endpoints moved! Got (%f,%f) and (%f,%f), expected (0,0) and (10,0)",
+						p1Solved.X, p1Solved.Y, p2Solved.X, p2Solved.Y)
 				}
-				if math.Abs(math.Abs(p2Solved.Y)-10) > 1e-4 {
-					t.Errorf("Distance to line is incorrect! P2.Y = %f, expected 10 or -10", p2Solved.Y)
+				if math.Abs(math.Abs(p2_Solved.Y)-10) > 1e-4 {
+					t.Errorf("Distance to line is incorrect! P2.Y = %f, expected 10 or -10", p2_Solved.Y)
 				}
 			},
 		},
@@ -169,15 +182,27 @@ func TestBFGSSolver(t *testing.T) {
 						},
 					},
 					{
+						Id: "c1_center",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 5, Y: 5},
+						},
+					},
+					{
 						Id: "c1",
 						EntityType: &schema.Entity_Circle{
-							Circle: &schema.CircleEntity{Cx: 5, Cy: 5, R: 3},
+							Circle: &schema.CircleEntity{CenterId: "c1_center", R: 3},
+						},
+					},
+					{
+						Id: "c2_center",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 10, Y: 10},
 						},
 					},
 					{
 						Id: "c2",
 						EntityType: &schema.Entity_Circle{
-							Circle: &schema.CircleEntity{Cx: 10, Cy: 10, R: 5},
+							Circle: &schema.CircleEntity{CenterId: "c2_center", R: 5},
 						},
 					},
 				},
@@ -211,13 +236,13 @@ func TestBFGSSolver(t *testing.T) {
 				},
 			},
 			assert: func(t *testing.T, res *schema.SolveResult) {
-				c1Solved := res.SolvedState.Entities["c1"].GetCircle()
-				c2Solved := res.SolvedState.Entities["c2"].GetCircle()
-				if math.Abs(c1Solved.Cx) > 1e-4 || math.Abs(c1Solved.Cy) > 1e-4 {
-					t.Errorf("Circle c1 center is incorrect! Got (%f, %f), expected (0,0)", c1Solved.Cx, c1Solved.Cy)
+				c1CenterSolved := res.SolvedState.Entities["c1_center"].GetPoint()
+				c2CenterSolved := res.SolvedState.Entities["c2_center"].GetPoint()
+				if math.Abs(c1CenterSolved.X) > 1e-4 || math.Abs(c1CenterSolved.Y) > 1e-4 {
+					t.Errorf("Circle c1 center is incorrect! Got (%f, %f), expected (0,0)", c1CenterSolved.X, c1CenterSolved.Y)
 				}
-				if math.Abs(c2Solved.Cx) > 1e-4 || math.Abs(c2Solved.Cy) > 1e-4 {
-					t.Errorf("Circle c2 center is incorrect! Got (%f, %f), expected (0,0)", c2Solved.Cx, c2Solved.Cy)
+				if math.Abs(c2CenterSolved.X) > 1e-4 || math.Abs(c2CenterSolved.Y) > 1e-4 {
+					t.Errorf("Circle c2 center is incorrect! Got (%f, %f), expected (0,0)", c2CenterSolved.X, c2CenterSolved.Y)
 				}
 			},
 		},
@@ -227,15 +252,27 @@ func TestBFGSSolver(t *testing.T) {
 				Id: "tangent_circles",
 				Entities: []*schema.Entity{
 					{
+						Id: "c1_center",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 0, Y: 0},
+						},
+					},
+					{
 						Id: "c1",
 						EntityType: &schema.Entity_Circle{
-							Circle: &schema.CircleEntity{Cx: 0, Cy: 0, R: 5},
+							Circle: &schema.CircleEntity{CenterId: "c1_center", R: 5},
+						},
+					},
+					{
+						Id: "c2_center",
+						EntityType: &schema.Entity_Point{
+							Point: &schema.PointEntity{X: 10, Y: 0},
 						},
 					},
 					{
 						Id: "c2",
 						EntityType: &schema.Entity_Circle{
-							Circle: &schema.CircleEntity{Cx: 10, Cy: 0, R: 5},
+							Circle: &schema.CircleEntity{CenterId: "c2_center", R: 5},
 						},
 					},
 				},
@@ -254,9 +291,11 @@ func TestBFGSSolver(t *testing.T) {
 			assert: func(t *testing.T, res *schema.SolveResult) {
 				// The initial state is already tangent, so it should remain tangent.
 				// We can assert that the distance between centers is equal to sum of radiuses.
+				c1CenterSolved := res.SolvedState.Entities["c1_center"].GetPoint()
+				c2CenterSolved := res.SolvedState.Entities["c2_center"].GetPoint()
 				c1Solved := res.SolvedState.Entities["c1"].GetCircle()
 				c2Solved := res.SolvedState.Entities["c2"].GetCircle()
-				dist := math.Sqrt(math.Pow(c2Solved.Cx-c1Solved.Cx, 2) + math.Pow(c2Solved.Cy-c1Solved.Cy, 2))
+				dist := math.Sqrt(math.Pow(c2CenterSolved.X-c1CenterSolved.X, 2) + math.Pow(c2CenterSolved.Y-c1CenterSolved.Y, 2))
 				sumR := c1Solved.R + c2Solved.R
 				if math.Abs(dist-sumR) > 1e-4 {
 					t.Errorf("Circles are not tangent! Distance=%f, sum of radiuses=%f", dist, sumR)

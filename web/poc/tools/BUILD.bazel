@@ -1,0 +1,23 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "tools",
+    srcs = [
+        "circle_tool.ts",
+        "dimension_tool.ts",
+        "line_tool.ts",
+        "point_tool.ts",
+        "select_tool.ts",
+        "tool.ts",
+    ],
+    declaration = True,
+    source_map = True,
+    tsconfig = "//web:tsconfig",
+    deps = [
+        "//ts/gcsapi",
+        "//web/poc/geometry",
+        "//web/poc/ui/interfaces",
+    ],
+)

@@ -19,20 +19,20 @@ func Point(id string, x, y float64) *schema.Entity {
 	}
 }
 
-func Line(id string, x1, y1, x2, y2 float64) *schema.Entity {
+func Line(id string, p1Id, p2Id string) *schema.Entity {
 	return &schema.Entity{
 		Id: id,
 		EntityType: &schema.Entity_Line{
-			Line: &schema.LineEntity{X1: x1, Y1: y1, X2: x2, Y2: y2},
+			Line: &schema.LineEntity{P1Id: p1Id, P2Id: p2Id},
 		},
 	}
 }
 
-func Circle(id string, cx, cy, r float64) *schema.Entity {
+func Circle(id string, centerId string, r float64) *schema.Entity {
 	return &schema.Entity{
 		Id: id,
 		EntityType: &schema.Entity_Circle{
-			Circle: &schema.CircleEntity{Cx: cx, Cy: cy, R: r},
+			Circle: &schema.CircleEntity{CenterId: centerId, R: r},
 		},
 	}
 }
@@ -187,28 +187,28 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Coincidence Pt-Ln Pass",
 			constraint: Coincidence("c1", "p1", "l1"),
-			entities:   []*schema.Entity{Point("p1", 1, 1), Line("l1", 0, 0, 2, 2)},
+			entities:   []*schema.Entity{Point("p1", 1, 1), Point("l1_p1", 0, 0), Point("l1_p2", 2, 2), Line("l1", "l1_p1", "l1_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Coincidence Pt-Ln Fail",
 			constraint: Coincidence("c1", "p1", "l1"),
-			entities:   []*schema.Entity{Point("p1", 1, 2), Line("l1", 0, 0, 2, 0)}, // pt at (1,2), line y=0
+			entities:   []*schema.Entity{Point("p1", 1, 2), Point("l1_p1", 0, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")}, // pt at (1,2), line y=0
 			want:       2,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Coincidence Pt-Circ Pass",
 			constraint: Coincidence("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 1, 0), Circle("circ1", 0, 0, 1)},
+			entities:   []*schema.Entity{Point("p1", 1, 0), Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Coincidence Pt-Circ Fail",
 			constraint: Coincidence("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 2, 0), Circle("circ1", 0, 0, 1)},
+			entities:   []*schema.Entity{Point("p1", 2, 0), Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1)},
 			want:       3, // Polynomial: dSq - R^2 = 4 - 1 = 3
 			tolerance:  1e-9,
 		},
@@ -231,14 +231,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Distance Pt-Ln Pass",
 			constraint: Distance("c1", "p1", "l1", 2),
-			entities:   []*schema.Entity{Point("p1", 0, 2), Line("l1", 0, 0, 2, 0)},
+			entities:   []*schema.Entity{Point("p1", 0, 2), Point("l1_p1", 0, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Distance Pt-Ln Fail",
 			constraint: Distance("c1", "p1", "l1", 2),
-			entities:   []*schema.Entity{Point("p1", 0, 3), Line("l1", 0, 0, 2, 0)},
+			entities:   []*schema.Entity{Point("p1", 0, 3), Point("l1_p1", 0, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			want:       5, // Polynomial: dSq - D^2 = 9 - 4 = 5
 			tolerance:  1e-9,
 		},
@@ -247,14 +247,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Angle Pass",
 			constraint: Angle("c1", "l1", "l2", math.Pi/2),
-			entities:   []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 0, 1)},
+			entities:   []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 0, 1), Line("l2", "l2_p1", "l2_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Angle Fail",
 			constraint: Angle("c1", "l1", "l2", math.Pi/4),
-			entities:   []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 0, 1)},
+			entities:   []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 0, 1), Line("l2", "l2_p1", "l2_p2")},
 			want:       1.0 / math.Sqrt(2), // Polynomial: |(v1.v2)sin(T) - (v1xv2)cos(T)| = |0 - 1/sqrt(2)| = 1/sqrt(2)
 			tolerance:  1e-9,
 		},
@@ -263,14 +263,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Parallel Pass",
 			constraint: Parallel("c1", "l1", "l2"),
-			entities:   []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 1, 2, 1)},
+			entities:   []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 1), Point("l2_p2", 2, 1), Line("l2", "l2_p1", "l2_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Parallel Fail",
 			constraint: Parallel("c1", "l1", "l2"),
-			entities:   []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 1, 1)},
+			entities:   []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 1, 1), Line("l2", "l2_p1", "l2_p2")},
 			want:       math.Sin(math.Pi / 4),
 			tolerance:  1e-9,
 		},
@@ -279,14 +279,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Perpendicular Pass",
 			constraint: Perpendicular("c1", "l1", "l2"),
-			entities:   []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 0, 1)},
+			entities:   []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 0, 1), Line("l2", "l2_p1", "l2_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Perpendicular Fail",
 			constraint: Perpendicular("c1", "l1", "l2"),
-			entities:   []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 1, 1)},
+			entities:   []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 1, 1), Line("l2", "l2_p1", "l2_p2")},
 			want:       math.Cos(math.Pi / 4),
 			tolerance:  1e-9,
 		},
@@ -295,35 +295,35 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Tangent Circ-Circ Ext Pass",
 			constraint: Tangent("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 0, 1), Circle("circ2", 3, 0, 2)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1), Point("circ2_center", 3, 0), Circle("circ2", "circ2_center", 2)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Circ Int Pass",
 			constraint: Tangent("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 0, 3), Circle("circ2", 1, 0, 2)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 3), Point("circ2_center", 1, 0), Circle("circ2", "circ2_center", 2)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Ln Pass",
 			constraint: Tangent("c1", "circ1", "l1"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 1, 1), Line("l1", -2, 0, 2, 0)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 1), Circle("circ1", "circ1_center", 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Circ Fail",
 			constraint: Tangent("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 0, 1), Circle("circ2", 4, 0, 2)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1), Point("circ2_center", 4, 0), Circle("circ2", "circ2_center", 2)},
 			want:       7, // Polynomial: dSq - (r1+r2)^2 = 16 - 9 = 7
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Tangent Circ-Ln Fail",
 			constraint: Tangent("c1", "circ1", "l1"),
-			entities:   []*schema.Entity{Circle("circ1", 0, 2, 1), Line("l1", -2, 0, 2, 0)},
+			entities:   []*schema.Entity{Point("circ1_center", 0, 2), Circle("circ1", "circ1_center", 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			want:       3, // Polynomial: dSq - R^2 = 4 - 1 = 3
 			tolerance:  1e-9,
 		},
@@ -332,28 +332,28 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Concentric Circ-Circ Pass",
 			constraint: Concentric("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 1, 2, 3), Circle("circ2", 1, 2, 5)},
+			entities:   []*schema.Entity{Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3), Point("circ2_center", 1, 2), Circle("circ2", "circ2_center", 5)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Concentric Pt-Circ Pass",
 			constraint: Concentric("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 1, 2), Circle("circ1", 1, 2, 3)},
+			entities:   []*schema.Entity{Point("p1", 1, 2), Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3)},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Concentric Circ-Circ Fail",
 			constraint: Concentric("c1", "circ1", "circ2"),
-			entities:   []*schema.Entity{Circle("circ1", 1, 2, 3), Circle("circ2", 2, 2, 5)},
+			entities:   []*schema.Entity{Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3), Point("circ2_center", 2, 2), Circle("circ2", "circ2_center", 5)},
 			want:       1,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Concentric Pt-Circ Fail",
 			constraint: Concentric("c1", "p1", "circ1"),
-			entities:   []*schema.Entity{Point("p1", 1, 3), Circle("circ1", 1, 2, 3)},
+			entities:   []*schema.Entity{Point("p1", 1, 3), Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3)},
 			want:       1,
 			tolerance:  1e-9,
 		},
@@ -362,14 +362,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Symmetric Pass",
 			constraint: Symmetric("c1", "p1", "p2", "l1"),
-			entities:   []*schema.Entity{Point("p1", 1, 1), Point("p2", -1, 1), Line("l1", 0, -2, 0, 2)},
+			entities:   []*schema.Entity{Point("p1", 1, 1), Point("p2", -1, 1), Point("l1_p1", 0, -2), Point("l1_p2", 0, 2), Line("l1", "l1_p1", "l1_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Symmetric Fail",
 			constraint: Symmetric("c1", "p1", "p2", "l1"),
-			entities:   []*schema.Entity{Point("p1", 1, 1), Point("p2", -2, 1), Line("l1", 0, -2, 0, 2)},
+			entities:   []*schema.Entity{Point("p1", 1, 1), Point("p2", -2, 1), Point("l1_p1", 0, -2), Point("l1_p2", 0, 2), Line("l1", "l1_p1", "l1_p2")},
 			want:       0.5, // Unified math: sqrt(rMid^2 + rPerp^2) = sqrt(0.5^2 + 0) = 0.5
 			tolerance:  1e-9,
 		},
@@ -378,14 +378,14 @@ func TestCalculateConstraintResidual(t *testing.T) {
 		{
 			name:       "Midpoint Pass",
 			constraint: Midpoint("c1", "p1", "l1"),
-			entities:   []*schema.Entity{Point("p1", 1, 1), Line("l1", 0, 0, 2, 2)},
+			entities:   []*schema.Entity{Point("p1", 1, 1), Point("l1_p1", 0, 0), Point("l1_p2", 2, 2), Line("l1", "l1_p1", "l1_p2")},
 			want:       0,
 			tolerance:  1e-9,
 		},
 		{
 			name:       "Midpoint Fail",
 			constraint: Midpoint("c1", "p1", "l1"),
-			entities:   []*schema.Entity{Point("p1", 1, 2), Line("l1", 0, 0, 2, 2)},
+			entities:   []*schema.Entity{Point("p1", 1, 2), Point("l1_p1", 0, 0), Point("l1_p2", 2, 2), Line("l1", "l1_p1", "l1_p2")},
 			want:       1,
 			tolerance:  1e-9,
 		},
@@ -457,12 +457,12 @@ func TestAnalyticalGradients(t *testing.T) {
 		},
 		{
 			name:        "Coincidence Pt-Ln",
-			entities:    []*schema.Entity{Point("p1", 1, 2), Line("l1", 0, 0, 2, 0)},
+			entities:    []*schema.Entity{Point("p1", 1, 2), Point("l1_p1", 0, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Coincidence("c1", "p1", "l1")},
 		},
 		{
 			name:        "Coincidence Pt-Circ",
-			entities:    []*schema.Entity{Point("p1", 2, 0), Circle("circ1", 0, 0, 1)},
+			entities:    []*schema.Entity{Point("p1", 2, 0), Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1)},
 			constraints: []*schema.Constraint{Coincidence("c1", "p1", "circ1")},
 		},
 		{
@@ -472,52 +472,52 @@ func TestAnalyticalGradients(t *testing.T) {
 		},
 		{
 			name:        "Distance Pt-Ln",
-			entities:    []*schema.Entity{Point("p1", 0, 3), Line("l1", 0, 0, 2, 0)},
+			entities:    []*schema.Entity{Point("p1", 0, 3), Point("l1_p1", 0, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Distance("c1", "p1", "l1", 2)},
 		},
 		{
 			name:        "Angle",
-			entities:    []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 1, 1)},
+			entities:    []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 1, 1), Line("l2", "l2_p1", "l2_p2")},
 			constraints: []*schema.Constraint{Angle("c1", "l1", "l2", math.Pi/3)}, // Changed to non-matching angle to ensure gradient is tested
 		},
 		{
 			name:        "Parallel",
-			entities:    []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 1, 1)},
+			entities:    []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 1, 1), Line("l2", "l2_p1", "l2_p2")},
 			constraints: []*schema.Constraint{Parallel("c1", "l1", "l2")},
 		},
 		{
 			name:        "Perpendicular",
-			entities:    []*schema.Entity{Line("l1", 0, 0, 1, 0), Line("l2", 0, 0, 1, 1)},
+			entities:    []*schema.Entity{Point("l1_p1", 0, 0), Point("l1_p2", 1, 0), Line("l1", "l1_p1", "l1_p2"), Point("l2_p1", 0, 0), Point("l2_p2", 1, 1), Line("l2", "l2_p1", "l2_p2")},
 			constraints: []*schema.Constraint{Perpendicular("c1", "l1", "l2")},
 		},
 		{
 			name:        "Tangent Circ-Circ",
-			entities:    []*schema.Entity{Circle("circ1", 0, 0, 1), Circle("circ2", 4, 0, 2)},
+			entities:    []*schema.Entity{Point("circ1_center", 0, 0), Circle("circ1", "circ1_center", 1), Point("circ2_center", 4, 0), Circle("circ2", "circ2_center", 2)},
 			constraints: []*schema.Constraint{Tangent("c1", "circ1", "circ2")},
 		},
 		{
 			name:        "Tangent Circ-Ln",
-			entities:    []*schema.Entity{Circle("circ1", 0, 2, 1), Line("l1", -2, 0, 2, 0)},
+			entities:    []*schema.Entity{Point("circ1_center", 0, 2), Circle("circ1", "circ1_center", 1), Point("l1_p1", -2, 0), Point("l1_p2", 2, 0), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Tangent("c1", "circ1", "l1")},
 		},
 		{
 			name:        "Concentric Circ-Circ",
-			entities:    []*schema.Entity{Circle("circ1", 1, 2, 3), Circle("circ2", 2, 2, 5)},
+			entities:    []*schema.Entity{Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3), Point("circ2_center", 2, 2), Circle("circ2", "circ2_center", 5)},
 			constraints: []*schema.Constraint{Concentric("c1", "circ1", "circ2")},
 		},
 		{
 			name:        "Concentric Pt-Circ",
-			entities:    []*schema.Entity{Point("p1", 1, 3), Circle("circ1", 1, 2, 3)},
+			entities:    []*schema.Entity{Point("p1", 1, 3), Point("circ1_center", 1, 2), Circle("circ1", "circ1_center", 3)},
 			constraints: []*schema.Constraint{Concentric("c1", "p1", "circ1")},
 		},
 		{
 			name:        "Symmetric",
-			entities:    []*schema.Entity{Point("p1", 1, 1), Point("p2", -2, 1), Line("l1", 0, -2, 0, 2)},
+			entities:    []*schema.Entity{Point("p1", 1, 1), Point("p2", -2, 1), Point("l1_p1", 0, -2), Point("l1_p2", 0, 2), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Symmetric("c1", "p1", "p2", "l1")},
 		},
 		{
 			name:        "Midpoint",
-			entities:    []*schema.Entity{Point("p1", 1, 2), Line("l1", 0, 0, 2, 2)},
+			entities:    []*schema.Entity{Point("p1", 1, 2), Point("l1_p1", 0, 0), Point("l1_p2", 2, 2), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Midpoint("c1", "p1", "l1")},
 		},
 		{
@@ -528,8 +528,8 @@ func TestAnalyticalGradients(t *testing.T) {
 		},
 		{
 			name:        "Fixed Ln",
-			entities:    []*schema.Entity{Line("l1", 2, 4, 6, 8)},
-			initial:     []*schema.Entity{Line("l1", 1, 2, 3, 4)},
+			entities:    []*schema.Entity{Point("l1_p1", 2, 4), Point("l1_p2", 6, 8), Line("l1", "l1_p1", "l1_p2")},
+			initial:     []*schema.Entity{Point("l1_p1", 1, 2), Point("l1_p2", 3, 4), Line("l1", "l1_p1", "l1_p2")},
 			constraints: []*schema.Constraint{Fixed("c1", "l1")},
 		},
 	}

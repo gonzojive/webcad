@@ -10,7 +10,11 @@ bazel_dep(name = "rules_proto", version = "7.1.0")
 
 # Configure the Go SDK
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.25.0")
+go_sdk.download(
+    name = "go_sdk",
+    version = "1.25.0",
+)
+use_repo(go_sdk, "go_sdk")
 
 # Configure Gazelle to use go.mod
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
@@ -56,7 +60,6 @@ crate.from_cargo(
         "@ezpz//ezpz:Cargo.toml",
         "@ezpz//ezpz-cli:Cargo.toml",
         "@ezpz//ezpz-wasm:Cargo.toml",
-        "//web/poc/solver-wasm:Cargo.toml",
     ],
 )
 crate.annotation(
@@ -74,6 +77,7 @@ use_repo(crate, "crates")
 bazel_dep(name = "rules_nodejs", version = "6.7.4")
 bazel_dep(name = "aspect_rules_js", version = "3.1.2")
 bazel_dep(name = "aspect_rules_ts", version = "3.1.0")
+bazel_dep(name = "aspect_rules_esbuild", version = "0.26.0")
 bazel_dep(name = "aspect_gazelle_prebuilt", version = "0.0.22")
 
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")

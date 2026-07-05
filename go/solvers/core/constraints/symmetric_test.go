@@ -16,19 +16,25 @@ import (
 func TestSymmetricEvaluator_Jacobian(t *testing.T) {
 	p1 := &schema.Entity{Id: "p1", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 1.0, Y: 1.0}}}
 	p2 := &schema.Entity{Id: "p2", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: -2.0, Y: 1.0}}}
-	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{X1: 0.0, Y1: -2.0, X2: 0.0, Y2: 2.0}}}
+	p1s := &schema.Entity{Id: "p1s", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: -2.0}}}
+	p2s := &schema.Entity{Id: "p2s", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: 2.0}}}
+
+	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "p1s", P2Id: "p2s"}}}
 	c := &schema.Constraint{
 		Id: "c",
 		ConstraintType: &schema.Constraint_Symmetric{
 			Symmetric: &schema.SymmetricConstraint{EntityA: "p1", EntityB: "p2", SymmetryLine: "l1"},
 		},
 	}
-	scenario := &schema.Sketch{Entities: []*schema.Entity{p1, p2, l1}, Constraints: []*schema.Constraint{c}}
+	scenario := &schema.Sketch{Entities: []*schema.Entity{p1, p2, p1s, p2s, l1}, Constraints: []*schema.Constraint{c}}
 	sys, err := core.NewConstraintSystem(scenario)
 	if err != nil {
 		t.Fatalf("NewConstraintSystem failed: %v", err)
 	}
-	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"p1": p1, "p2": p2, "l1": l1})
+	entities := map[gcstypes.EntityID]*schema.Entity{
+		"p1": p1, "p2": p2, "p1s": p1s, "p2s": p2s, "l1": l1,
+	}
+	eval, err := constraints.NewEvaluator(c, entities)
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -39,7 +45,9 @@ func TestSymmetricEvaluator_Jacobian(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[gcstypes.EntityID]int{"p1": 0, "p2": 2, "l1": 4}
+	paramIndices := map[gcstypes.EntityID]int{
+		"p1": 0, "p2": 2, "p1s": 4, "p2s": 6,
+	}
 	n := sys.NumVars()
 	m := je.NumEquations()
 

@@ -6,6 +6,7 @@ ts_project(
     declaration = True,
     out_dir = "dist",
     tsconfig = ":tsconfig",
+    visibility = ["//visibility:public"],
 )
 
 ts_config(

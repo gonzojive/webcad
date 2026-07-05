@@ -1,8 +1,8 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"github.com/gonzojive/webcad/proto"
 	"gonum.org/v1/gonum/mat"
 )
@@ -20,23 +20,17 @@ func NewConcentricEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID
 	if idA == idB {
 		return nil, fmt.Errorf("concentric constraint cannot be applied to the same entity %s", idA)
 	}
-	entA, okA := entities[idA]
-	if !okA {
-		return nil, fmt.Errorf("entity A %s not found", idA)
+	resolvedA, err := resolvePointOrCenter(idA, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity A: %w", err)
 	}
-	if !isPointOrCenter(entA) {
-		return nil, fmt.Errorf("entity A %s is not a point, circle, arc, or ellipse", idA)
-	}
-	entB, okB := entities[idB]
-	if !okB {
-		return nil, fmt.Errorf("entity B %s not found", idB)
-	}
-	if !isPointOrCenter(entB) {
-		return nil, fmt.Errorf("entity B %s is not a point, circle, arc, or ellipse", idB)
+	resolvedB, err := resolvePointOrCenter(idB, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity B: %w", err)
 	}
 	return &ConcentricEvaluator{
-		idA: idA,
-		idB: idB,
+		idA: resolvedA,
+		idB: resolvedB,
 	}, nil
 }
 

@@ -14,20 +14,30 @@ import (
 )
 
 func TestParallelEvaluator(t *testing.T) {
-	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{X1: 0.0, Y1: 0.0, X2: 2.0, Y2: 0.0}}}
-	l2 := &schema.Entity{Id: "l2", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{X1: 0.0, Y1: 1.0, X2: 2.0, Y2: 1.1}}}
+	p1a := &schema.Entity{Id: "p1a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: 0.0}}}
+	p2a := &schema.Entity{Id: "p2a", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 2.0, Y: 0.0}}}
+	p1b := &schema.Entity{Id: "p1b", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 0.0, Y: 1.0}}}
+	p2b := &schema.Entity{Id: "p2b", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 2.0, Y: 1.1}}}
+	
+	l1 := &schema.Entity{Id: "l1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "p1a", P2Id: "p2a"}}}
+	l2 := &schema.Entity{Id: "l2", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "p1b", P2Id: "p2b"}}}
 	c := &schema.Constraint{
 		Id: "c",
 		ConstraintType: &schema.Constraint_Parallel{
 			Parallel: &schema.ParallelConstraint{LineA: "l1", LineB: "l2"},
 		},
 	}
-	scenario := &schema.Sketch{Entities: []*schema.Entity{l1, l2}, Constraints: []*schema.Constraint{c}}
+	scenario := &schema.Sketch{Entities: []*schema.Entity{p1a, p2a, p1b, p2b, l1, l2}, Constraints: []*schema.Constraint{c}}
 	sys, err := core.NewConstraintSystem(scenario)
 	if err != nil {
 		t.Fatalf("NewConstraintSystem failed: %v", err)
 	}
-	eval, err := constraints.NewEvaluator(c, map[gcstypes.EntityID]*schema.Entity{"l1": l1, "l2": l2})
+	entities := map[gcstypes.EntityID]*schema.Entity{
+		"p1a": p1a, "p2a": p2a,
+		"p1b": p1b, "p2b": p2b,
+		"l1": l1, "l2": l2,
+	}
+	eval, err := constraints.NewEvaluator(c, entities)
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
 	}
@@ -38,7 +48,10 @@ func TestParallelEvaluator(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[gcstypes.EntityID]int{"l1": 0, "l2": 4}
+	paramIndices := map[gcstypes.EntityID]int{
+		"p1a": 0, "p2a": 2,
+		"p1b": 4, "p2b": 6,
+	}
 	n := sys.NumVars()
 	m := je.NumEquations()
 

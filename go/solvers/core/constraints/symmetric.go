@@ -1,8 +1,8 @@
 package constraints
 
 import (
-	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"fmt"
+	"github.com/gonzojive/webcad/go/solvers/core/gcstypes"
 	"math"
 
 	"github.com/gonzojive/webcad/proto"
@@ -11,7 +11,8 @@ import (
 
 // SymmetricEvaluator evaluates symmetry constraints between two entities about a line.
 type SymmetricEvaluator struct {
-	idA, idB, idSym gcstypes.EntityID
+	idA, idB     gcstypes.EntityID
+	p1sym, p2sym gcstypes.EntityID
 }
 
 // NewSymmetricEvaluator creates a new SymmetricEvaluator for the given constraint.
@@ -20,19 +21,27 @@ func NewSymmetricEvaluator(c *schema.Constraint, entities map[gcstypes.EntityID]
 	idA := gcstypes.EntityID(s.GetEntityA())
 	idB := gcstypes.EntityID(s.GetEntityB())
 	idSym := gcstypes.EntityID(s.GetSymmetryLine())
-	if _, ok := entities[idA]; !ok {
-		return nil, fmt.Errorf("entity A %s not found", idA)
+	resolvedA, err := resolvePointOrCenter(idA, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity A: %w", err)
 	}
-	if _, ok := entities[idB]; !ok {
-		return nil, fmt.Errorf("entity B %s not found", idB)
+	resolvedB, err := resolvePointOrCenter(idB, entities)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve entity B: %w", err)
 	}
-	if _, ok := entities[idSym]; !ok {
+	entSym, ok := entities[idSym]
+	if !ok {
 		return nil, fmt.Errorf("symmetry line %s not found", idSym)
 	}
+	p1Id, p2Id, _, _, err := getLinePoints(entSym, entities)
+	if err != nil {
+		return nil, fmt.Errorf("symmetry line endpoints unresolved: %w", err)
+	}
 	return &SymmetricEvaluator{
-		idA:   idA,
-		idB:   idB,
-		idSym: idSym,
+		idA:   resolvedA,
+		idB:   resolvedB,
+		p1sym: p1Id,
+		p2sym: p2Id,
 	}, nil
 }
 
@@ -51,14 +60,16 @@ func (s *SymmetricEvaluator) EvaluateJacobian(
 ) {
 	idxA, ok1 := paramIndices[s.idA]
 	idxB, ok2 := paramIndices[s.idB]
-	idxSym, ok3 := paramIndices[s.idSym]
-	if !ok1 || !ok2 || !ok3 {
+	idxP1, ok3 := paramIndices[s.p1sym]
+	idxP2, ok4 := paramIndices[s.p2sym]
+	if !ok1 || !ok2 || !ok3 || !ok4 {
 		return
 	}
 
 	xa, ya := x[idxA], x[idxA+1]
 	xb, yb := x[idxB], x[idxB+1]
-	x1_val, y1_val, x2_val, y2_val := x[idxSym], x[idxSym+1], x[idxSym+2], x[idxSym+3]
+	x1_val, y1_val := x[idxP1], x[idxP1+1]
+	x2_val, y2_val := x[idxP2], x[idxP2+1]
 
 	dx := x2_val - x1_val
 	dy := y2_val - y1_val
@@ -110,20 +121,20 @@ func (s *SymmetricEvaluator) EvaluateJacobian(
 			J.Set(rowOffset, idxA+1, drMid_dya)
 			J.Set(rowOffset, idxB, drMid_dxb)
 			J.Set(rowOffset, idxB+1, drMid_dyb)
-			J.Set(rowOffset, idxSym, drMid_dx1)
-			J.Set(rowOffset, idxSym+1, drMid_dy1)
-			J.Set(rowOffset, idxSym+2, drMid_dx2)
-			J.Set(rowOffset, idxSym+3, drMid_dy2)
+			J.Set(rowOffset, idxP1, drMid_dx1)
+			J.Set(rowOffset, idxP1+1, drMid_dy1)
+			J.Set(rowOffset, idxP2, drMid_dx2)
+			J.Set(rowOffset, idxP2+1, drMid_dy2)
 
 			// Row 1: rPerp
 			J.Set(rowOffset+1, idxA, drPerp_dxa)
 			J.Set(rowOffset+1, idxA+1, drPerp_dya)
 			J.Set(rowOffset+1, idxB, drPerp_dxb)
 			J.Set(rowOffset+1, idxB+1, drPerp_dyb)
-			J.Set(rowOffset+1, idxSym, drPerp_dx1)
-			J.Set(rowOffset+1, idxSym+1, drPerp_dy1)
-			J.Set(rowOffset+1, idxSym+2, drPerp_dx2)
-			J.Set(rowOffset+1, idxSym+3, drPerp_dy2)
+			J.Set(rowOffset+1, idxP1, drPerp_dx1)
+			J.Set(rowOffset+1, idxP1+1, drPerp_dy1)
+			J.Set(rowOffset+1, idxP2, drPerp_dx2)
+			J.Set(rowOffset+1, idxP2+1, drPerp_dy2)
 		}
 	} else {
 		// Collapsed line fallback (Point-Point coincidence between A and B)
@@ -149,14 +160,16 @@ func (s *SymmetricEvaluator) EvaluateJacobian(
 func (s *SymmetricEvaluator) Evaluate(x []float64, grad []float64, paramIndices map[gcstypes.EntityID]int) float64 {
 	idxA, ok1 := paramIndices[s.idA]
 	idxB, ok2 := paramIndices[s.idB]
-	idxSym, ok3 := paramIndices[s.idSym]
-	if !ok1 || !ok2 || !ok3 {
+	idxP1, ok3 := paramIndices[s.p1sym]
+	idxP2, ok4 := paramIndices[s.p2sym]
+	if !ok1 || !ok2 || !ok3 || !ok4 {
 		return 0.0
 	}
 
 	xa, ya := x[idxA], x[idxA+1]
 	xb, yb := x[idxB], x[idxB+1]
-	x1_val, y1_val, x2_val, y2_val := x[idxSym], x[idxSym+1], x[idxSym+2], x[idxSym+3]
+	x1_val, y1_val := x[idxP1], x[idxP1+1]
+	x2_val, y2_val := x[idxP2], x[idxP2+1]
 
 	dx := x2_val - x1_val
 	dy := y2_val - y1_val
@@ -211,10 +224,10 @@ func (s *SymmetricEvaluator) Evaluate(x []float64, grad []float64, paramIndices 
 			grad[idxB] += r2Mid*drMid_dxb + r2Perp*drPerp_dxb
 			grad[idxB+1] += r2Mid*drMid_dyb + r2Perp*drPerp_dyb
 
-			grad[idxSym] += r2Mid*drMid_dx1 + r2Perp*drPerp_dx1
-			grad[idxSym+1] += r2Mid*drMid_dy1 + r2Perp*drPerp_dy1
-			grad[idxSym+2] += r2Mid*drMid_dx2 + r2Perp*drPerp_dx2
-			grad[idxSym+3] += r2Mid*drMid_dy2 + r2Perp*drPerp_dy2
+			grad[idxP1] += r2Mid*drMid_dx1 + r2Perp*drPerp_dx1
+			grad[idxP1+1] += r2Mid*drMid_dy1 + r2Perp*drPerp_dy1
+			grad[idxP2] += r2Mid*drMid_dx2 + r2Perp*drPerp_dx2
+			grad[idxP2+1] += r2Mid*drMid_dy2 + r2Perp*drPerp_dy2
 		}
 		return totalResidualSq
 	} else {

@@ -15,16 +15,28 @@ import (
 
 func TestConcentricEvaluator(t *testing.T) {
 	// 1. Construct a scenario with two concentric circles
+	c1_center := &schema.Entity{
+		Id: "c1_center",
+		EntityType: &schema.Entity_Point{
+			Point: &schema.PointEntity{X: 1.0, Y: 2.0},
+		},
+	}
 	c1 := &schema.Entity{
 		Id: "c1",
 		EntityType: &schema.Entity_Circle{
-			Circle: &schema.CircleEntity{Cx: 1.0, Cy: 2.0, R: 3.0},
+			Circle: &schema.CircleEntity{CenterId: "c1_center", R: 3.0},
+		},
+	}
+	c2_center := &schema.Entity{
+		Id: "c2_center",
+		EntityType: &schema.Entity_Point{
+			Point: &schema.PointEntity{X: 1.5, Y: 2.5},
 		},
 	}
 	c2 := &schema.Entity{
 		Id: "c2",
 		EntityType: &schema.Entity_Circle{
-			Circle: &schema.CircleEntity{Cx: 1.5, Cy: 2.5, R: 4.0},
+			Circle: &schema.CircleEntity{CenterId: "c2_center", R: 4.0},
 		},
 	}
 	concentric := &schema.Constraint{
@@ -37,7 +49,7 @@ func TestConcentricEvaluator(t *testing.T) {
 		},
 	}
 	scenario := &schema.Sketch{
-		Entities:    []*schema.Entity{c1, c2},
+		Entities:    []*schema.Entity{c1_center, c1, c2_center, c2},
 		Constraints: []*schema.Constraint{concentric},
 	}
 
@@ -48,7 +60,12 @@ func TestConcentricEvaluator(t *testing.T) {
 	}
 
 	// 3. Construct decomposed evaluator
-	entities := map[gcstypes.EntityID]*schema.Entity{"c1": c1, "c2": c2}
+	entities := map[gcstypes.EntityID]*schema.Entity{
+		"c1_center": c1_center,
+		"c1":        c1,
+		"c2_center": c2_center,
+		"c2":        c2,
+	}
 	eval, err := constraints.NewEvaluator(concentric, entities)
 	if err != nil {
 		t.Fatalf("failed to create evaluator: %v", err)
@@ -62,7 +79,12 @@ func TestConcentricEvaluator(t *testing.T) {
 
 	// 4. Test over multiple random states
 	rng := rand.New(rand.NewSource(42))
-	paramIndices := map[gcstypes.EntityID]int{"c1": 0, "c2": 3} // c1 has 3 params, c2 starts at 3
+	paramIndices := map[gcstypes.EntityID]int{
+		"c1_center": 0,
+		"c1":        2,
+		"c2_center": 3,
+		"c2":        5,
+	}
 	n := sys.NumVars()
 	m := je.NumEquations()
 

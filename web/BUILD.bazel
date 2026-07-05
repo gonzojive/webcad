@@ -6,6 +6,22 @@ load("@npm//:defs.bzl", "npm_link_all_packages")
 # gazelle:resolve js node:test //web:node_modules/@types/node
 # gazelle:resolve ts node:assert //web:node_modules/@types/node
 # gazelle:resolve ts node:test //web:node_modules/@types/node
+# gazelle:resolve js @angular/core //web:node_modules/@angular/core
+# gazelle:resolve js @angular/common //web:node_modules/@angular/common
+# gazelle:resolve js @angular/platform-browser //web:node_modules/@angular/platform-browser
+# gazelle:resolve js @angular/platform-browser-dynamic //web:node_modules/@angular/platform-browser-dynamic
+# gazelle:resolve js rxjs //web:node_modules/rxjs
+# gazelle:resolve js zone.js //web:node_modules/zone.js
+# gazelle:resolve ts @angular/core //web:node_modules/@angular/core
+# gazelle:resolve ts @angular/common //web:node_modules/@angular/common
+# gazelle:resolve ts @angular/platform-browser //web:node_modules/@angular/platform-browser
+# gazelle:resolve ts @angular/platform-browser-dynamic //web:node_modules/@angular/platform-browser-dynamic
+# gazelle:resolve ts rxjs //web:node_modules/rxjs
+# gazelle:resolve ts zone.js //web:node_modules/zone.js
+# gazelle:resolve js @angular/compiler //web:node_modules/@angular/compiler
+# gazelle:resolve ts @angular/compiler //web:node_modules/@angular/compiler
+# gazelle:resolve js jsdom //web:node_modules/jsdom
+# gazelle:resolve ts jsdom //web:node_modules/jsdom
 package(default_visibility = ["//visibility:public"])
 
 npm_link_all_packages(name = "node_modules")

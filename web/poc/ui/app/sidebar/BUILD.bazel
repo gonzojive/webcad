@@ -1,0 +1,19 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "sidebar",
+    srcs = ["sidebar.component.ts"],
+    declaration = True,
+    source_map = True,
+    tsc = "//web/poc/ui:ngc",
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        "//ts/gcsapi",
+        "//web:node_modules/@angular/common",
+        "//web:node_modules/@angular/core",
+        "//web/poc/geometry",
+        "//web/poc/ui/app/services",
+    ],
+)

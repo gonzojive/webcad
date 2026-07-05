@@ -1,0 +1,22 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "viewport",
+    srcs = [
+        "annotation_drawer.ts",
+        "viewport.component.ts",
+    ],
+    declaration = True,
+    source_map = True,
+    tsc = "//web/poc/ui:ngc",
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        "//ts/gcsapi",
+        "//web:node_modules/@angular/core",
+        "//web/poc/geometry",
+        "//web/poc/ui/app/services",
+        "//web/poc/ui/interfaces",
+    ],
+)

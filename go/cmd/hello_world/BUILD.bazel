@@ -5,10 +5,15 @@ go_library(
     srcs = ["hello_world.go"],
     importpath = "github.com/gonzojive/webcad/go/cmd/hello_world",
     visibility = ["//visibility:private"],
+    deps = ["@rules_go//go/runfiles"],
 )
 
 go_binary(
     name = "hello_world",
+    data = [
+        "//web/angular_hello_world:assets",
+        "//web/angular_hello_world:bundle",
+    ],
     embed = [":hello_world_lib"],
     visibility = ["//visibility:public"],
 )
