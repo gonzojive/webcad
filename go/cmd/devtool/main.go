@@ -29,14 +29,9 @@ var rootCmd = &cobra.Command{
 	Short: "devtool is a CLI tool for WebCAD repository automation",
 }
 
-var githubCmd = &cobra.Command{
-	Use:   "github",
-	Short: "Manage GitHub repository integration and check runs",
-}
-
-var checkRunCmd = &cobra.Command{
-	Use:   "check-run",
-	Short: "Create or update check runs for commits",
+var githubCiCmd = &cobra.Command{
+	Use:   "github-ci",
+	Short: "Manage GitHub CI status and checks",
 }
 
 var versionCmd = &cobra.Command{
@@ -87,17 +82,15 @@ var tidyCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(githubCmd)
+	rootCmd.AddCommand(githubCiCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(tidyCmd)
-	
-	githubCmd.AddCommand(checkRunCmd)
 
 	versionCmd.Flags().Bool("hash-only", false, "Output only the commit hash")
 
-	// Add common flags to github command
-	githubCmd.PersistentFlags().String("token", "", "GitHub API token (defaults to GITHUB_TOKEN env var)")
-	githubCmd.PersistentFlags().String("repo", "", "GitHub repository owner/name (defaults to GITHUB_REPOSITORY env var)")
+	// Add common flags to github-ci command
+	githubCiCmd.PersistentFlags().String("token", "", "GitHub API token (defaults to GITHUB_TOKEN env var)")
+	githubCiCmd.PersistentFlags().String("repo", "", "GitHub repository owner/name (defaults to GITHUB_REPOSITORY env var)")
 
 	// Create command flags
 	createCheckCmd.Flags().String("name", "", "Name of the check run (required)")
@@ -115,9 +108,9 @@ func init() {
 	runCheckCmd.Flags().String("sha", "", "Commit SHA (defaults to GITHUB_SHA env var)")
 	_ = runCheckCmd.MarkFlagRequired("name")
 
-	checkRunCmd.AddCommand(createCheckCmd)
-	checkRunCmd.AddCommand(updateCheckCmd)
-	checkRunCmd.AddCommand(runCheckCmd)
+	githubCiCmd.AddCommand(createCheckCmd)
+	githubCiCmd.AddCommand(updateCheckCmd)
+	githubCiCmd.AddCommand(runCheckCmd)
 }
 
 // getGitHubClient retrieves a GitHub client authenticated via token flag or GITHUB_TOKEN environment variable.
