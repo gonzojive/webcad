@@ -23,6 +23,7 @@ All agentic AI coding assistants working in this repository must adhere to the f
 - **Unit testing**: Get into a fast iteration loop quickly using tools like unit tests. Avoid running long-running processes or broad execution commands when localized tests can verify correctness.
 - **Bazel tooling**: Always use Bazel to build, test, and run code in this repository. Avoid using native toolchains directly (e.g., `go run`, `go build`, `go test`). Use commands like `bazel build //...` and `bazel test //...` to compile and verify changes.
 - **Gazelle build generator**: Use Gazelle to manage and generate `BUILD.bazel` files for Go and TypeScript packages. Run `./devtools/gaz` to automatically update or regenerate targets whenever source files, imports, or dependencies in `go.mod` or `package.json` change.
+- **Tidying dependencies and modules**: Run `./devtools/tidy` to synchronize package locks, run Gazelle, and tidy pnpm workspaces whenever npm/Go dependencies are added, modified, or deleted.
 - **Frontend development guide**: For details on how to build, test, and run the frontend with live reload, refer to [web/README.md](file:///usr/local/google/home/reddaly/.gemini/jetski/worktrees/webcad2/implement-bazel-frontend-phase1/web/README.md).
 
 
