@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkspaceService } from './services/workspace.service.js';
+import { ToolService } from './services/tool.service.js';
 import { ViewportComponent } from './viewport/viewport.component.js';
 import { ToolbarComponent } from './toolbar/toolbar.component.js';
 import { SidebarComponent } from './sidebar/sidebar.component.js';
@@ -192,9 +193,40 @@ import { Unit } from '../../units/units.js';
 })
 export class AppComponent {
     readonly workspace = inject(WorkspaceService);
+    private readonly toolService = inject(ToolService);
 
     changeUnit(event: Event) {
         const select = event.target as HTMLSelectElement;
         this.workspace.setPreferredUnit(select.value as Unit);
+    }
+
+    @HostListener('window:keydown', ['$event'])
+    handleKeyboardEvent(event: KeyboardEvent) {
+        const target = event.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+        switch (key) {
+            case 'd':
+                this.toolService.setTool('dimension');
+                break;
+            case 'l':
+                this.toolService.setTool('line');
+                break;
+            case 'c':
+                this.toolService.setTool('circle');
+                break;
+            case 'p':
+                this.toolService.setTool('point');
+                break;
+            case 's':
+                this.toolService.setTool('select');
+                break;
+            case 'escape':
+                this.toolService.cancelActiveOperation();
+                break;
+        }
     }
 }
