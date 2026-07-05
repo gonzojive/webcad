@@ -26,7 +26,7 @@ jobs:
         go-version: 'stable'
 
     - name: Register Checks
-      run: ./devtool github-ci register --name "Check Workspace Tidy" --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}"
+      run: ./devtool github-ci register --name "Check devtool tidy results in no diff" --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}"
 
     - name: Set up Bazel
       uses: bazelbuild/setup-bazelisk@v3
@@ -52,8 +52,8 @@ jobs:
         echo "build --disk_cache=~/.cache/bazel-disk" >> ~/.bazelrc
         echo "build --repository_cache=~/.cache/bazel-repo" >> ~/.bazelrc
 
-    - name: Check Workspace Tidy
-      run: ./devtool github-ci run-check --name "Check Workspace Tidy" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- ./devtools/tidy && git diff --exit-code
+    - name: Check devtool tidy results in no diff
+      run: ./devtool github-ci run-check --name "Check devtool tidy results in no diff" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- ./devtools/tidy && git diff --exit-code
 
     - name: Bazel Build and Test
       run: ./devtool github-ci run-check --name "Bazel Build and Test" --sha "${{ github.event.pull_request.head.sha || github.sha }}" --preregistered -- bazel build //... && bazel test //...
