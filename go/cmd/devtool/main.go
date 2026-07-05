@@ -225,7 +225,7 @@ var updateCheckCmd = &cobra.Command{
 }
 
 var runCheckCmd = &cobra.Command{
-	Use:   "run",
+	Use:   "run-check",
 	Short: "Execute a command and report its status as a GitHub check run",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
