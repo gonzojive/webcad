@@ -93,3 +93,29 @@ This instructs the Node.js runtime to default to ES Modules for all executed fil
 ## Adding Comments in `package.json`
 Since JSON does not support comments, we use the `"//"` key convention to document the purpose of dependencies or metadata fields in `package.json` files. Bazel and pnpm will safely ignore these keys.
 
+---
+
+## WebAssembly (WASM) Module Packaging & Serving
+
+To keep builds hermetic and ensure consistent behavior across local development and production, WebAssembly modules (.wasm) follow a unified packaging and serving strategy:
+
+1. **Extraction / Genrule**:
+   Any `.wasm` binary (whether compiled from local Go/Rust code or extracted from third-party npm packages) is copied into the `web/poc/ui` build outputs using a `genrule` in `web/poc/ui/BUILD.bazel`.
+   For third-party npm assets managed by `rules_js`, copy from the package directory target (e.g., `//web:node_modules/@resvg/resvg-wasm/dir`):
+   ```starlark
+   genrule(
+       name = "copy_resvg_wasm",
+       srcs = ["//web:node_modules/@resvg/resvg-wasm/dir"],
+       outs = ["resvg_index_bg.wasm"],
+       cmd = "cp $(location //web:node_modules/@resvg/resvg-wasm/dir)/index_bg.wasm $@",
+   )
+   ```
+2. **Asset Expose**:
+   The output is added to the `:assets` filegroup target in `web/poc/ui/BUILD.bazel`. This packages it as a dependency of the web server binary (`//web/poc:poc`).
+3. **MIME Serving**:
+   The Go web server uses a `UnionFS` filesystem that serves the file under `/ui/<wasm_filename>.wasm`. The server explicitly overrides the content header to `Content-Type: application/wasm` for all requests ending with `.wasm`.
+4. **Browser & Test Resolution**:
+   - **Browser**: The module is fetched at runtime from `/ui/<wasm_filename>.wasm`.
+   - **JSDOM Tests**: The test target declares the source npm package or binary in its `data` dependencies, and resolves the file path dynamically using ESM `import.meta.resolve` to run hermetically in the sandbox.
+
+
