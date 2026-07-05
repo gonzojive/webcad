@@ -99,7 +99,7 @@ func (s *LMSolver) Solve(sketch *schema.Sketch) (*schema.SolveResult, error) {
 		SketchId:   sketch.Id,
 		SolverName: string(s.ID()),
 		SolveTime:  durationpb.New(duration),
-		Success:    res.status == Success,
+		Success:    res.status == Success || (res.status == Stalled && res.finalResidual < 1e-8),
 	}
 
 	if !result.Success {
