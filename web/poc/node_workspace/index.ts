@@ -1,7 +1,8 @@
-import { GCSBridge } from '../../../model/gcs_bridge.js';
-import { createEmptySketch, cloneSketchForMutation, SketchModel } from '../../../model/sketch.js';
-import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
-import { ISketchWorkspace } from './svg_exporter.js';
+import * as fs from 'node:fs';
+import * as url from 'node:url';
+import { GCSBridge } from '../model/gcs_bridge.js';
+import { createEmptySketch, SketchModel, ISketchWorkspace } from '../model/sketch.js';
+import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../ts/gcsapi/dist/index.js';
 
 /**
  * NodeWorkspace implements a standalone, Node.js-compatible CAD sketch workspace.
@@ -20,19 +21,15 @@ export class NodeWorkspace implements ISketchWorkspace {
      */
     async init(): Promise<void> {
         // Load the Go WASM execution environment globally
-        const wasmExecUrl = (import.meta as any).resolve('../../wasm_exec.js');
+        const wasmExecUrl = (import.meta as any).resolve('../ui/wasm_exec.js');
         // @ts-ignore
         await import(wasmExecUrl);
 
         // Resolve compiled GCS solver WASM URL
-        const solverWasmUrl = (import.meta as any).resolve('../../wasm_solver.wasm');
+        const solverWasmUrl = (import.meta as any).resolve('../ui/wasm_solver.wasm');
 
         // Mock fetch to load the local WASM file from the filesystem in Node.js
         globalThis.fetch = async (fileUrl: any) => {
-            const fsName = 'node:fs';
-            const urlName = 'node:url';
-            const fs = await import(fsName);
-            const url = await import(urlName);
             const buffer = fs.readFileSync(url.fileURLToPath(fileUrl));
             return new Response(buffer, { headers: { 'content-type': 'application/wasm' } });
         };
@@ -109,3 +106,4 @@ export class NodeWorkspace implements ISketchWorkspace {
         return this.sketch.points.find(p => p.id === id);
     }
 }
+export { ISketchWorkspace };

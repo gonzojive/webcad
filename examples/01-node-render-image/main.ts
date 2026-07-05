@@ -1,4 +1,4 @@
-import { NodeWorkspace } from '../../web/poc/ui/app/viewport/node_workspace.js';
+import { NodeWorkspace } from '../../web/poc/node_workspace/index.js';
 import { exportToSVG } from '../../web/poc/ui/app/viewport/svg_exporter.js';
 import { rasterizeSVG } from '../../web/poc/ui/app/viewport/png_rasterizer.js';
 import * as fs from 'fs';

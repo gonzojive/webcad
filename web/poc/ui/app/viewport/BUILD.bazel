@@ -7,7 +7,6 @@ ts_project(
     name = "viewport",
     srcs = [
         "annotation_drawer.ts",
-        "node_workspace.ts",
         "png_rasterizer.ts",
         "svg_exporter.ts",
         "viewport.component.ts",
