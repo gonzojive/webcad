@@ -445,3 +445,63 @@ func TestQRSolver(t *testing.T) {
 		}
 	}
 }
+
+func TestLMSolverImpossiblePointLineDistance(t *testing.T) {
+	sketch := &schema.Sketch{
+		Id: "impossible_pt_ln",
+		Entities: []*schema.Entity{
+			{Id: "P1", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 268.12164427779163, Y: 290.35924855450537}}},
+			{Id: "P2", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 401.3390256842887, Y: 430.7363636363636}}},
+			{Id: "P3", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 388.00000000000006, Y: 167.99999999999997}}},
+			{Id: "P4", EntityType: &schema.Entity_Point{Point: &schema.PointEntity{X: 603, Y: 405}}},
+			{Id: "L1", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "P3", P2Id: "P4"}}},
+			{Id: "L2", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "P2", P2Id: "P4"}}},
+			{Id: "L3", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "P1", P2Id: "P2"}}},
+			{Id: "L4", EntityType: &schema.Entity_Line{Line: &schema.LineEntity{P1Id: "P1", P2Id: "P3"}}},
+		},
+		Constraints: []*schema.Constraint{
+			{
+				Id: "Perp_L4_L1",
+				ConstraintType: &schema.Constraint_Perpendicular{
+					Perpendicular: &schema.PerpendicularConstraint{LineA: "L4", LineB: "L1"},
+				},
+			},
+			{
+				Id: "PointLineDist_P4_L2",
+				ConstraintType: &schema.Constraint_Distance{
+					Distance: &schema.DistanceConstraint{EntityA: "P4", EntityB: "L2", Value: 4},
+				},
+			},
+			{
+				Id: "Distance_P4_P1",
+				ConstraintType: &schema.Constraint_Distance{
+					Distance: &schema.DistanceConstraint{EntityA: "P4", EntityB: "P1", Value: 30},
+				},
+			},
+			{
+				Id: "fixed-P4",
+				ConstraintType: &schema.Constraint_Fixed{
+					Fixed: &schema.FixedConstraint{EntityId: "P4"},
+				},
+			},
+		},
+	}
+
+	solver := New()
+	res, err := solver.Solve(sketch)
+	if err != nil {
+		t.Fatalf("Solve failed with system error: %v", err)
+	}
+
+	if res.Success {
+		t.Fatalf("Expected solver to fail on impossible system, but it succeeded!")
+	}
+
+	t.Logf("Solver failed as expected: %s", res.ErrorMessage)
+	t.Logf("Final residual: %e", res.Telemetry.FinalResidual)
+
+	if math.Abs(res.Telemetry.FinalResidual-256.0) > 1e-4 {
+		t.Errorf("Expected final residual to be around 256.0, got %f", res.Telemetry.FinalResidual)
+	}
+}
+

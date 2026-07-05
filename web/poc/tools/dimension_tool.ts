@@ -112,11 +112,18 @@ export class DimensionTool implements Tool {
                         // Point to Line
                         const ptId = p1 ? firstId : secondId;
                         const lnId = l1 ? firstId : secondId;
-                        this.placingDimension = {
-                            type: 'pointLineDistance',
-                            entityIds: [ptId, lnId]
-                        };
-                        this.firstEntityId = null;
+                        const ln = l1 ? l1 : l2;
+
+                        if (ln && (ptId === ln.p1Id || ptId === ln.p2Id)) {
+                            // Point is an endpoint of the line; distance is always 0.
+                            this.firstEntityId = null;
+                        } else {
+                            this.placingDimension = {
+                                type: 'pointLineDistance',
+                                entityIds: [ptId, lnId]
+                            };
+                            this.firstEntityId = null;
+                        }
                     } else {
                         // Not supported/ignored
                         this.firstEntityId = null;
