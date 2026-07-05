@@ -6,6 +6,7 @@ import { ViewportComponent } from './viewport/viewport.component.js';
 import { ToolbarComponent } from './toolbar/toolbar.component.js';
 import { SidebarComponent } from './sidebar/sidebar.component.js';
 import { DimensionInputComponent } from './dimension-input/dimension-input.component.js';
+import { McpService } from './services/mcp.service.js';
 import { Unit } from '../../units/units.js';
 
 @Component({
@@ -248,6 +249,7 @@ import { Unit } from '../../units/units.js';
 export class AppComponent {
     readonly workspace = inject(WorkspaceService);
     private readonly toolService = inject(ToolService);
+    private readonly mcp = inject(McpService);
 
     readonly activeToolLabel = computed(() => {
         const mode = this.toolService.activeToolMode();

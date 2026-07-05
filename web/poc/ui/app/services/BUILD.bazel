@@ -4,10 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "services",
-    srcs = [
-        "tool.service.ts",
-        "workspace.service.ts",
-    ],
+    srcs = glob(["**/*.ts"]),
     declaration = True,
     source_map = True,
     tsc = "//web/poc/ui:ngc",
