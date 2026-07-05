@@ -5,10 +5,11 @@ package(default_visibility = ["//visibility:public"])
 
 ts_project(
     name = "services",
-    srcs = glob(
-        ["**/*.ts"],
-        exclude = ["**/*.test.ts"],
-    ),
+    srcs = [
+        "mcp.service.ts",
+        "tool.service.ts",
+        "workspace.service.ts",
+    ],
     declaration = True,
     source_map = True,
     tsc = "//web/poc/ui:ngc",
@@ -38,6 +39,7 @@ ts_project(
         "//web:node_modules/@angular/compiler",
         "//web:node_modules/@types/node",
         "//web:node_modules/zone.js",
+        "//web/poc/model",
     ],
 )
 
