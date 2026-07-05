@@ -1,0 +1,28 @@
+{
+  "name": "@mcp-hub/browser-client",
+  "version": "0.1.0",
+  "description": "Browser-side TypeScript client for connecting web apps to the MCP Hub daemon",
+  "keywords": ["mcp", "model-context-protocol", "webtransport", "ai", "browser"],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
