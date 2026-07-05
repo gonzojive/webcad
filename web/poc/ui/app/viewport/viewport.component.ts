@@ -6,6 +6,7 @@ import { Vector2D, dist } from '../../../geometry/vector.js';
 import { projectPointOntoLine } from '../../../geometry/project.js';
 import { GCSPoint, GCSLine, GCSCircle, GCSConstraint } from '../../../../../ts/gcsapi/dist/index.js';
 import { AnnotationDrawer } from './annotation_drawer.js';
+import { exportToSVG } from './svg_exporter.js';
 
 declare const Konva: any;
 
@@ -223,6 +224,52 @@ export class ViewportComponent implements AfterViewInit, OnDestroy, IRenderer, I
     screenToSketch(pos: Vector2D): Vector2D {
         const transform = this.stage.getAbsoluteTransform().copy().invert();
         return transform.point(pos);
+    }
+ 
+    isSketchPointInViewport(pos: Vector2D): boolean {
+        if (!this.stage) return false;
+        const screenPos = this.sketchToScreen(pos);
+        return screenPos.x >= 0 && screenPos.x <= this.stage.width() &&
+               screenPos.y >= 0 && screenPos.y <= this.stage.height();
+    }
+
+    getViewportSketchBounds(): { min: Vector2D; max: Vector2D } {
+        if (!this.stage) {
+            return { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } };
+        }
+        const topLeft = this.screenToSketch({ x: 0, y: 0 });
+        const bottomRight = this.screenToSketch({ x: this.stage.width(), y: this.stage.height() });
+        return {
+            min: { x: Math.min(topLeft.x, bottomRight.x), y: Math.min(topLeft.y, bottomRight.y) },
+            max: { x: Math.max(topLeft.x, bottomRight.x), y: Math.max(topLeft.y, bottomRight.y) }
+        };
+    }
+
+    toRasterImage(): string {
+        const svg = this.toSVG();
+        const base64 = btoa(unescape(encodeURIComponent(svg)));
+        return `data:image/svg+xml;base64,${base64}`;
+    }
+
+    toSVG(options?: {
+        width?: number;
+        height?: number;
+        viewBox?: { x: number; y: number; width: number; height: number };
+        scale?: number;
+    }): string {
+        const bounds = this.getViewportSketchBounds();
+        const defaultOptions = {
+            width: this.stage ? this.stage.width() : 800,
+            height: this.stage ? this.stage.height() : 600,
+            scale: this.stage ? this.stage.scaleX() : 1,
+            viewBox: {
+                x: bounds.min.x,
+                y: bounds.min.y,
+                width: bounds.max.x - bounds.min.x,
+                height: bounds.max.y - bounds.min.y
+            }
+        };
+        return exportToSVG(this.workspace, { ...defaultOptions, ...options });
     }
 
     // --- IInteractionProvider Implementation ---

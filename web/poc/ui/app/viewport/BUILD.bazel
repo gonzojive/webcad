@@ -1,4 +1,5 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("//web:defs.bzl", "js_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -6,6 +7,7 @@ ts_project(
     name = "viewport",
     srcs = [
         "annotation_drawer.ts",
+        "svg_exporter.ts",
         "viewport.component.ts",
     ],
     declaration = True,
@@ -18,5 +20,28 @@ ts_project(
         "//web/poc/geometry",
         "//web/poc/ui/app/services",
         "//web/poc/ui/interfaces",
+    ],
+)
+
+js_test(
+    name = "test",
+    data = [
+        ":viewport_tests",
+    ],
+    entry_point = "svg_exporter.test.js",
+)
+
+ts_project(
+    name = "viewport_tests",
+    testonly = True,
+    srcs = ["svg_exporter.test.ts"],
+    declaration = True,
+    source_map = True,
+    tsc = "//web/poc/ui:ngc",
+    tsconfig = "//web/poc/ui:tsconfig",
+    deps = [
+        ":viewport",
+        "//ts/gcsapi",
+        "//web:node_modules/@types/node",
     ],
 )
