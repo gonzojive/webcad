@@ -2,6 +2,7 @@ import { Injectable, NgZone } from '@angular/core';
 import { WorkspaceService } from './workspace.service.js';
 import { ToolService } from './tool.service.js';
 import { McpHubClient } from '@mcp-hub/browser-client';
+import { Unit } from '../../../units/units.js';
 
 /**
  * Service that exposes core parametric CAD actions and viewport status
@@ -236,6 +237,28 @@ export class McpService {
                         const id = this.workspace.addConstraint(constraint);
                         return `Successfully added constraint "${id}" of type "${args.type}"`;
                     });
+                });
+            }
+        });
+
+        // 5.5. Set Preferred Unit
+        this.client.tool<{ unit: Unit }>("WebCad.setPreferredUnit", {
+            description: "Set the preferred unit for the sketch document (e.g. 'mm', 'in', 'ft', 'ft-in')",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    unit: {
+                        type: "string",
+                        enum: ["mm", "cm", "m", "in", "ft", "ft-in"],
+                        description: "The unit to set"
+                    }
+                },
+                required: ["unit"]
+            },
+            handler: async ({ unit }) => {
+                return this.zone.run(() => {
+                    this.workspace.setPreferredUnit(unit);
+                    return `Successfully set preferred unit to "${unit}"`;
                 });
             }
         });
