@@ -38,6 +38,17 @@ genrule(
     cmd = "cp $< $@",
 )
 
+# Extract and rename the compiled resvg WebAssembly binary from the third-party npm package
+# directory target. This places it directly inside the UI package output bundle as a static asset,
+# allowing the Go development server to serve it at "/ui/resvg_index_bg.wasm" for browser consumption
+# without name collisions (e.g. if another WASM module was also named "index_bg.wasm").
+genrule(
+    name = "copy_resvg_wasm",
+    srcs = ["//web:node_modules/@resvg/resvg-wasm/dir"],
+    outs = ["resvg_index_bg.wasm"],
+    cmd = "cp $(location //web:node_modules/@resvg/resvg-wasm/dir)/index_bg.wasm $@",
+)
+
 esbuild(
     name = "bundle",
     entry_point = "main.ts",
@@ -53,6 +64,7 @@ filegroup(
     name = "assets",
     srcs = [
         "index.html",
+        ":copy_resvg_wasm",
         ":wasm_exec.js",
         ":wasm_solver.wasm",
     ],
@@ -61,5 +73,5 @@ filegroup(
 ts_config(
     name = "tsconfig",
     src = "tsconfig.json",
-    visibility = [":__subpackages__"],
+    visibility = ["//visibility:public"],
 )

@@ -196,9 +196,9 @@ export class GCSSolver {
      * Initializes the solver WASM. 
      * In a real web environment, this will load the go_wasm_exec.js and instantiate the module.
      * 
-     * @param wasmUrl The URL to fetch the compiled WebAssembly module from.
+     * @param wasmInput The URL to fetch the compiled WebAssembly module from, or a pre-loaded ArrayBuffer/Uint8Array.
      */
-    async initGoWasm(wasmUrl: string): Promise<void> {
+    async initGoWasm(wasmInput: string | ArrayBuffer | Uint8Array): Promise<void> {
         if (this.goWasmInitialized) return;
         
         if (typeof (globalThis as any).Go === 'undefined') {
@@ -207,16 +207,21 @@ export class GCSSolver {
 
         const go = new (globalThis as any).Go();
         
-        if (typeof WebAssembly.instantiateStreaming === "function") {
-            const obj = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);
-            go.run(obj.instance);
+        let obj: WebAssembly.WebAssemblyInstantiatedSource;
+        if (typeof wasmInput === 'string') {
+            if (typeof WebAssembly.instantiateStreaming === "function") {
+                obj = await WebAssembly.instantiateStreaming(fetch(wasmInput), go.importObject);
+            } else {
+                const resp = await fetch(wasmInput);
+                const bytes = await resp.arrayBuffer();
+                obj = await WebAssembly.instantiate(bytes, go.importObject);
+            }
         } else {
-            const resp = await fetch(wasmUrl);
-            const bytes = await resp.arrayBuffer();
-            const obj = await WebAssembly.instantiate(bytes, go.importObject);
-            go.run(obj.instance);
+            const bytes = wasmInput instanceof Uint8Array ? wasmInput.buffer : wasmInput;
+            obj = await WebAssembly.instantiate(bytes, go.importObject);
         }
         
+        go.run(obj.instance);
         this.goWasmInitialized = true;
     }
 

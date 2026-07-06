@@ -7,6 +7,7 @@ ts_project(
     name = "viewport",
     srcs = [
         "annotation_drawer.ts",
+        "png_rasterizer.ts",
         "svg_exporter.ts",
         "viewport.component.ts",
     ],
@@ -17,7 +18,9 @@ ts_project(
     deps = [
         "//ts/gcsapi",
         "//web:node_modules/@angular/core",
+        "//web:node_modules/@resvg/resvg-wasm",
         "//web/poc/geometry",
+        "//web/poc/model",
         "//web/poc/ui/app/services",
         "//web/poc/ui/interfaces",
     ],
@@ -31,10 +34,25 @@ js_test(
     entry_point = "svg_exporter.test.js",
 )
 
+js_test(
+    name = "visual_regression_test",
+    data = [
+        ":viewport_tests",
+        "//web:node_modules/@resvg/resvg-wasm",
+    ] + glob(
+        ["testdata/**"],
+        allow_empty = True,
+    ),
+    entry_point = "visual_regression.test.js",
+)
+
 ts_project(
     name = "viewport_tests",
     testonly = True,
-    srcs = ["svg_exporter.test.ts"],
+    srcs = [
+        "svg_exporter.test.ts",
+        "visual_regression.test.ts",
+    ],
     declaration = True,
     source_map = True,
     tsc = "//web/poc/ui:ngc",

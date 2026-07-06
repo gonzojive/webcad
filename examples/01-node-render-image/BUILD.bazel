@@ -1,0 +1,44 @@
+# gazelle:resolve ts node //web:node_modules/@types/node
+# gazelle:resolve js node //web:node_modules/@types/node
+
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+package(default_visibility = ["//visibility:public"])
+
+npm_link_all_packages(name = "node_modules")
+
+js_binary(
+    name = "run",
+    data = [
+        "package.json",
+        ":01-node-render-image",
+        ":node_modules/@resvg/resvg-wasm",
+        "//web/poc/ui:copy_wasm_exec",
+        "//web/poc/ui:copy_wasm_solver",
+    ],
+    entry_point = "main.js",
+)
+
+ts_project(
+    name = "01-node-render-image",
+    srcs = ["main.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = ":tsconfig",
+    deps = [
+        "//web/poc/node_workspace",
+        "//web/poc/ui/app/viewport",
+    ],
+)
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    visibility = [":__subpackages__"],
+    deps = [
+        "//web:node_modules/@types/node",
+        "//web/poc/ui:tsconfig",
+    ],
+)

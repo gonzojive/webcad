@@ -30,7 +30,7 @@ export interface IRenderer {
     screenToSketch(pos: Vector2D): Vector2D;
     isSketchPointInViewport(pos: Vector2D): boolean;
     getViewportSketchBounds(): { min: Vector2D; max: Vector2D };
-    toRasterImage(): string;
+    toRasterImage(): string | Promise<string>;
     toSVG(options?: {
         width?: number;
         height?: number;

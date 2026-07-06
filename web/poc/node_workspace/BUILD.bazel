@@ -1,0 +1,28 @@
+# gazelle:resolve ts node //web:node_modules/@types/node
+# gazelle:resolve js node //web:node_modules/@types/node
+
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_project(
+    name = "node_workspace",
+    srcs = ["index.ts"],
+    declaration = True,
+    source_map = True,
+    tsconfig = ":tsconfig",
+    deps = [
+        "//ts/gcsapi",
+        "//web/poc/model",
+    ],
+)
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    visibility = [":__subpackages__"],
+    deps = [
+        "//web:node_modules/@types/node",
+        "//web/poc/ui:tsconfig",
+    ],
+)

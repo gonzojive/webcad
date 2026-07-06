@@ -24,6 +24,8 @@ load("@npm//:defs.bzl", "npm_link_all_packages")
 # gazelle:resolve ts jsdom //web:node_modules/jsdom
 # gazelle:resolve js @mcp-hub/browser-client //web:node_modules/@mcp-hub/browser-client
 # gazelle:resolve ts @mcp-hub/browser-client //web:node_modules/@mcp-hub/browser-client
+# gazelle:resolve js @resvg/resvg-wasm //web:node_modules/@resvg/resvg-wasm
+# gazelle:resolve ts @resvg/resvg-wasm //web:node_modules/@resvg/resvg-wasm
 package(default_visibility = ["//visibility:public"])
 
 npm_link_all_packages(name = "node_modules")

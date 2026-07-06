@@ -2,4 +2,4 @@ packages:
   - '.'
   - 'poc/ui'
   - 'vendor/@mcp-hub/browser-client'
-
+  - '../examples/01-node-render-image'

@@ -320,5 +320,32 @@ export class McpService {
                 return renderer.toSVG();
             }
         });
+
+        // 11. Export Image
+        this.client.tool<{ format: 'png' | 'svg' }>("WebCad.exportImage", {
+            description: "Export the current CAD sketch geometry as a PNG image (base64 data URL) or a raw XML SVG vector string",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    format: {
+                        type: "string",
+                        enum: ["png", "svg"],
+                        description: "The output format to generate: 'png' or 'svg'"
+                    }
+                },
+                required: ["format"]
+            },
+            handler: async ({ format }) => {
+                const renderer = this.toolService.activeRenderer as any;
+                if (!renderer) {
+                    throw new Error("Active renderer/viewport not registered");
+                }
+                if (format === 'png') {
+                    return renderer.toRasterImage();
+                } else {
+                    return renderer.toSVG();
+                }
+            }
+        });
     }
 }

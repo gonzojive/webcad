@@ -1,4 +1,6 @@
 import { GCSPoint, GCSLine, GCSCircle } from '../../../../../ts/gcsapi/dist/index.js';
+import { ISketchWorkspace } from '../../../model/sketch.js';
+export { ISketchWorkspace };
 
 /**
  * Viewport configuration options for the SVG exporter.
@@ -17,16 +19,6 @@ export interface SVGViewportOptions {
     };
     /** Scale factor (zoom level) of the viewport. */
     scale?: number;
-}
-
-/**
- * Interface representing a CAD workspace containing points, lines, and circles.
- */
-export interface ISketchWorkspace {
-    getPoints(): GCSPoint[];
-    getLines(): GCSLine[];
-    getCircles(): GCSCircle[];
-    getPoint(id: string): GCSPoint | undefined;
 }
 
 /**

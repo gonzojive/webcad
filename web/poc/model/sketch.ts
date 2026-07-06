@@ -37,3 +37,14 @@ export function cloneSketchForMutation(sketch: SketchModel): SketchModel {
     cloned.revision = (sketch.revision ?? 0) + 1;
     return cloned;
 }
+
+/**
+ * Abstract interface representing a CAD sketch workspace.
+ * Used by exporters and solver bridges to read geometry layouts.
+ */
+export interface ISketchWorkspace {
+    getPoints(): GCSPoint[];
+    getLines(): GCSLine[];
+    getCircles(): GCSCircle[];
+    getPoint(id: string): GCSPoint | undefined;
+}
