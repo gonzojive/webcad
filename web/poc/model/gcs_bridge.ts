@@ -10,9 +10,9 @@ export class GCSBridge {
     private readonly gcs = new GCSSolver();
     private isInitialized = false;
 
-    async init(wasmUrl = '/ui/wasm_solver.wasm'): Promise<void> {
+    async init(wasmSource: string | Uint8Array = '/ui/wasm_solver.wasm'): Promise<void> {
         if (this.isInitialized) return;
-        await this.gcs.initGoWasm(wasmUrl);
+        await this.gcs.initGoWasm(wasmSource);
         this.isInitialized = true;
     }
 

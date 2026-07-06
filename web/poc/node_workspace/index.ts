@@ -25,16 +25,12 @@ export class NodeWorkspace implements ISketchWorkspace {
         // @ts-ignore
         await import(wasmExecUrl);
 
-        // Resolve compiled GCS solver WASM URL
+        // Resolve compiled GCS solver WASM file path and read it directly
         const solverWasmUrl = (import.meta as any).resolve('../ui/wasm_solver.wasm');
+        const solverWasmPath = url.fileURLToPath(solverWasmUrl);
+        const solverWasmBuffer = fs.readFileSync(solverWasmPath);
 
-        // Mock fetch to load the local WASM file from the filesystem in Node.js
-        globalThis.fetch = async (fileUrl: any) => {
-            const buffer = fs.readFileSync(url.fileURLToPath(fileUrl));
-            return new Response(buffer, { headers: { 'content-type': 'application/wasm' } });
-        };
-
-        await this.bridge.init(solverWasmUrl);
+        await this.bridge.init(solverWasmBuffer);
     }
 
     /**
