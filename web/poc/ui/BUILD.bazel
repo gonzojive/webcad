@@ -38,6 +38,10 @@ genrule(
     cmd = "cp $< $@",
 )
 
+# Extract and rename the compiled resvg WebAssembly binary from the third-party npm package
+# directory target. This places it directly inside the UI package output bundle as a static asset,
+# allowing the Go development server to serve it at "/ui/resvg_index_bg.wasm" for browser consumption
+# without name collisions (e.g. if another WASM module was also named "index_bg.wasm").
 genrule(
     name = "copy_resvg_wasm",
     srcs = ["//web:node_modules/@resvg/resvg-wasm/dir"],
